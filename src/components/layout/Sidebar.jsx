@@ -2,9 +2,12 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
+  CloudSun, 
   Scan, 
   Bot, 
   Users, 
+  BookOpen,
+  CalendarDays,
   History, 
   FileText, 
   Mic, 
@@ -23,9 +26,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const navItems = [
     { path: '/', label: t('dashboard'), icon: LayoutDashboard },
+    { path: '/weather', label: t('weather'), icon: CloudSun },
     { path: '/detection', label: t('cropDetection'), icon: Scan },
     { path: '/assistant', label: t('farmerAssistant'), icon: Bot },
     { path: '/community', label: t('community'), icon: Users },
+    { path: '/library', label: t('library'), icon: BookOpen },
+    { path: '/planner', label: t('planner'), icon: CalendarDays },
     { path: '/history', label: t('predictionHistory'), icon: History },
     { path: '/reports', label: t('aiReports'), icon: FileText },
     { path: '/voice', label: t('voiceAssistant'), icon: Mic },
@@ -70,7 +76,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 space-y-1 overflow-y-auto">
+          <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -94,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </nav>
         </div>
 
-        {/* Bottom Sidebar: User Info & Logout (No Profile Picture/Avatar) */}
+        {/* Bottom Sidebar: User Info & Logout */}
         <div className="p-4 border-t border-gray-100 bg-gray-50/50">
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200 shadow-2xs">
             <div className="flex items-center space-x-2.5 min-w-0">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Activity, 
   Thermometer, 
@@ -8,10 +9,13 @@ import {
   AlertTriangle, 
   Cpu, 
   Sparkles, 
-  Sun,
   Wifi,
   Radio,
-  Clock
+  CloudSun,
+  ArrowRight,
+  CalendarDays,
+  BookOpen,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -27,23 +31,30 @@ import { apiService } from '../services/apiService';
 
 export default function Dashboard() {
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
 
   const [metrics, setMetrics] = useState(null);
   const [sensors, setSensors] = useState(null);
   const [history, setHistory] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [insights, setInsights] = useState([]);
+  const [weatherWidget, setWeatherWidget] = useState(null);
+  const [plannerWidget, setPlannerWidget] = useState(null);
+  const [libraryWidget, setLibraryWidget] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
       setLoading(true);
       try {
-        const [summaryData, latestSensors, sensorHist, activities] = await Promise.all([
+        const [summaryData, latestSensors, sensorHist, activities, wCurrent, farmActs, libArticles] = await Promise.all([
           apiService.getSummaryMetrics(),
           apiService.getLatestSensors(),
           apiService.getSensorHistory(),
-          apiService.getRecentSensorActivity()
+          apiService.getRecentSensorActivity(),
+          apiService.getWeatherCurrent(),
+          apiService.getFarmActivities(),
+          apiService.getLibraryArticles()
         ]);
 
         setMetrics(summaryData.metrics);
@@ -51,6 +62,9 @@ export default function Dashboard() {
         setSensors(latestSensors);
         setHistory(sensorHist);
         setRecentActivities(activities);
+        setWeatherWidget(wCurrent);
+        setPlannerWidget(farmActs[0]);
+        setLibraryWidget(libArticles[0]);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -72,6 +86,8 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const isTa = language === 'ta';
 
   return (
     <div className="space-y-6">
@@ -95,7 +111,84 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 2. Top Summary Cards (5 Key Cards: Crop Health, Soil Moisture, Temp, Humidity, Rain Status) */}
+      {/* 2. Summary Widgets Grid (Weather, Next Planner Activity, Weather Alert, Agriculture Topic) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Widget 1: Today's Weather */}
+        <div 
+          onClick={() => navigate('/weather')}
+          className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-2xl text-white shadow-2xs space-y-2 cursor-pointer hover:shadow-md transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-200">{t('todaysWeather')}</span>
+            <CloudSun className="w-4 h-4 text-amber-300" />
+          </div>
+          <div className="flex items-baseline space-x-2">
+            <span className="text-2xl font-black">{weatherWidget?.temperature || 29}°C</span>
+            <span className="text-xs text-blue-100">{isTa ? weatherWidget?.conditionTa : weatherWidget?.condition}</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-blue-100 pt-1 border-t border-white/15">
+            <span>Rain: {weatherWidget?.rainProbability || 30}%</span>
+            <span className="font-bold flex items-center">{t('viewForecast')} →</span>
+          </div>
+        </div>
+
+        {/* Widget 2: Next Farming Activity */}
+        <div 
+          onClick={() => navigate('/planner')}
+          className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 cursor-pointer hover:border-agri-400 hover:shadow-md transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500">{t('nextActivity')}</span>
+            <CalendarDays className="w-4 h-4 text-agri-600" />
+          </div>
+          <div className="text-sm font-bold text-gray-900 truncate">
+            {isTa ? plannerWidget?.nameTa : plannerWidget?.nameEn}
+          </div>
+          <div className="flex justify-between items-center text-[11px] pt-1 border-t border-gray-100">
+            <span className="text-agri-600 font-medium">Due: {plannerWidget?.date}</span>
+            <span className="font-bold text-gray-700 flex items-center">{t('viewPlanner')} →</span>
+          </div>
+        </div>
+
+        {/* Widget 3: Weather Alert Widget */}
+        <div 
+          onClick={() => navigate('/weather')}
+          className="bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-2xs space-y-2 cursor-pointer hover:bg-amber-100/60 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-900 uppercase">{t('weatherAlertWidget')}</span>
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="text-xs font-bold text-amber-950 truncate">
+            🌧️ Heavy Rain Alert (75% Chance)
+          </div>
+          <div className="text-[10px] text-amber-800 font-medium">
+            Review outdoor crop activities
+          </div>
+        </div>
+
+        {/* Widget 4: Latest Agriculture Library Topic */}
+        <div 
+          onClick={() => navigate('/library')}
+          className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 cursor-pointer hover:border-agri-400 hover:shadow-md transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500">{t('latestLibraryTopic')}</span>
+            <BookOpen className="w-4 h-4 text-agri-600" />
+          </div>
+          <div className="text-xs font-bold text-gray-900 truncate">
+            {isTa ? libraryWidget?.titleTa : libraryWidget?.titleEn}
+          </div>
+          <div className="flex justify-between items-center text-[11px] pt-1 border-t border-gray-100">
+            <span className="text-agri-600 font-medium">RAG Guide</span>
+            <span className="font-bold text-gray-700 flex items-center">{t('exploreLibrary')} →</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. ESP32 Sensor Telemetry Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* Card 1: Crop Health */}
@@ -120,7 +213,7 @@ export default function Dashboard() {
           </div>
           <div className="text-2xl font-bold text-gray-900">{sensors?.soilMoisture || 62}%</div>
           <p className="text-[11px] text-emerald-600 font-medium">
-            {language === 'ta' ? 'வேர் மண்டலம் 60 - 70%' : 'Target range 60 - 70%'}
+            {isTa ? 'வேர் மண்டலம் 60 - 70%' : 'Target range 60 - 70%'}
           </p>
         </div>
 
@@ -132,7 +225,7 @@ export default function Dashboard() {
           </div>
           <div className="text-2xl font-bold text-gray-900">{sensors?.temperature || 29.5}°C</div>
           <p className="text-[11px] text-gray-500 font-medium">
-            {language === 'ta' ? 'சுற்றுச்சூழல் வெப்பநிலை' : 'Ambient canopy temp'}
+            {isTa ? 'சுற்றுச்சூழல் வெப்பநிலை' : 'Ambient canopy temp'}
           </p>
         </div>
 
@@ -144,7 +237,7 @@ export default function Dashboard() {
           </div>
           <div className="text-2xl font-bold text-gray-900">{sensors?.humidity || 76}%</div>
           <p className="text-[11px] text-amber-600 font-medium">
-            {language === 'ta' ? 'அதிக ஈரப்பதம்' : 'Elevated moisture'}
+            {isTa ? 'அதிக ஈரப்பதம்' : 'Elevated moisture'}
           </p>
         </div>
 
@@ -162,7 +255,7 @@ export default function Dashboard() {
 
       </div>
 
-      {/* 3. Sensor Telemetry Charts (Soil Moisture, Temp, Humidity vs Time) */}
+      {/* 4. Sensor Telemetry Charts */}
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div>
@@ -218,13 +311,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 4. Two Column Layout: Recent Sensor Activity & Weather Forecast | AI Insights & System Status */}
+      {/* 5. Two Column Layout: Recent Activity | AI Insights & System Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left 2 Cols: Recent Sensor Activity & Weather Card */}
+        {/* Left 2 Cols: Recent Sensor Activity */}
         <div className="lg:col-span-2 space-y-6">
-          
-          {/* Recent Sensor Activity */}
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
@@ -248,20 +339,6 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-
-          {/* Local Weather Card */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xs flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">{t('weatherForecast')}</span>
-              <h4 className="text-2xl font-bold">Dharmapuri Field Region</h4>
-              <p className="text-xs text-blue-100">Partly Cloudy • Wind 12 km/h • Precipitation 10%</p>
-            </div>
-            <div className="text-right">
-              <Sun className="w-10 h-10 text-amber-300 ml-auto mb-1" />
-              <span className="text-2xl font-extrabold">30.2°C</span>
-            </div>
-          </div>
-
         </div>
 
         {/* Right Col: AI Insights & System Status */}
@@ -278,11 +355,11 @@ export default function Dashboard() {
               {insights.map(item => (
                 <div key={item.id} className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1 text-xs">
                   <div className="font-bold text-amber-900 flex items-center justify-between">
-                    <span>{language === 'ta' ? item.title.ta : item.title.en}</span>
+                    <span>{isTa ? item.title.ta : item.title.en}</span>
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   </div>
                   <p className="text-amber-800 leading-relaxed">
-                    {language === 'ta' ? item.description.ta : item.description.en}
+                    {isTa ? item.description.ta : item.description.en}
                   </p>
                 </div>
               ))}
@@ -313,8 +390,8 @@ export default function Dashboard() {
                 <span className="text-agri-700 font-bold">YOLO11+SAM+ResNet50</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
-                <span className="text-gray-600">Database Engine:</span>
-                <span className="text-emerald-600 font-bold">Connected</span>
+                <span className="text-gray-600">RAG Vector Knowledge:</span>
+                <span className="text-emerald-600 font-bold">Agriculture Library</span>
               </div>
             </div>
           </div>

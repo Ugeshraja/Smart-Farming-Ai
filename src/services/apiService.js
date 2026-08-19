@@ -15,6 +15,7 @@ import {
   mockFieldVsWeather,
   mockLibraryCategories,
   mockLibraryArticles,
+  mockCropPlanningConfigs,
   mockFarmPlan,
   mockCropTimelineStages,
   mockFarmActivities,
@@ -65,29 +66,54 @@ export const apiService = {
     }
   },
 
-  // 2. Farming Planner Endpoints
+  // 2. Smart Crop & Harvest Planner Endpoints
   async getFarmPlan() {
     return mockFarmPlan;
   },
 
-  async getCropTimeline(crop = 'Tomato') {
-    return mockCropTimelineStages[crop] || mockCropTimelineStages.Tomato;
+  async getCropPlanningConfig(crop = 'Tomato') {
+    return mockCropPlanningConfigs[crop] || mockCropPlanningConfigs.Tomato;
   },
 
-  async getFarmActivities() {
-    return mockFarmActivities;
+  async getAllCropConfigs() {
+    return mockCropPlanningConfigs;
+  },
+
+  async getCropTimeline(crop = 'Tomato') {
+    const config = mockCropPlanningConfigs[crop] || mockCropPlanningConfigs.Tomato;
+    return config.stages;
+  },
+
+  async getFarmActivities(crop = 'Tomato') {
+    const config = mockCropPlanningConfigs[crop] || mockCropPlanningConfigs.Tomato;
+    return config.activities;
   },
 
   async toggleActivityStatus(id) {
-    const act = mockFarmActivities.find(a => a.id === id);
-    if (act) {
-      act.status = act.status === 'Completed' ? 'Upcoming' : 'Completed';
-    }
-    return act;
+    let found = null;
+    Object.values(mockCropPlanningConfigs).forEach(cfg => {
+      const a = cfg.activities.find(act => act.id === id);
+      if (a) {
+        a.status = a.status === 'Completed' ? 'Upcoming' : 'Completed';
+        found = a;
+      }
+    });
+    return found || { id, status: 'Completed' };
   },
 
   async getCalendarEvents() {
     return mockMonthlyCalendarEvents;
+  },
+
+  async generateAiPlanAdvisory({ crop, location, plantingDate, stage, harvestWindow, weather, language = 'en' }) {
+    try {
+      const prompt = `Provide agronomic pre-planning advisory for ${crop} crop in ${location}. Planting date: ${plantingDate}, Stage: ${stage}, Expected harvest: ${harvestWindow}. Weather alert: ${weather?.alert || 'Moderate temperatures'}.`;
+      const response = await this.sendChatMessage(prompt, language);
+      return response;
+    } catch (err) {
+      console.error("AI Plan Advisory error:", err);
+      return null;
+    }
   },
 
   // 3. Weather API Service Endpoints
@@ -197,7 +223,15 @@ export const apiService = {
       let replyText = "";
 
       if (language === 'ta') {
-        if (lower.includes("late blight") || lower.includes("கட்டுப்படுத்துவது") || lower.includes("தக்காளி") || lower.includes("புள்ளிகள்")) {
+        if (lower.includes("திட்ட") || lower.includes("அறுவடை") || lower.includes("விதைப்பு") || lower.includes("advisory") || lower.includes("planting") || lower.includes("harvest") || lower.includes("plan")) {
+          if (lower.includes("potato") || lower.includes("உருளை")) {
+            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• உருளைக்கிழங்கு பயிர் காலம்: 90-100 நாட்கள். திட்டமிடப்பட்ட அறுவடை காலம் உகந்ததாக உள்ளது.\n• வானிலை முன்னறிவிப்பு: கிழங்கு பருமனாகும் நிலையில் மிதமான தட்பவெப்பமும் சீரான மண் ஈரப்பதமும் (65-70%) அவசியம்.\n• முக்கிய பணிகள்: 30வது நாளில் இரண்டாவது மண் அணைப்பு செய்யவும். அறுவடைக்கு 10 நாட்களுக்கு முன் தண்டுப் பகுதியை வெட்டி (Dehaulming) தோலை முதிரச் செய்யவும்.";
+          } else if (lower.includes("brinjal") || lower.includes("கத்தரி")) {
+            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• கத்தரிக்காய் பயிர் காலம்: 120-140 நாட்கள். 75வது நாளில் முதல் அறுவடை தொடங்கி 120 நாட்கள் வரை தொடர் அறுவடை செய்யலாம்.\n• வானிலை முன்னறிவிப்பு: காற்றில் அதிக ஈரப்பதம் இருக்கும்போது சிறிய இலை நோய் மற்றும் இலைப்புள்ளி நோய்களைக் கண்காணிக்கவும்.\n• முக்கிய பணிகள்: தண்டு & காய் துளைப்பானுக்கு ஏக்கருக்கு 12 மோகப் பொறிகளை அமைக்கவும். ஒவ்வொரு அறுவடைக்குப் பிறகும் 13:0:45 உரம் இடவும்.";
+          } else {
+            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• தக்காளி பயிர் காலம்: 90-110 நாட்கள். 75வது நாளில் முதல் கட்ட அறுவடை (Breaker Stage) தொடங்கி 80-95 நாட்களில் உச்சக்கட்ட மகசூல் கிடைக்கும்.\n• வானிலை முன்னறிவிப்பு: அறுவடை காலத்தில் மழை வாய்ப்பு இருப்பின், பழங்கள் வெடிப்பதைத் தவிர்க்க முன்னதாகவே அறுவடை செய்யவும்.\n• முக்கிய பணிகள்: பூக்கும் நிலையில் போரான் தெளிக்கவும், அடி அழுகல் நோயைத் தடுக்க கால்சியம் நைட்ரேட் மற்றும் 0:0:50 பொட்டாஷ் அளிக்கவும்.";
+          }
+        } else if (lower.includes("late blight") || lower.includes("கட்டுப்படுத்துவது") || lower.includes("தக்காளி") || lower.includes("புள்ளிகள்")) {
           replyText = "வேளாண்மை நூலகத் தரவுகளின்படி (RAG + LLM):\nதக்காளியில் Late Blight நோய் அதிக ஈரப்பதம் மற்றும் குளிர்ச்சியான சூழ்நிலையில் வேகமாக பரவக்கூடும். பாதிக்கப்பட்ட இலைகளை கண்காணித்து, பரிந்துரைக்கப்பட்ட வேளாண் நோய் மேலாண்மை முறைகளைப் பின்பற்றவும்.";
         } else if (lower.includes("உருளை") || lower.includes("potato")) {
           replyText = "உருளைக்கிழங்கில் ஏர்லி பிளைட் நோய் வளையப் புள்ளிகளை ஏற்படுத்துகிறது. குளோரோதலோனில் பூஞ்சைக் கொல்லியைத் தெளிக்கவும்.";
@@ -205,7 +239,15 @@ export const apiService = {
           replyText = `உங்கள் கேள்விக்கு நன்றி: "${message}". எமது வேளாண்மை நூலகத்தின் அறிவுக் களஞ்சியம் மூலம் தக்காளி, உருளைக்கிழங்கு, கத்தரிக்காய் பயிர்களுக்கான மேலாண்மை ஆலோசனைகள் வழங்கப்படுகின்றன.`;
         }
       } else {
-        if (lower.includes("late blight") || lower.includes("tomato") || lower.includes("treatment") || lower.includes("brown spot")) {
+        if (lower.includes("plan") || lower.includes("schedule") || lower.includes("harvest") || lower.includes("advisory") || lower.includes("planting")) {
+          if (lower.includes("potato")) {
+            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Potato Growth Cycle: 90–100 days. Planned harvest window is well-aligned with regional agronomic norms.\n• Weather Advisory: Ensure dry sunny conditions for dehaulming (cutting vines) 10 days before digging to cure tuber skin.\n• Stage Actions: High potassium fertigation during tuber bulking (Day 50–70). Inspect lower leaves for early blight target-spots.";
+          } else if (lower.includes("brinjal") || lower.includes("eggplant")) {
+            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Brinjal Cycle: 120–140 days with continuous multiple flushes. First harvest starts around Day 75, with peak yields continuing up to Day 120.\n• Weather Advisory: Humid overcast spells favor Cercospora leaf spots. Spray NSKE 5% and install Lucinure pheromone traps.\n• Stage Actions: Regular pickings every 4–5 days to prevent seed hardening. Top-dress water-soluble 13:0:45 after each harvest wave.";
+          } else {
+            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Tomato Cycle: 90–110 days. First breaker-stage picking begins at ~Day 75, reaching peak bulk harvesting between Days 80–95.\n• Weather Alert Integration: If rainfall or overcast weather is forecasted during ripening/harvest, harvest slightly early (breaker/turning stage) to prevent skin cracking and fruit rot.\n• Key Stage Actions: Apply Boron 1g/L at flowering to prevent blossom drop; feed Calcium Nitrate and Soluble Potash (0:0:50) during fruit sizing.";
+          }
+        } else if (lower.includes("late blight") || lower.includes("tomato") || lower.includes("treatment") || lower.includes("brown spot")) {
           replyText = "Based on our Agriculture Library Knowledge Base (RAG + LLM):\nTomato late blight is commonly associated with cool and humid conditions. Monitor affected leaves regularly and follow recommended agricultural disease-management practices.";
         } else if (lower.includes("potato")) {
           replyText = "Potato Early Blight causes characteristic target-board concentric rings. Apply Chlorothalonil 75% WP @ 2g/litre and maintain balanced nitrogen.";

@@ -426,9 +426,348 @@ export const mockLibraryArticles = [
 ];
 
 // ==================================================
-// NEW MODULE: FARMING PLANNER MOCK DATA
+// SMART CROP & HARVEST PLANNER CONFIGS & DATA
 // ==================================================
 
+export const mockCropPlanningConfigs = {
+  Tomato: {
+    id: 'Tomato',
+    nameEn: 'Tomato',
+    nameTa: 'தக்காளி',
+    icon: '🍅',
+    variety: 'Hybrid (Arka Rakshak / PKM-1 / Sivam)',
+    varietyTa: 'அர்கா ரக்ஷக் / பி.கே.எம்-1 / சிவம்',
+    growthDurationDays: 100,
+    growthDurationLabelEn: '90 – 110 Days',
+    growthDurationLabelTa: '90 – 110 நாட்கள்',
+    recommendedPlantingSeasonEn: 'June – July (Kharif) & Nov – Dec (Rabi)',
+    recommendedPlantingSeasonTa: 'ஜூன் – ஜூலை (காரிப்) & நவம்பர் – டிசம்பர் (ரபி)',
+    bestHarvestSeasonEn: 'September – November & February – April',
+    bestHarvestSeasonTa: 'செப்டம்பர் – நவம்பர் & பிப்ரவரி – ஏப்ரல்',
+    expectedYieldEn: '25 – 35 Tonnes / Acre',
+    expectedYieldTa: '25 – 35 டன் / ஏக்கர்',
+    harvestStartDayOffset: 75,
+    bestHarvestStartDayOffset: 80,
+    bestHarvestEndDayOffset: 95,
+    harvestEndDayOffset: 105,
+    harvestReadinessCriteria: {
+      en: "Color transition from green to pink/breaker stage for transport, or deep red firm ripe for local markets. Calyx firmly attached with pleasant aroma.",
+      ta: "தொலைதூர விற்பனைக்கு இளஞ்சிவப்பு நிறம்; உள்ளூர் சந்தைக்கு அடர் சிவப்பு நிறம். பளபளப்பான, கெட்டியான பழங்கள்."
+    },
+    maturityTips: [
+      { en: "Pick in early morning or late afternoon to minimize field heat loss.", ta: "வெப்பத்தால் பழம் மென்மையாவதைத் தவிர்க்க அதிகாலை அல்லது மாலையில் அறுவடை செய்யவும்." },
+      { en: "Harvest with smooth calyx attached to extend market shelf-life by 4-6 days.", ta: "காம்புடன் அறுவடை செய்வது பழத்தின் ஆயுளை 4-6 நாட்கள் வரை நீட்டிக்கும்." },
+      { en: "Sort into plastic crates with newspaper liners; avoid piling more than 3 layers.", ta: "பிளாஸ்டிக் பெட்டிகளில் 3 அடுக்குகளுக்கு மேல் அடுக்காமல் நிழலில் வைக்கவும்." }
+    ],
+    stages: [
+      { id: 1, nameEn: "Nursery & Transplanting", nameTa: "நாற்று நடுதல்", startDay: 1, endDay: 15, duration: "Day 1 - 15", practicesEn: "Raised nursery bed, seed treatment with Trichoderma, 25-day seedlings transplanting at 60x45cm spacing.", practicesTa: "மேட்டுப்பாத்தி அமைத்து டிரைக்கோடெர்மா விதை நேர்த்தி செய்து 25 நாள் நாற்றுகளை நடவும்." },
+      { id: 2, nameEn: "Root Establishment", nameTa: "வேர் பிடித்தல் & வளர்ச்சி", startDay: 16, endDay: 30, duration: "Day 16 - 30", practicesEn: "Maintain uniform soil moisture. Gap filling within 7 days. First bio-fertilizer application (Azospirillum).", practicesTa: "மண் ஈரப்பதத்தை சீராக பராமரித்து, இடைவெளி நிரப்புதல் மற்றும் அசோஸ்பைரில்லம் இடவும்." },
+      { id: 3, nameEn: "Vegetative Canopy & Staking", nameTa: "இலை வளர்ச்சி & முட்டுக் கட்டுதல்", startDay: 31, endDay: 48, duration: "Day 31 - 48", practicesEn: "Side shoot pruning, bamboo staking, NPK 19:19:19 fertigation, weed management.", practicesTa: "முட்டுக் கம்புகள் கட்டி செடிகளை தாங்கச் செய்தல், 19:19:19 உரம் மற்றும் களை மேலாண்மை." },
+      { id: 4, nameEn: "Flowering & Fruit Setting", nameTa: "பூத்தல் & காய் பிடித்தல்", startDay: 49, endDay: 65, duration: "Day 49 - 65", practicesEn: "Foliar spray of Boron (1g/L) & Planofix for flower retention. Avoid moisture stress.", practicesTa: "பூ உதிர்வதைத் தடுக்க போரான் மற்றும் பிளனோபிக்ஸ் தெளிக்கவும். நீர் தட்டுப்பாடு தவிர்க்கவும்." },
+      { id: 5, nameEn: "Fruit Development & Sizing", nameTa: "காய் பெருக்கம் & முதிர்ச்சி", startDay: 66, endDay: 74, duration: "Day 66 - 74", practicesEn: "Apply Calcium Nitrate against Blossom End Rot. High potassium fertigation (0:0:50).", practicesTa: "அடி அழுகல் நோயைத் தடுக்க கால்சியம் நைட்ரேட் மற்றும் பொட்டாஷ் உரம் அளிக்கவும்." },
+      { id: 6, nameEn: "Disease & Pest Monitoring", nameTa: "நோய் & பூச்சி கண்காணிப்பு", startDay: 50, endDay: 85, duration: "Day 50 - 85", practicesEn: "Scout lower leaves for Early/Late Blight lesions. Install pheromone traps for fruit borer.", practicesTa: "பிளைட் இலைப்புள்ளிகளை ஆய்வு செய்து, பழத்துளைப்பானுக்கு இனக்கவர்ச்சி பொறிகளை அமைக்கவும்." },
+      { id: 7, nameEn: "Expected Harvest Start", nameTa: "அறுவடை தொடக்கம்", startDay: 75, endDay: 79, duration: "Day 75 - 79", practicesEn: "First picking of breaker stage tomatoes. Handle gently in cushioned crates.", practicesTa: "முதல் கட்ட அறுவடை தொடக்கம். காயம் படாமல் பெட்டிகளில் சேகரிக்கவும்." },
+      { id: 8, nameEn: "Peak Best Harvesting Period", nameTa: "உச்சக்கட்ட அறுவடை காலம்", startDay: 80, endDay: 95, duration: "Day 80 - 95", practicesEn: "Peak harvest rounds every 3-4 days. Uniform color grading, shade cooling.", practicesTa: "3-4 நாட்களுக்கு ஒருமுறை தொடர் அறுவடை. தரம் பிரித்து நிழலில் வைக்கவும்." },
+      { id: 9, nameEn: "Final Harvest & Field Clearance", nameTa: "இறுதி அறுவடை & நிலம் தூய்மை", startDay: 96, endDay: 105, duration: "Day 96 - 105", practicesEn: "Final picking, residue clearing, soil solarization for next crop cycle.", practicesTa: "இறுதி அறுவடை முடித்து, நிலத்தை அடுத்த பயிருக்கு தயார் செய்யவும்." }
+    ],
+    activities: [
+      {
+        id: "ACT-TOM-01",
+        nameEn: "Soil Preparation & Basal Organic Compost",
+        nameTa: "நிலம் உழுதல் & அடி உரம் இடுதல்",
+        category: "Fertilizer",
+        dayOffset: 1,
+        descriptionEn: "Apply 10 tonnes FYM compost + Neem cake 100kg + Trichoderma viride 2kg/acre during ploughing.",
+        descriptionTa: "கடைசி உழவின் போது 10 டன் தொழு உரம், 100 கிலோ வேப்பம்பிண்ணாக்கு மற்றும் டிரைக்கோடெர்மா இடவும்.",
+        weatherAwareAlert: "☀️ Ensure field is ploughed in dry soil conditions before heavy rains begin."
+      },
+      {
+        id: "ACT-TOM-02",
+        nameEn: "Automated Root-Zone Drip Irrigation",
+        nameTa: "சொட்டுநீர்ப் பாசனம்",
+        category: "Irrigation",
+        dayOffset: 16,
+        descriptionEn: "Run drip irrigation to maintain 60-65% soil moisture at root level. Avoid surface puddling.",
+        descriptionTa: "வேர் பகுதியில் 60-65% மண் ஈரப்பதத்தை பராமரிக்க 45 நிமிடங்கள் சொட்டுநீர் பாசனம் செய்யவும்.",
+        weatherAwareAlert: "💧 Check upcoming rain forecast — reduce irrigation cycle if rainfall exceeds 15mm."
+      },
+      {
+        id: "ACT-TOM-03",
+        nameEn: "Staking & Trellising Support",
+        nameTa: "முட்டுக் கம்புகள் கட்டுதல்",
+        category: "Crop Management",
+        dayOffset: 35,
+        descriptionEn: "Erect bamboo stakes and tie tomato branches using twine to prevent soil-borne pathogens.",
+        descriptionTa: "தக்காளி கிளைகளை கம்புகளில் கட்டி தரையில் படர்வதைத் தவிர்க்கவும்."
+      },
+      {
+        id: "ACT-TOM-04",
+        nameEn: "Early/Late Blight Foliar Scouting",
+        nameTa: "பிளைட் இலைப்புள்ளி ஆய்வு",
+        category: "Disease",
+        dayOffset: 52,
+        descriptionEn: "Inspect lower foliage for water-soaked concentric lesions. Use AI Disease Scanner if spots appear.",
+        descriptionTa: "இலைகளில் நீர் கோர்த்த கருமை புள்ளிகளை ஆய்வு செய்ய AI கேமராவைப் பயன்படுத்தவும்.",
+        weatherAwareAlert: "🌧️ High ambient humidity accelerates Late Blight spores. Spray Mancozeb 2g/L preventively."
+      },
+      {
+        id: "ACT-TOM-05",
+        nameEn: "Fruit Borer Pheromone Trap Installation",
+        nameTa: "காய் துளைப்பான் இனக்கவர்ச்சி பொறி",
+        category: "Pest",
+        dayOffset: 58,
+        descriptionEn: "Install 12 Helicoverpa armigera pheromone traps per acre to monitor and trap moths.",
+        descriptionTa: "ஏக்கருக்கு 12 மோகப் பொறிகளை அமைத்து ஆண் அந்துப்பூச்சிகளை அழிக்கவும்."
+      },
+      {
+        id: "ACT-TOM-06",
+        nameEn: "Soluble Potash (0:0:50) Fertigation",
+        nameTa: "பொட்டாஷ் உரம் அளித்தல்",
+        category: "Fertilizer",
+        dayOffset: 70,
+        descriptionEn: "Fertigate Potassium Sulphate (0:0:50) @ 5kg/acre to enhance fruit sugar, firmness, and uniform red color.",
+        descriptionTa: "பழங்களின் நிறம் மற்றும் எடையை அதிகரிக்க 0:0:50 பொட்டாஷ் உரத்தை பாசன நீரில் கலக்கவும்."
+      },
+      {
+        id: "ACT-TOM-07",
+        nameEn: "First Harvest Picking (Breaker Stage)",
+        nameTa: "முதல் கட்ட தக்காளி அறுவடை",
+        category: "Harvesting",
+        dayOffset: 75,
+        descriptionEn: "Harvest mature green/pink breaker stage tomatoes with calyx attached in cushioned crates.",
+        descriptionTa: "காம்புடன் கூடிய இளஞ்சிவப்பு தக்காளிகளை கவனமாக அறுவடை செய்யவும்.",
+        weatherAwareAlert: "⚠️ Rain forecast during harvest can cause skin cracking. Harvest ahead of rain."
+      },
+      {
+        id: "ACT-TOM-08",
+        nameEn: "Peak Yield Picking & Market Grading",
+        nameTa: "உச்சக்கட்ட அறுவடை & தரம் பிரித்தல்",
+        category: "Harvesting",
+        dayOffset: 85,
+        descriptionEn: "Conduct 3rd round bulk picking. Grade by uniform size (Grade A 80-100g) and store at 15-20°C.",
+        descriptionTa: "அனைத்து செடிகளிலிருந்தும் தரமான பழங்களை அறுவடை செய்து தரம் பிரிக்கவும்."
+      }
+    ]
+  },
+  Potato: {
+    id: 'Potato',
+    nameEn: 'Potato',
+    nameTa: 'உருளைக்கிழங்கு',
+    icon: '🥔',
+    variety: 'Kufri Jyoti / Kufri Surya / Kufri Pukhraj',
+    varietyTa: 'குப்ரி ஜோதி / குப்ரி சூர்யா / குப்ரி புக்ராஜ்',
+    growthDurationDays: 95,
+    growthDurationLabelEn: '85 – 100 Days',
+    growthDurationLabelTa: '85 – 100 நாட்கள்',
+    recommendedPlantingSeasonEn: 'October – November (Plains) & April – May (Hills)',
+    recommendedPlantingSeasonTa: 'அக்டோபர் – நவம்பர் (சமவெளி) & ஏப்ரல் – மே (மலைப்பகுதி)',
+    bestHarvestSeasonEn: 'January – February (Plains) & August – September (Hills)',
+    bestHarvestSeasonTa: 'ஜனவரி – பிப்ரவரி (சமவெளி) & ஆகஸ்ட் – செப்டம்பர் (மலைப்பகுதி)',
+    expectedYieldEn: '10 – 14 Tonnes / Acre',
+    expectedYieldTa: '10 – 14 டன் / ஏக்கர்',
+    harvestStartDayOffset: 80,
+    bestHarvestStartDayOffset: 85,
+    bestHarvestEndDayOffset: 92,
+    harvestEndDayOffset: 98,
+    harvestReadinessCriteria: {
+      en: "Foliage turns completely yellow and senesces. Tuber skin should be firm and not peel under moderate thumb rubbing pressure.",
+      ta: "இலைகள் மஞ்சள் நிறமாக மாறும். விரலால் அழுத்தும்போது கிழங்கின் தோல் உரிக்கப்படாமல் உறுதியாக இருக்க வேண்டும்."
+    },
+    maturityTips: [
+      { en: "Cut and remove vine foliage (dehaulming) 8-10 days prior to digging to harden tuber skin.", ta: "தோல் கடினமாக மாற அறுவடைக்கு 8-10 நாட்களுக்கு முன்பு தண்டுப் பகுதியை வெட்டி அகற்றவும்." },
+      { en: "Stop irrigation completely 10-12 days before harvesting to avoid tuber rotting in soil.", ta: "அழுகல் நோயைத் தடுக்க அறுவடைக்கு 10-12 நாட்களுக்கு முன்பே பாசனத்தை முழுமையாக நிறுத்தவும்." },
+      { en: "Dig tubers on bright sunny days; cure under shade for 7-10 days before cold storage.", ta: "வெயில் உள்ள நாளில் அறுவடை செய்து 7-10 நாட்கள் நிழலில் உலர்த்தி சேமிக்கவும்." }
+    ],
+    stages: [
+      { id: 1, nameEn: "Tuber Planting & Earthing Up", nameTa: "கிழங்கு நடுதல் & மண் அணைத்தல்", startDay: 1, endDay: 12, duration: "Day 1 - 12", practicesEn: "Plant disease-free sprouted seed tubers (40-50g) at 60x20cm spacing on ridges with Mancozeb seed dip.", practicesTa: "40-50 கிராம் எடையுள்ள முளைத்த கிழங்குகளை மேட்டுப்பாத்தியில் 60x20 செ.மீ இடைவெளியில் நடவும்." },
+      { id: 2, nameEn: "Sprouting & Emergence", nameTa: "முளைத்தல் & தளிர் விடுதல்", startDay: 13, endDay: 25, duration: "Day 13 - 25", practicesEn: "Uniform emergence check. Light irrigation to prevent crust formation on soil ridges.", practicesTa: "முளைப்பை சரிபார்த்து, மண் இறுகாமல் இருக்க லேசான பாசனம் அளிக்கவும்." },
+      { id: 3, nameEn: "Vegetative Canopy & Earthing", nameTa: "இலை வளர்ச்சி & இரண்டாம் மண் அணைப்பு", startDay: 26, endDay: 45, duration: "Day 26 - 45", practicesEn: "Heavy earthing up to prevent greening of tubers from sunlight exposure. Top dress Nitrogen.", practicesTa: "கிழங்கு சூரிய ஒளியில் பச்சையாவதைத் தடுக்க நன்றாக மண் அணைத்து தழை உரம் இடவும்." },
+      { id: 4, nameEn: "Tuber Initiation & Bulking", nameTa: "கிழங்கு உருவாக்கம் & பருமனாதல்", startDay: 46, endDay: 70, duration: "Day 46 - 70", practicesEn: "Critical moisture stage. Maintain 65-70% soil moisture. Apply Potassium Sulphate fertigation.", practicesTa: "மிக முக்கியமான வளர்ச்சி நிலை. 65-70% மண் ஈரப்பதம் பராமரித்து பொட்டாஷ் உரம் அளிக்கவும்." },
+      { id: 5, nameEn: "Dehaulming (Vine Cutting)", nameTa: "தண்டு அறுத்தல் (டிஹால்மிங்)", startDay: 71, endDay: 80, duration: "Day 71 - 80", practicesEn: "Cut upper foliage at ground level to stop growth and allow tuber skin curing in soil.", practicesTa: "கிழங்கு தோல் முதிர தரைமட்டத்தில் தண்டுப் பகுதியை வெட்டி அகற்றவும்." },
+      { id: 6, nameEn: "Disease & Pest Monitoring", nameTa: "நோய் & பூச்சி கண்காணிப்பு", startDay: 35, endDay: 75, duration: "Day 35 - 75", practicesEn: "Scout for Early Blight concentric rings and Aphids vectoring leaf roll virus.", practicesTa: "ஏர்லி பிளைட் மற்றும் அசுவினி பூச்சிகளைத் தீவிரமாகக் கண்காணிக்கவும்." },
+      { id: 7, nameEn: "Expected Harvest Start", nameTa: "அறுவடை தொடக்கம்", startDay: 80, endDay: 84, duration: "Day 80 - 84", practicesEn: "Trial digging to check tuber size and skin toughness.", practicesTa: "சோதனை தோண்டுதல் மூலம் கிழங்கு முதிர்ச்சியை சரிபார்க்கவும்." },
+      { id: 8, nameEn: "Peak Best Harvesting Period", nameTa: "உச்சக்கட்ட அறுவடை காலம்", startDay: 85, endDay: 92, duration: "Day 85 - 92", practicesEn: "Main digging using tractor-drawn potato digger or manual spades. Dry tubers in shade.", practicesTa: "முழு அறுவடையை மேற்கொண்டு நிழலில் உலர்த்தி தரம் பிரிக்கவும்." },
+      { id: 9, nameEn: "Curing & Storage Prep", nameTa: "நிழல் உலர்த்தல் & சேமிப்பு", startDay: 93, endDay: 98, duration: "Day 93 - 98", practicesEn: "Cure at 15°C with 85% RH for 10 days to heal digging abrasions before cold store dispatch.", practicesTa: "காயங்களை ஆற்ற 10 நாட்கள் நிழலில் உலர்த்தி குளிர்பதன கிடங்கிற்கு அனுப்பவும்." }
+    ],
+    activities: [
+      {
+        id: "ACT-POT-01",
+        nameEn: "Seed Tuber Sprouting & Fungicide Treatment",
+        nameTa: "விதைக்கிழங்கு நேர்த்தி",
+        category: "Fertilizer",
+        dayOffset: 1,
+        descriptionEn: "Dip sprouted tubers in Mancozeb (2.5g/L) for 10 mins before planting on well-drained ridges.",
+        descriptionTa: "முளைத்த கிழங்குகளை மேன்கோசெப் கரைசலில் 10 நிமிடங்கள் நனைத்து நடவும்.",
+        weatherAwareAlert: "☀️ Plant in dry soil to prevent bacterial soft rot in seed tubers."
+      },
+      {
+        id: "ACT-POT-02",
+        nameEn: "Ridge Irrigation & Weed Scraping",
+        nameTa: "பாசனம் & களை நீக்கம்",
+        category: "Irrigation",
+        dayOffset: 18,
+        descriptionEn: "Furrow/drip irrigation between ridges. Avoid submerging the top of the ridge.",
+        descriptionTa: "பாத்திகளின் இடையில் தண்ணீர் பாய்ச்சவும். மேட்டுப்பகுதி மூழ்காமல் பார்த்துக் கொள்ளவும்."
+      },
+      {
+        id: "ACT-POT-03",
+        nameEn: "Earthing Up & Potassium Top Dressing",
+        nameTa: "மண் அணைத்தல் & பொட்டாஷ் இடல்",
+        category: "Crop Management",
+        dayOffset: 32,
+        descriptionEn: "Mound loose soil around plant base (height 15cm) to prevent tuber greening (solanine).",
+        descriptionTa: "கிழங்குகள் சூரிய ஒளியில் படாமல் இருக்க 15 செ.மீ உயரத்திற்கு மண் அணைக்கவும்."
+      },
+      {
+        id: "ACT-POT-04",
+        nameEn: "Early Blight Target-Spot Inspection",
+        nameTa: "ஏர்லி பிளைட் இலை ஆய்வு",
+        category: "Disease",
+        dayOffset: 48,
+        descriptionEn: "Inspect lower foliage for concentric target-board brown spots. Spray Chlorothalonil 2g/L.",
+        descriptionTa: "இலைகளில் வளையப் புள்ளிகள் உள்ளதா எனப் பார்த்து மருந்து தெளிக்கவும்.",
+        weatherAwareAlert: "🌧️ Intermittent rains and warm days trigger rapid Early Blight spread."
+      },
+      {
+        id: "ACT-POT-05",
+        nameEn: "Aphid & Whitefly Sticky Trap Installation",
+        nameTa: "அசுவினி ஒட்டுப் பொறிகள்",
+        category: "Pest",
+        dayOffset: 55,
+        descriptionEn: "Erect yellow sticky sheets @ 15/acre to catch vectoring aphids transmitting Potato Leafroll Virus.",
+        descriptionTa: "மஞ்சள் ஒட்டுப் பொறிகளை அமைத்து வைரஸ் பரப்பும் அசுவினிகளை அழிக்கவும்."
+      },
+      {
+        id: "ACT-POT-06",
+        nameEn: "Foliage Dehaulming (Vine Removal)",
+        nameTa: "தண்டு வெட்டுதல் (டிஹால்மிங்)",
+        category: "Harvesting",
+        dayOffset: 72,
+        descriptionEn: "Chop above-ground vines with sickle 10 days before digging to cure tuber skin.",
+        descriptionTa: "அறுவடைக்கு 10 நாட்களுக்கு முன் தண்டுப் பகுதியை வெட்டி அகற்றவும்."
+      },
+      {
+        id: "ACT-POT-07",
+        nameEn: "Main Tuber Digging & Field Grading",
+        nameTa: "முதன்மை அறுவடை & தரம் பிரித்தல்",
+        category: "Harvesting",
+        dayOffset: 85,
+        descriptionEn: "Carefully dig tubers without cutting skin. Separate small, medium, and seed tubers.",
+        descriptionTa: "கிழங்கில் வெட்டுப் படாமல் தோண்டி எடுத்து தரம் பிரிக்கவும்.",
+        weatherAwareAlert: "⚠️ Do not harvest in wet/muddy soil to avoid post-harvest fungal tuber rot."
+      }
+    ]
+  },
+  Brinjal: {
+    id: 'Brinjal',
+    nameEn: 'Brinjal (Eggplant)',
+    nameTa: 'கத்தரிக்காய்',
+    icon: '🍆',
+    variety: 'Annamalai / CO-2 / PLR-1 / Arka Kusumakar',
+    varietyTa: 'அண்ணாமலை / கோ-2 / பிஎல்ஆர்-1 / அர்கா குசுமாகர்',
+    growthDurationDays: 130,
+    growthDurationLabelEn: '120 – 140 Days',
+    growthDurationLabelTa: '120 – 140 நாட்கள்',
+    recommendedPlantingSeasonEn: 'June – July, Dec – Jan & April – May',
+    recommendedPlantingSeasonTa: 'ஜூன் – ஜூலை, டிசம்பர் – ஜனவரி & ஏப்ரல் – மே',
+    bestHarvestSeasonEn: 'August – November & March – June',
+    bestHarvestSeasonTa: 'ஆகஸ்ட் – நவம்பர் & மார்ச் – ஜூன்',
+    expectedYieldEn: '18 – 24 Tonnes / Acre',
+    expectedYieldTa: '18 – 24 டன் / ஏக்கர்',
+    harvestStartDayOffset: 75,
+    bestHarvestStartDayOffset: 80,
+    bestHarvestEndDayOffset: 120,
+    harvestEndDayOffset: 135,
+    harvestReadinessCriteria: {
+      en: "Glossy, lustrous skin and tender flesh before internal seeds harden or turn brown. Firm calyx with vibrant purple/green tone.",
+      ta: "பளபளப்பான தோல், விதைகள் கடினமாவதற்கு முன் இளஞ்சத்தான காய்கள். பசுமையான காம்பு."
+    },
+    maturityTips: [
+      { en: "Pick tender medium fruits every 4-5 days; delay results in seed hardening and bitterness.", ta: "4-5 நாட்களுக்கு ஒருமுறை அறுவடை செய்யவும்; தாமதித்தால் விதைகள் முற்றி கசப்புத்தன்மை வரும்." },
+      { en: "Clip fruits with 2cm attached stalk using clean pruning shears; do not pull by hand.", ta: "செடியில் இருந்து கையால் இழுக்காமல் கத்திரிக்கோல் கொண்டு 2 செ.மீ காம்புடன் நறுக்கவும்." },
+      { en: "Shade picked fruits immediately; sprinkle light water mist if ambient heat is high.", ta: "அறுவடை செய்த காய்களை உடனே நிழலில் வைத்து லேசாக தண்ணீர் தெளிக்கவும்." }
+    ],
+    stages: [
+      { id: 1, nameEn: "Nursery & Field Transplanting", nameTa: "நாற்று நடுதல் & நிலைநிறுத்துதல்", startDay: 1, endDay: 18, duration: "Day 1 - 18", practicesEn: "Transplant 30-35 day vigorous seedlings at 75x60cm spacing. Dip roots in Pseudomonas fluorescens.", practicesTa: "30-35 நாள் நாற்றுகளை 75x60 செ.மீ இடைவெளியில் சூடோமோனாஸ் வேர் நனைப்பு செய்து நடவும்." },
+      { id: 2, nameEn: "Vegetative Growth & Tillering", nameTa: "வளர்ச்சி & கிளைத்தல் நிலை", startDay: 19, endDay: 38, duration: "Day 19 - 38", practicesEn: "Apply NPK basal split, maintain soil aeration, clip wilted shoot tips damaged by shoot borer.", practicesTa: "உரமிடுதல், மண் கிளறுதல் மற்றும் தண்டு துளைப்பான் தாக்கிய நுனிகளை வெட்டி அழிக்கவும்." },
+      { id: 3, nameEn: "Flowering & Branch Initiation", nameTa: "பூத்தல் & கிளைகள் பெருக்கம்", startDay: 39, endDay: 58, duration: "Day 39 - 58", practicesEn: "Install pheromone traps for shoot & fruit borer. Foliar micronutrient spray (Zinc & Boron).", practicesTa: "மோகப் பொறிகளை அமைத்து நுண்ணூட்டச் சத்துக்களை தெளிக்கவும்." },
+      { id: 4, nameEn: "Fruit Setting & Early Swelling", nameTa: "காய் பிடித்தல் & பெருக்கம்", startDay: 59, endDay: 74, duration: "Day 59 - 74", practicesEn: "Maintain uniform irrigation. Spray Neem oil (NSKE 5%) against whiteflies and leafhoppers.", practicesTa: "சீரான பாசனம் அளித்து, வேப்பங்கொட்டை கரைசல் தெளிக்கவும்." },
+      { id: 5, nameEn: "First Commercial Harvest Start", nameTa: "முதல் கட்ட அறுவடை தொடக்கம்", startDay: 75, endDay: 79, duration: "Day 75 - 79", practicesEn: "Harvest first flush of glossy tender fruits with sharp shears.", practicesTa: "முதல் கட்ட பளபளப்பான இளம் காய்களை அறுவடை செய்யவும்." },
+      { id: 6, nameEn: "Disease & Pest Monitoring", nameTa: "நோய் & பூச்சி கண்காணிப்பு", startDay: 40, endDay: 110, duration: "Day 40 - 110", practicesEn: "Scout weekly for Little Leaf Disease (Phytoplasma) and Cercospora leaf spots.", practicesTa: "சிறிய இலை நோய் மற்றும் சர்கோஸ்போரா புள்ளிகளைக் கண்காணிக்கவும்." },
+      { id: 7, nameEn: "Peak Best Harvesting Period", nameTa: "உச்சக்கட்ட தொடர் அறுவடை காலம்", startDay: 80, endDay: 120, duration: "Day 80 - 120", practicesEn: "Multiple continuous pickings every 4-6 days. Periodic potassium top-dressing after pickings.", practicesTa: "4-6 நாட்களுக்கு ஒருமுறை தொடர் அறுவடை மற்றும் அவ்வப்போது உரமிடுதல்." },
+      { id: 8, nameEn: "Late Season Picking & Wind Up", nameTa: "இறுதி அறுவடை & முடிவு", startDay: 121, endDay: 135, duration: "Day 121 - 135", practicesEn: "Final gleanings, decide on ratoon cropping or field clearance.", practicesTa: "இறுதி அறுவடை முடித்து நிலத்தை மறு உழவுக்கு தயார் செய்யவும்." }
+    ],
+    activities: [
+      {
+        id: "ACT-BRN-01",
+        nameEn: "Root Dip & Field Transplanting",
+        nameTa: "வேர் நனைப்பு & நடுதல்",
+        category: "Fertilizer",
+        dayOffset: 1,
+        descriptionEn: "Dip roots in Pseudomonas fluorescens (5g/L) for 20 mins to prevent bacterial wilt before transplanting.",
+        descriptionTa: "வாடல் நோயைத் தடுக்க சூடோமோனாஸ் கரைசலில் வேர்களை நனைத்து நடவும்."
+      },
+      {
+        id: "ACT-BRN-02",
+        nameEn: "Drip Schedule & Moisture Regulation",
+        nameTa: "சொட்டுநீர்ப் பாசனம்",
+        category: "Irrigation",
+        dayOffset: 20,
+        descriptionEn: "Regulate drip to avoid water stagnation which causes root rot and damping off.",
+        descriptionTa: "வேரழுகல் ஏற்படாமல் இருக்க சீரான சொட்டுநீர் பாசனம் செய்யவும்."
+      },
+      {
+        id: "ACT-BRN-03",
+        nameEn: "Shoot & Fruit Borer Pheromone Traps",
+        nameTa: "தண்டு காய் துளைப்பான் மோகப் பொறி",
+        category: "Pest",
+        dayOffset: 42,
+        descriptionEn: "Install Lucinure pheromone traps @ 12 traps/acre. Inspect weekly and replace lures every 30 days.",
+        descriptionTa: "ஏக்கருக்கு 12 மோகப் பொறிகளை அமைத்து வாரம் ஒருமுறை ஆய்வு செய்யவும்."
+      },
+      {
+        id: "ACT-BRN-04",
+        nameEn: "Little Leaf & Cercospora Inspection",
+        nameTa: "சிறிய இலை நோய் & இலைப்புள்ளி ஆய்வு",
+        category: "Disease",
+        dayOffset: 55,
+        descriptionEn: "Check for bushy stunted small leaves vector by leafhoppers. Roguing out affected plants immediately.",
+        descriptionTa: "சிறிய இலை நோய் தாக்கிய செடிகளை உடனே பிடுங்கி எரிக்கவும்.",
+        weatherAwareAlert: "🌧️ Humid overcast days favor fungal leaf spots. Spray Carbendazim 1g/L if spotting exceeds 5%."
+      },
+      {
+        id: "ACT-BRN-05",
+        nameEn: "Post-Harvest Flush Booster Fertigation",
+        nameTa: "அறுவடைக்கு பின் உரம் அளித்தல்",
+        category: "Fertilizer",
+        dayOffset: 70,
+        descriptionEn: "Apply water-soluble 13:0:45 @ 4kg/acre after each harvest flush to stimulate next flowering wave.",
+        descriptionTa: "அடுத்த பூக்களுக்கு 13:0:45 பொட்டாஷ் உரத்தை பாசனத்தில் விடவும்."
+      },
+      {
+        id: "ACT-BRN-06",
+        nameEn: "First Flush Harvest Picking",
+        nameTa: "முதல் கட்ட கத்தரி அறுவடை",
+        category: "Harvesting",
+        dayOffset: 75,
+        descriptionEn: "Cut glossy tender fruits with 2cm calyx stalk. Grade by color and absence of borer holes.",
+        descriptionTa: "பளபளப்பான இளம் காய்களை 2 செ.மீ காம்புடன் அறுவடை செய்யவும்."
+      },
+      {
+        id: "ACT-BRN-07",
+        nameEn: "Bulk Multiple Pickings Round",
+        nameTa: "தொடர் அறுவடை சுழற்சி",
+        category: "Harvesting",
+        dayOffset: 90,
+        descriptionEn: "Carry out routine harvest every 4 days. Keep in ventilated crates away from direct sunlight.",
+        descriptionTa: "4 நாட்களுக்கு ஒருமுறை தொடர் அறுவடை செய்து நிழலில் பாதுகாக்கவும்.",
+        weatherAwareAlert: "⚠️ Avoid harvesting wet fruits in rain to prevent surface mold during transport."
+      }
+    ]
+  }
+};
+
+// Backward-compatible export for existing widgets
 export const mockFarmPlan = {
   id: "PLAN-2026-01",
   crop: "Tomato",
@@ -441,78 +780,16 @@ export const mockFarmPlan = {
 };
 
 export const mockCropTimelineStages = {
-  Tomato: [
-    { id: 1, nameEn: "Planting", nameTa: "விதைப்பு", duration: "Day 1 - 7" },
-    { id: 2, nameEn: "Seedling", nameTa: "நாற்று நிலை", duration: "Day 8 - 20" },
-    { id: 3, nameEn: "Vegetative Growth", nameTa: "வளர்ச்சி நிலை", duration: "Day 21 - 40", active: true },
-    { id: 4, nameEn: "Flowering", nameTa: "பூக்கும் நிலை", duration: "Day 41 - 55" },
-    { id: 5, nameEn: "Fruit Development", nameTa: "காய் வளர்ச்சி", duration: "Day 56 - 75" },
-    { id: 6, nameEn: "Pest & Disease Control", nameTa: "நோய் தடுப்பு", duration: "Day 76 - 85" },
-    { id: 7, nameEn: "Harvest", nameTa: "அறுவடை", duration: "Day 86 - 100" }
-  ],
-  Potato: [
-    { id: 1, nameEn: "Tuber Planting", nameTa: "கிழங்கு நடுதல்", duration: "Day 1 - 10" },
-    { id: 2, nameEn: "Sprouting", nameTa: "முளைத்தல்", duration: "Day 11 - 25" },
-    { id: 3, nameEn: "Vegetative Canopy", nameTa: "இலை வளர்ச்சி", duration: "Day 26 - 45", active: true },
-    { id: 4, nameEn: "Tuber Initiation", nameTa: "கிழங்கு தொடக்கம்", duration: "Day 46 - 65" },
-    { id: 5, nameEn: "Tuber Bulking", nameTa: "கிழங்கு பெருக்கம்", duration: "Day 66 - 85" },
-    { id: 6, nameEn: "Harvest", nameTa: "அறுவடை", duration: "Day 86 - 100" }
-  ],
-  Brinjal: [
-    { id: 1, nameEn: "Nursery & Transplanting", nameTa: "நாற்று நடுதல்", duration: "Day 1 - 15" },
-    { id: 2, nameEn: "Vegetative Growth", nameTa: "வளர்ச்சி நிலை", duration: "Day 16 - 35", active: true },
-    { id: 3, nameEn: "Flowering & Branching", nameTa: "பூத்தல் & கிளைத்தல்", duration: "Day 36 - 55" },
-    { id: 4, nameEn: "Fruit Setting", nameTa: "காய் பிடித்தல்", duration: "Day 56 - 80" },
-    { id: 5, nameEn: "Multiple Picking", nameTa: "தொடர் அறுவடை", duration: "Day 81 - 120" }
-  ]
+  Tomato: mockCropPlanningConfigs.Tomato.stages,
+  Potato: mockCropPlanningConfigs.Potato.stages,
+  Brinjal: mockCropPlanningConfigs.Brinjal.stages
 };
 
-export const mockFarmActivities = [
-  {
-    id: "ACT-101",
-    nameEn: "Disease & Foliar Inspection",
-    nameTa: "நோய் & இலை ஆய்வு",
-    category: "Disease Monitoring",
-    date: "2026-09-02",
-    descriptionEn: "Inspect lower leaves for dark water-soaked spots (Late Blight). Use AI Crop Disease Scanner.",
-    descriptionTa: "இலைகளில் நீர் கோர்த்த கருமை புள்ளிகளை ஆய்வு செய்ய AI கேமராவைப் பயன்படுத்தவும்.",
-    status: "Upcoming", // Upcoming | In Progress | Completed | Skipped
-    weatherAwareAlert: "🌧️ Rain probability 75% tomorrow — Heavy rain expected. Avoid foliage spray before rain."
-  },
-  {
-    id: "ACT-102",
-    nameEn: "Automated Drip Irrigation",
-    nameTa: "சொட்டுநீர்ப் பாசனம்",
-    category: "Irrigation",
-    date: "2026-09-03",
-    descriptionEn: "Maintain soil root moisture at 62-65%. Run drip for 45 mins.",
-    descriptionTa: "மண் ஈரப்பதத்தை 62% அளவில் பராமரிக்க 45 நிமிடங்கள் சொட்டுநீர் பாசனம் செய்யவும்.",
-    status: "Upcoming",
-    weatherAwareAlert: "💧 Rain expected tomorrow. Review scheduled irrigation activity to avoid waterlogging."
-  },
-  {
-    id: "ACT-103",
-    nameEn: "Bio-Nutrient Top Dressing",
-    nameTa: "இயற்கை உரம் இடுதல்",
-    category: "Nutrient Management",
-    date: "2026-09-07",
-    descriptionEn: "Apply Neem cake & FYM organic compost at plant root base.",
-    descriptionTa: "செடிகளின் வேர் பகுதியில் வேப்பம்பிண்ணாக்கு மற்றும் இயற்கை உரம் இடவும்.",
-    status: "Upcoming",
-    weatherAwareAlert: null
-  },
-  {
-    id: "ACT-104",
-    nameEn: "Staking & Trellising Support",
-    nameTa: "முட்டுக் கம்புகள் கட்டுதல்",
-    category: "Crop Management",
-    date: "2026-08-28",
-    descriptionEn: "Tie tomato branches to wooden stakes to keep heavy foliage off soil.",
-    descriptionTa: "தக்காளி கிளைகளை கம்புகளில் கட்டி தரையில் படர்வதைத் தவிர்க்கவும்.",
-    status: "Completed",
-    weatherAwareAlert: null
-  }
-];
+export const mockFarmActivities = mockCropPlanningConfigs.Tomato.activities.map(a => ({
+  ...a,
+  status: a.dayOffset < 40 ? "Completed" : "Upcoming",
+  date: "2026-09-02"
+}));
 
 export const mockMonthlyCalendarEvents = [
   { day: 1, title: "🌱 Planting", type: "planting" },
@@ -521,3 +798,4 @@ export const mockMonthlyCalendarEvents = [
   { day: 18, title: "🌿 Crop Monitoring", type: "crop" },
   { day: 25, title: "🌧️ Weather Check", type: "weather" }
 ];
+

@@ -1,0 +1,27 @@
+Brinjal Bacterial Wilt Management (TNAU & ICAR Agronomic Compendium)
+=====================================================================
+
+Causal Organism:
+Ralstonia solanacearum (formerly Pseudomonas solanacearum).
+
+Diagnostic Symptoms:
+- Sudden and rapid wilting of foliage without initial yellowing, especially during high noon warmth.
+- Plant initially wilts during sunny afternoons and recovers temporarily at night, progressing to irreversible total collapse within 3-5 days.
+- Cross-section of lower stem reveals dark brown vascular discoloration.
+- Clear water ooze test: Immersing cut stem end in clean water releases white, milky bacterial threads.
+
+Favorable Conditions:
+- Warm soil temperatures (30-35°C) and waterlogged, poorly drained soil.
+- Root injury during cultivation or root-knot nematode (Meloidogyne incognita) infestation.
+
+Integrated Disease Management:
+1. Soil & Cultural Management:
+   - Deep summer ploughing and crop rotation with non-host crops (paddy, maize, sorghum) for 2-3 years.
+   - Soil drenching with Bleaching Powder (Chloride of lime) @ 2-3 g/L or Copper Oxychloride 50% WP @ 3 g/L around root zone.
+   - Amend soil with well-rotted neem cake @ 250 kg/hectare.
+
+2. Bio-control Inoculation:
+   - Root dip seedlings for 30 minutes in Pseudomonas fluorescens (10 g/L) or Trichoderma viride (10 g/L) prior to transplanting.
+
+3. Resistant Cultivars:
+   - Plant certified wilt-resistant Brinjal hybrids/varieties recommended by TNAU and ICAR (e.g., Pant Samrat, Surya, Swarna Pratibha).

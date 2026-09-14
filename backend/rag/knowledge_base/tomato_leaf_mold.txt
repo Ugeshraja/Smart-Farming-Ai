@@ -1,0 +1,24 @@
+DISEASE: Tomato Leaf Mold
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Tomato leaf mold
+
+SYMPTOMS:
+Tomato leaf mold commonly begins as pale green or yellow areas on the upper leaf surface. Corresponding areas on the underside may develop olive-green to brown or grayish fungal growth. Severely affected leaves may yellow and drop.
+
+FAVORABLE CONDITIONS:
+High humidity, poor air circulation, and prolonged leaf wetness favor disease development.
+
+MANAGEMENT:
+Remove severely affected leaves where practical. Improve air circulation and plant spacing. Avoid unnecessary leaf wetness. Maintain field sanitation and monitor the crop regularly.
+
+PREVENTION:
+Use healthy planting material. Provide adequate spacing and airflow. Avoid excessive irrigation that keeps foliage wet. Maintain sanitation and remove infected debris where appropriate.
+
+MONITORING:
+Inspect both upper and lower leaf surfaces for yellow patches and characteristic fungal growth, especially during humid conditions.
+
+FARMER ACTION:
+Remove severely affected leaves where practical, improve airflow, reduce unnecessary leaf wetness, and consult local agricultural experts if symptoms continue to spread.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority recommendations.

@@ -1,0 +1,24 @@
+DISEASE: Tomato Mosaic Virus
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Tomato mosaic virus
+
+SYMPTOMS:
+Tomato mosaic virus can cause mottled light and dark green patterns on leaves. Leaves may become distorted and plant growth may be reduced. Fruit development and appearance can also be affected.
+
+FAVORABLE CONDITIONS:
+The virus can spread through infected plant material and mechanical contact. Contaminated tools, hands, and plant debris can contribute to spread.
+
+MANAGEMENT:
+Remove severely affected plants where practical. Maintain strict sanitation. Clean tools and avoid unnecessary contact between healthy and infected plants. Use healthy planting material.
+
+PREVENTION:
+Use healthy seed and planting material. Maintain good hygiene when handling plants. Clean tools regularly. Remove infected plant debris and avoid using contaminated equipment.
+
+MONITORING:
+Inspect leaves for mosaic patterns, distortion, and reduced growth. Monitor nearby plants for similar symptoms.
+
+FARMER ACTION:
+Remove affected plants where practical, improve sanitation, clean tools, and seek local agricultural advice when virus symptoms are suspected.
+
+IMPORTANT NOTE:
+There is no general chemical treatment that directly eliminates a plant virus; management should focus on prevention and limiting spread.

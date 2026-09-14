@@ -1,18 +1,12 @@
 import axios from 'axios';
-import { 
-  mockPredictions, 
-  mockLatestSensors, 
-  mockSensorHistory, 
+import {
+  mockPredictions,
+  mockLatestSensors,
+  mockSensorHistory,
   mockRecentSensorActivity,
   generateLeafSvg,
   mockAiInsights,
   mockCommunityPosts,
-  mockCurrentWeather,
-  mock7DayForecast,
-  mockHourlyForecast,
-  mockFarmerWeatherAlerts,
-  mockCropWeatherInsights,
-  mockFieldVsWeather,
   mockLibraryCategories,
   mockLibraryArticles,
   mockCropPlanningConfigs,
@@ -21,19 +15,63 @@ import {
   mockFarmActivities,
   mockMonthlyCalendarEvents
 } from './mockData';
+import { fetchOpenWeatherData, geocodeLocation } from './weatherService';
+import { VERIFIED_GOVERNMENT_SCHEMES, evaluateSchemeEligibility as evalRules } from './schemesData';
 
-const API_BASE_URL = 'http://localhost:8000/api';
-const WEATHER_API_KEY = import.meta.env.VITE_WEATHER_API_KEY || 'mock_key';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 5000,
+  timeout: 8000,
 });
 
+// Auto-attach JWT auth token if stored and handle FormData Content-Type
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('smartfarm_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  // When sending FormData, delete Content-Type so browser sets multipart/form-data with boundary
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+    if (config.headers.common) {
+      delete config.headers.common['Content-Type'];
+    }
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+/**
+ * Resolves relative static media paths (e.g. /static/predictions/...)
+ * against the origin of VITE_API_BASE_URL.
+ * - If url is null/undefined/empty, returns it unchanged.
+ * - If url is already an absolute http:// or https:// URL, returns it unchanged.
+ * - If url begins with "/", resolves it against the origin of VITE_API_BASE_URL.
+ * - Does NOT append /api to static media URLs.
+ */
+export function resolveBackendMediaUrl(url) {
+  if (!url) return url;
+  if (typeof url !== 'string') return url;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+  try {
+    const parsed = new URL(apiBase);
+    return `${parsed.origin}${cleanPath}`;
+  } catch (e) {
+    const origin = apiBase.replace(/\/api\/?$/, '');
+    return origin ? `${origin}${cleanPath}` : cleanPath;
+  }
+}
+
 export const apiService = {
+  resolveBackendMediaUrl,
+
   // 1. Agriculture Library Endpoints
   async getLibraryCategories() {
     return mockLibraryCategories;
@@ -55,7 +93,7 @@ export const apiService = {
       }
       if (query.trim()) {
         const q = query.toLowerCase();
-        filtered = filtered.filter(a => 
+        filtered = filtered.filter(a =>
           a.titleEn.toLowerCase().includes(q) ||
           a.titleTa.toLowerCase().includes(q) ||
           a.summaryEn.toLowerCase().includes(q) ||
@@ -116,179 +154,359 @@ export const apiService = {
     }
   },
 
-  // 3. Weather API Service Endpoints
+  // 3. Weather API Service Endpoints (Real OpenWeather Backend Proxy)
   async getWeatherCurrent(location = "Tiruchengode, Tamil Nadu") {
     try {
-      const response = await apiClient.get('/weather/current', {
-        params: { location, apiKey: WEATHER_API_KEY }
-      });
-      return response.data;
+      const geo = await geocodeLocation(location);
+      const data = await fetchOpenWeatherData(geo.lat, geo.lon);
+      if (data && data.current) {
+        return {
+          ...data.current,
+          location: data.location_name || geo.name,
+          condition: data.current.condition,
+          conditionTa: data.current.description,
+          rainProbability: data.current.rain_probability
+        };
+      }
+      return null;
     } catch (error) {
-      await new Promise(res => setTimeout(res, 500));
-      return {
-        ...mockCurrentWeather,
-        location: location || mockCurrentWeather.location
-      };
+      console.error("apiService.getWeatherCurrent error:", error);
+      return null;
     }
   },
 
   async getWeatherForecast(location = "Tiruchengode, Tamil Nadu") {
     try {
-      const response = await apiClient.get('/weather/forecast', {
-        params: { location, apiKey: WEATHER_API_KEY }
-      });
-      return response.data;
+      const geo = await geocodeLocation(location);
+      const data = await fetchOpenWeatherData(geo.lat, geo.lon);
+      return data ? {
+        location: data.location_name || geo.name,
+        hourly: data.hourly || [],
+        daily: data.daily || []
+      } : null;
     } catch (error) {
-      await new Promise(res => setTimeout(res, 600));
-      return {
-        daily: mock7DayForecast,
-        hourly: mockHourlyForecast
-      };
+      console.error("apiService.getWeatherForecast error:", error);
+      return null;
     }
   },
 
   async getWeatherAlerts(location = "Tiruchengode, Tamil Nadu") {
     try {
-      const response = await apiClient.get('/weather/alerts', {
-        params: { location, apiKey: WEATHER_API_KEY }
-      });
-      return response.data;
+      const geo = await geocodeLocation(location);
+      const data = await fetchOpenWeatherData(geo.lat, geo.lon);
+      return data ? (data.official_alerts || []) : [];
     } catch (error) {
-      return mockFarmerWeatherAlerts;
+      console.error("apiService.getWeatherAlerts error:", error);
+      return [];
     }
-  },
-
-  async getCropWeatherInsights(crop = 'Tomato') {
-    return mockCropWeatherInsights[crop] || mockCropWeatherInsights.Tomato;
-  },
-
-  async getFieldVsWeather() {
-    return mockFieldVsWeather;
   },
 
   // 4. Predict Crop Disease (YOLO11 -> SAM -> ResNet-50 -> LIME)
   async predictDisease(formData) {
     try {
       const response = await apiClient.post('/predict', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 900000 // 15 minutes for deep learning pipeline (LIME)
       });
-      return response.data;
+      const data = response.data;
+      if (data && data.success) {
+        const rawDisease = data.disease || data.prediction?.disease;
+        const rawConf = data.confidence ?? data.prediction?.confidence;
+
+        // If backend response does not contain a disease or confidence, treat as uncertain prediction
+        if (!rawDisease || rawConf === undefined || rawConf === null) {
+          return {
+            id: `PRED-UNC-${Date.now()}`,
+            success: false,
+            status: 'uncertain_prediction',
+            valid_image: true,
+            message: data.message || "The disease prediction is uncertain or incomplete. Please upload a clearer leaf image.",
+            crop: data.crop || formData.get('crop') || 'Crop',
+            imageUrl: formData.get('imagePreviewUrl') || '',
+            disease: null,
+            confidence: null,
+            advisory: null
+          };
+        }
+
+        const crop = data.crop || data.prediction?.crop || formData.get('crop') || 'Tomato';
+        // Clean disease display (e.g. "Tomato___Late_blight" -> "Late Blight", "Potato___Early_blight" -> "Early Blight", "Mosaic_Virus" -> "Mosaic Virus")
+        const diseaseClean = data.disease_clean || (rawDisease.includes('___')
+          ? rawDisease.split('___')[1].replace(/_/g, ' ')
+          : rawDisease.replace(/_/g, ' '));
+
+        const isHealthy = diseaseClean.toLowerCase().includes('healthy');
+        const confidencePct = Number((rawConf <= 1.0 ? rawConf * 100 : rawConf).toFixed(1));
+
+        // Ensure Original Leaf Photo resolves properly
+        const resolvedOriginalUrl = resolveBackendMediaUrl(data.original_image?.image_url);
+        const resolvedLeafCropUrl = resolveBackendMediaUrl(data.leaf_crop?.image_url);
+        const imageUrl = formData.get('imagePreviewUrl') || resolvedOriginalUrl || resolvedLeafCropUrl || '';
+
+        const top3Predictions = data.top3_predictions || [];
+        const segmentationData = data.segmentation ? {
+          ...data.segmentation,
+          image_url: resolveBackendMediaUrl(data.segmentation.image_url)
+        } : null;
+
+        const originalImageData = data.original_image ? {
+          ...data.original_image,
+          image_url: resolvedOriginalUrl
+        } : null;
+
+        const leafCropData = data.leaf_crop ? {
+          ...data.leaf_crop,
+          image_url: resolvedLeafCropUrl
+        } : null;
+
+        const ragData = data.rag || null;
+        const limeDetails = data.lime?.details || (typeof data.lime?.explanation === 'string' ? {
+          explanation: data.lime.explanation,
+          summary: data.lime.explanation,
+          why_predicted: [data.lime.explanation]
+        } : data.lime?.explanation);
+        const limeText = typeof data.lime?.explanation === 'string' ? data.lime.explanation : (data.lime?.explanation?.summary || '');
+
+        const totalMs = data.timings?.total_ms || 0;
+        const processingTimeStr = totalMs >= 1000
+          ? `${(totalMs / 1000).toFixed(2)} sec`
+          : totalMs > 0 ? `${Math.round(totalMs)} ms` : '--';
+
+        const newId = `PRED-${Math.floor(1000 + Math.random() * 9000)}`;
+        const advisoryText = data.advisory?.text || (typeof data.advisory === 'string' ? data.advisory : '');
+
+        const newPrediction = {
+          id: newId,
+          crop: crop,
+          disease: diseaseClean,
+          confidence: confidencePct,
+          status: isHealthy ? "Healthy" : "Disease Detected",
+          imageUrl: imageUrl,
+          original_image: originalImageData,
+          leaf_crop: leafCropData,
+          top3Predictions: top3Predictions,
+          segmentation: segmentationData,
+          rag: ragData,
+          limeExplanation: limeDetails,
+          limeText: limeText,
+          processingTime: processingTimeStr,
+          createdAt: new Date().toLocaleString(),
+          advisory: {
+            text: advisoryText,
+            en: advisoryText,
+            ta: advisoryText
+          },
+          rawBackend: data
+        };
+
+        return newPrediction;
+      }
+      // If backend responded with invalid_image or uncertain_prediction
+      if (data && (data.status === 'invalid_image' || data.valid_image === false)) {
+        return {
+          id: `PRED-INV-${Date.now()}`,
+          success: false,
+          status: 'invalid_image',
+          valid_image: false,
+          message: data.message || "Please upload a clear Potato, Tomato, or Brinjal leaf image for disease analysis.",
+          crop: data.crop || formData.get('crop') || 'Crop',
+          imageUrl: formData.get('imagePreviewUrl') || '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
+      if (data && data.status === 'uncertain_prediction') {
+        return {
+          id: `PRED-UNC-${Date.now()}`,
+          success: false,
+          status: 'uncertain_prediction',
+          valid_image: true,
+          message: data.message || "The image appears to contain a supported crop, but the disease prediction is uncertain. Please upload a clearer leaf image.",
+          crop: data.crop || formData.get('crop') || 'Crop',
+          imageUrl: formData.get('imagePreviewUrl') || '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
+      throw new Error(data?.message || data?.error || "Model prediction returned unsuccessful status");
     } catch (error) {
-      await new Promise(res => setTimeout(res, 1400));
-      
-      const crop = formData.get('crop') || 'Tomato';
-      const sampleDisease = crop === 'Tomato' ? 'Late Blight'
-                          : crop === 'Potato' ? 'Early Blight'
-                          : 'Cercospora Leaf Spot';
-      
-      const newId = `PRED-${Math.floor(1000 + Math.random() * 9000)}`;
-      const newPrediction = {
-        id: newId,
-        crop,
-        disease: sampleDisease,
-        confidence: Number((92 + Math.random() * 7).toFixed(1)),
-        status: "Disease Detected",
-        imageUrl: formData.get('imagePreviewUrl') || generateLeafSvg(crop, sampleDisease, false),
-        limeImageUrl: generateLeafSvg(crop, sampleDisease, true),
-        processingTime: "1.18 sec",
-        createdAt: new Date().toLocaleString(),
-        farmerName: "UGESHRAJA S",
-        location: "Tiruchengode, Tamil Nadu",
-        iotSnapshot: { ...mockLatestSensors },
-        advisory: {
-          en: `${sampleDisease} detected in ${crop}. Spray recommended systemic fungicide (Mancozeb 2g/L) and improve soil ventilation.`,
-          ta: `${crop} பயிரில் ${sampleDisease} கண்டறியப்பட்டுள்ளது. பரிந்துரைக்கப்பட்ட பூஞ்சைக் கொல்லியைத் தெளிக்கவும்.`
-        },
-        preventiveMeasures: [
-          "Avoid overhead watering during humid evening hours.",
-          "Ensure proper spacing between crops for air circulation.",
-          "Apply recommended protective fungicide spray within 24 hours."
-        ]
+      console.error("apiService.predictDisease error:", error);
+
+      const status = error?.response?.status;
+      const resData = error?.response?.data;
+
+      // P4: Handle HTTP 400 validation rejection (unsupported file format, corrupted, empty file)
+      if (status === 400 && resData) {
+        const detailMsg = typeof resData.detail === 'string'
+          ? resData.detail
+          : (resData.message || "Invalid image file. Please upload a clear Potato, Tomato, or Brinjal leaf photograph (JPG, PNG, or WEBP).");
+
+        return {
+          id: `PRED-INV-${Date.now()}`,
+          success: false,
+          status: 'invalid_image',
+          valid_image: false,
+          message: detailMsg,
+          crop: formData.get('crop') || 'Crop',
+          imageUrl: formData.get('imagePreviewUrl') || '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
+      // Check if the server returned a structured invalid_image or uncertain_prediction in error.response
+      if (resData && (resData.status === 'invalid_image' || resData.valid_image === false)) {
+        return {
+          id: `PRED-INV-${Date.now()}`,
+          success: false,
+          status: 'invalid_image',
+          valid_image: false,
+          message: resData.message || resData.detail || "Please upload a clear Potato, Tomato, or Brinjal leaf image for disease analysis.",
+          crop: resData.crop || formData.get('crop') || 'Crop',
+          imageUrl: formData.get('imagePreviewUrl') || '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
+      if (resData && resData.status === 'uncertain_prediction') {
+        return {
+          id: `PRED-UNC-${Date.now()}`,
+          success: false,
+          status: 'uncertain_prediction',
+          valid_image: true,
+          message: resData.message || resData.detail || "The image appears to contain a supported crop, but the disease prediction is uncertain. Please upload a clearer leaf image.",
+          crop: resData.crop || formData.get('crop') || 'Crop',
+          imageUrl: formData.get('imagePreviewUrl') || '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
+      // True network/transport or server crash error: report connection error honestly without inventing fake diseases
+      return {
+        id: `ERR-${Date.now()}`,
+        success: false,
+        status: 'connection_error',
+        valid_image: false,
+        message: resData?.detail || error?.message || "BACKEND CONNECTION ERROR: Could not reach the SmartFarm AI server. Please verify the backend is running.",
+        imageUrl: formData.get('imagePreviewUrl') || '',
+        disease: null,
+        confidence: null,
+        advisory: null
       };
-      
-      mockPredictions.unshift(newPrediction);
-      return newPrediction;
     }
   },
 
   // 5. Chat with RAG-LLM Farmer Assistant
   async sendChatMessage(message, language = 'en') {
     try {
-      const response = await apiClient.post('/chat', { message, language });
+      const response = await apiClient.post('/chat', { message, language }, { timeout: 60000 });
       return response.data;
     } catch (error) {
-      await new Promise(res => setTimeout(res, 800));
+      console.error("AI Assistant backend error:", error?.response?.data || error?.message || error);
+      const status = error?.response?.status;
+      const serverDetail = String(error?.response?.data?.detail || '');
 
-      const lower = message.toLowerCase();
-      let replyText = "";
-
-      if (language === 'ta') {
-        if (lower.includes("திட்ட") || lower.includes("அறுவடை") || lower.includes("விதைப்பு") || lower.includes("advisory") || lower.includes("planting") || lower.includes("harvest") || lower.includes("plan")) {
-          if (lower.includes("potato") || lower.includes("உருளை")) {
-            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• உருளைக்கிழங்கு பயிர் காலம்: 90-100 நாட்கள். திட்டமிடப்பட்ட அறுவடை காலம் உகந்ததாக உள்ளது.\n• வானிலை முன்னறிவிப்பு: கிழங்கு பருமனாகும் நிலையில் மிதமான தட்பவெப்பமும் சீரான மண் ஈரப்பதமும் (65-70%) அவசியம்.\n• முக்கிய பணிகள்: 30வது நாளில் இரண்டாவது மண் அணைப்பு செய்யவும். அறுவடைக்கு 10 நாட்களுக்கு முன் தண்டுப் பகுதியை வெட்டி (Dehaulming) தோலை முதிரச் செய்யவும்.";
-          } else if (lower.includes("brinjal") || lower.includes("கத்தரி")) {
-            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• கத்தரிக்காய் பயிர் காலம்: 120-140 நாட்கள். 75வது நாளில் முதல் அறுவடை தொடங்கி 120 நாட்கள் வரை தொடர் அறுவடை செய்யலாம்.\n• வானிலை முன்னறிவிப்பு: காற்றில் அதிக ஈரப்பதம் இருக்கும்போது சிறிய இலை நோய் மற்றும் இலைப்புள்ளி நோய்களைக் கண்காணிக்கவும்.\n• முக்கிய பணிகள்: தண்டு & காய் துளைப்பானுக்கு ஏக்கருக்கு 12 மோகப் பொறிகளை அமைக்கவும். ஒவ்வொரு அறுவடைக்குப் பிறகும் 13:0:45 உரம் இடவும்.";
-          } else {
-            replyText = "வேளாண்மை நூலகம் & வானிலை RAG பகுப்பாய்வு:\n• தக்காளி பயிர் காலம்: 90-110 நாட்கள். 75வது நாளில் முதல் கட்ட அறுவடை (Breaker Stage) தொடங்கி 80-95 நாட்களில் உச்சக்கட்ட மகசூல் கிடைக்கும்.\n• வானிலை முன்னறிவிப்பு: அறுவடை காலத்தில் மழை வாய்ப்பு இருப்பின், பழங்கள் வெடிப்பதைத் தவிர்க்க முன்னதாகவே அறுவடை செய்யவும்.\n• முக்கிய பணிகள்: பூக்கும் நிலையில் போரான் தெளிக்கவும், அடி அழுகல் நோயைத் தடுக்க கால்சியம் நைட்ரேட் மற்றும் 0:0:50 பொட்டாஷ் அளிக்கவும்.";
-          }
-        } else if (lower.includes("late blight") || lower.includes("கட்டுப்படுத்துவது") || lower.includes("தக்காளி") || lower.includes("புள்ளிகள்")) {
-          replyText = "வேளாண்மை நூலகத் தரவுகளின்படி (RAG + LLM):\nதக்காளியில் Late Blight நோய் அதிக ஈரப்பதம் மற்றும் குளிர்ச்சியான சூழ்நிலையில் வேகமாக பரவக்கூடும். பாதிக்கப்பட்ட இலைகளை கண்காணித்து, பரிந்துரைக்கப்பட்ட வேளாண் நோய் மேலாண்மை முறைகளைப் பின்பற்றவும்.";
-        } else if (lower.includes("உருளை") || lower.includes("potato")) {
-          replyText = "உருளைக்கிழங்கில் ஏர்லி பிளைட் நோய் வளையப் புள்ளிகளை ஏற்படுத்துகிறது. குளோரோதலோனில் பூஞ்சைக் கொல்லியைத் தெளிக்கவும்.";
-        } else {
-          replyText = `உங்கள் கேள்விக்கு நன்றி: "${message}". எமது வேளாண்மை நூலகத்தின் அறிவுக் களஞ்சியம் மூலம் தக்காளி, உருளைக்கிழங்கு, கத்தரிக்காய் பயிர்களுக்கான மேலாண்மை ஆலோசனைகள் வழங்கப்படுகின்றன.`;
-        }
-      } else {
-        if (lower.includes("plan") || lower.includes("schedule") || lower.includes("harvest") || lower.includes("advisory") || lower.includes("planting")) {
-          if (lower.includes("potato")) {
-            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Potato Growth Cycle: 90–100 days. Planned harvest window is well-aligned with regional agronomic norms.\n• Weather Advisory: Ensure dry sunny conditions for dehaulming (cutting vines) 10 days before digging to cure tuber skin.\n• Stage Actions: High potassium fertigation during tuber bulking (Day 50–70). Inspect lower leaves for early blight target-spots.";
-          } else if (lower.includes("brinjal") || lower.includes("eggplant")) {
-            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Brinjal Cycle: 120–140 days with continuous multiple flushes. First harvest starts around Day 75, with peak yields continuing up to Day 120.\n• Weather Advisory: Humid overcast spells favor Cercospora leaf spots. Spray NSKE 5% and install Lucinure pheromone traps.\n• Stage Actions: Regular pickings every 4–5 days to prevent seed hardening. Top-dress water-soluble 13:0:45 after each harvest wave.";
-          } else {
-            replyText = "Agricultural Knowledge Base & Live Weather RAG Advisory:\n• Tomato Cycle: 90–110 days. First breaker-stage picking begins at ~Day 75, reaching peak bulk harvesting between Days 80–95.\n• Weather Alert Integration: If rainfall or overcast weather is forecasted during ripening/harvest, harvest slightly early (breaker/turning stage) to prevent skin cracking and fruit rot.\n• Key Stage Actions: Apply Boron 1g/L at flowering to prevent blossom drop; feed Calcium Nitrate and Soluble Potash (0:0:50) during fruit sizing.";
-          }
-        } else if (lower.includes("late blight") || lower.includes("tomato") || lower.includes("treatment") || lower.includes("brown spot")) {
-          replyText = "Based on our Agriculture Library Knowledge Base (RAG + LLM):\nTomato late blight is commonly associated with cool and humid conditions. Monitor affected leaves regularly and follow recommended agricultural disease-management practices.";
-        } else if (lower.includes("potato")) {
-          replyText = "Potato Early Blight causes characteristic target-board concentric rings. Apply Chlorothalonil 75% WP @ 2g/litre and maintain balanced nitrogen.";
-        } else {
-          replyText = `Based on Agriculture Library knowledge for "${message}": Keep soil moisture at 60-70%, avoid overhead sprinkler watering during high ambient humidity, and inspect foliage daily.`;
-        }
+      let errorText = "AI service is temporarily unavailable. Please try again.";
+      if (status === 401 || serverDetail.toLowerCase().includes('authentication') || serverDetail.toLowerCase().includes('api key')) {
+        errorText = language === 'ta'
+          ? "AI சேவை அங்கீகரிப்பு தோல்வியடைந்தது. பின்தள அமைப்புகளைச் சரிபார்க்கவும்."
+          : "AI service authentication failed. Please check the backend configuration.";
+      } else if (serverDetail.toLowerCase().includes('knowledge') || serverDetail.toLowerCase().includes('retrieval')) {
+        errorText = language === 'ta'
+          ? "வேளாண் தரவுத்தள தகவல் பெறுதல் தற்காலிகமாக கிடைக்கவில்லை."
+          : "Knowledge retrieval is temporarily unavailable.";
+      } else if (language === 'ta') {
+        errorText = "AI சேவை தற்காலிகமாக கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.";
       }
 
       return {
         id: Date.now(),
         sender: "ai",
-        text: replyText,
-        source: "Based on Agriculture Library Vector Knowledge (RAG + LLM)",
+        text: errorText,
+        source: "System Notice",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
     }
   },
 
-  // 6. Voice Assistant Process
-  async processVoiceInput(audioBlobOrText, language = 'en') {
+  // 6. Voice Assistant Process (Real Sarvam STT + Solanaceae RAG + Gemini + Sarvam TTS)
+  async processVoiceInput(audioBlobOrData, language = 'en') {
+    let response;
+    if (audioBlobOrData instanceof Blob) {
+      const formData = new FormData();
+      const mime = audioBlobOrData.type || 'audio/webm';
+      const ext = mime.includes('mp4') ? 'mp4' : mime.includes('wav') ? 'wav' : mime.includes('ogg') ? 'ogg' : 'webm';
+      formData.append('audio', audioBlobOrData, `voice_recording.${ext}`);
+      formData.append('language', language);
+
+      // In Axios, omitting/undefining Content-Type allows Axios and browser to set multipart/form-data with the boundary string
+      response = await apiClient.post('/voice', formData, {
+        headers: { 'Content-Type': undefined },
+        timeout: 90000,
+      });
+    } else if (audioBlobOrData instanceof FormData) {
+      response = await apiClient.post('/voice', audioBlobOrData, {
+        headers: { 'Content-Type': undefined },
+        timeout: 90000,
+      });
+    } else {
+      // Base64 or object payload
+      const payload = typeof audioBlobOrData === 'string'
+        ? { audio: audioBlobOrData, language }
+        : { ...audioBlobOrData, language };
+
+      response = await apiClient.post('/voice', payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 90000,
+      });
+    }
+    return response.data;
+  },
+
+  // 6b. Hybrid TTS Synthesis (Backend Local Indic TTS & Sarvam Bulbul v3 with caching)
+  async synthesizeSpeech(text, language = 'en', preferredProvider = 'auto') {
     try {
-      const response = await apiClient.post('/voice', { audio: audioBlobOrText, language });
+      const response = await apiClient.post('/voice/tts', {
+        text,
+        language,
+        preferred_provider: preferredProvider
+      }, {
+        timeout: 35000
+      });
       return response.data;
     } catch (error) {
-      await new Promise(res => setTimeout(res, 800));
-      
-      if (language === 'ta') {
-        return {
-          transcript: "தக்காளியில் Late Blight நோயை எப்படி கட்டுப்படுத்துவது?",
-          aiResponse: "தக்காளியில் Late Blight நோய் அதிக ஈரப்பதம் மற்றும் குளிர்ச்சியான சூழ்நிலையில் வேகமாக பரவக்கூடும். பாதிக்கப்பட்ட இலைகளை கண்காணித்து, பரிந்துரைக்கப்பட்ட வேளாண் நோய் மேலாண்மை முறைகளைப் பின்பற்றவும்.",
-          audioUrl: null
-        };
-      } else {
-        return {
-          transcript: "What is the treatment for tomato late blight?",
-          aiResponse: "Tomato late blight is commonly associated with cool and humid conditions. Monitor affected leaves and follow recommended agricultural disease-management practices.",
-          audioUrl: null
-        };
-      }
+      console.warn('[apiService] synthesizeSpeech error:', error?.message);
+      return {
+        success: false,
+        fallback_to_browser: true,
+        text_only: false,
+        reason: error?.response?.data?.reason || 'network_error'
+      };
     }
   },
+
+  // 6c. Get Voice Status & Backend Providers (without exposing keys)
+  async getVoiceStatus() {
+    try {
+      const response = await apiClient.get('/voice/status');
+      return response.data;
+    } catch (error) {
+      return {
+        status: 'offline',
+        providers: { local_indic_tts: false, sarvam: false }
+      };
+    }
+  },
+
 
   // 7. Community Posts API
   async getCommunityPosts() {
@@ -296,7 +514,11 @@ export const apiService = {
       const response = await apiClient.get('/community');
       return response.data;
     } catch (error) {
-      return mockCommunityPosts;
+      try {
+        return JSON.parse(localStorage.getItem('smartfarm_community_posts') || '[]');
+      } catch {
+        return [];
+      }
     }
   },
 
@@ -307,7 +529,7 @@ export const apiService = {
     } catch (error) {
       const newPost = {
         id: `POST-${Math.floor(100 + Math.random() * 900)}`,
-        farmerName: "UGESHRAJA S",
+        farmerName: postData.farmerName || "Farmer",
         createdAt: "Just now",
         crop: postData.crop || "Tomato",
         topic: postData.topic || "General Discussion",
@@ -316,7 +538,13 @@ export const apiService = {
         likes: 0,
         comments: []
       };
-      mockCommunityPosts.unshift(newPost);
+      try {
+        const current = JSON.parse(localStorage.getItem('smartfarm_community_posts') || '[]');
+        current.unshift(newPost);
+        localStorage.setItem('smartfarm_community_posts', JSON.stringify(current));
+      } catch (e) {
+        console.warn("Local post save error:", e);
+      }
       return newPost;
     }
   },
@@ -366,6 +594,191 @@ export const apiService = {
         diseaseDetections: { total: 142, thisWeek: 18, accuracy: 96.8 }
       },
       insights: mockAiInsights
+    };
+  },
+
+  // 10. Authentication & Profile Endpoints
+  async signup(userData) {
+    const response = await apiClient.post('/auth/signup', userData);
+    return response.data;
+  },
+
+  async login(email, password) {
+    const response = await apiClient.post('/auth/login', { email, password });
+    return response.data;
+  },
+
+  async logout() {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      console.warn("Backend logout notification failed:", e);
+    }
+  },
+
+  async getProfile() {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  },
+
+  async updateProfile(profileData) {
+    const response = await apiClient.put('/auth/profile', profileData);
+    return response.data;
+  },
+
+  async forgotPassword(email) {
+    const response = await apiClient.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async getAuthStatus() {
+    try {
+      const response = await apiClient.get('/auth/status');
+      return response.data;
+    } catch (e) {
+      return { mode: 'offline', is_connected: false };
+    }
+  },
+
+  // 11. My Field Profile Endpoints
+  async getFieldProfile() {
+    try {
+      const response = await apiClient.get('/field');
+      if (response.data) {
+        localStorage.setItem('smartfarm_field_profile', JSON.stringify(response.data));
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend getFieldProfile failed, using local storage fallback:", e?.message);
+    }
+    try {
+      const stored = localStorage.getItem('smartfarm_field_profile');
+      if (stored) return JSON.parse(stored);
+    } catch { }
+    // Default demo profile for initial load
+    return {
+      crop_type: "Brinjal",
+      soil_type: "Loamy",
+      soil_ph: 6.4,
+      water_capacity: "72%",
+      field_size: 2.0,
+      field_size_unit: "Acre",
+      npk_nitrogen: 80,
+      npk_phosphorus: 40,
+      npk_potassium: 40,
+      sowing_date: "2026-06-15",
+      irrigation_method: "Drip",
+      field_location: "Tamil Nadu",
+      season: "Kharif"
+    };
+  },
+
+  async updateFieldProfile(profileData) {
+    try {
+      const response = await apiClient.put('/field', profileData);
+      if (response.data) {
+        localStorage.setItem('smartfarm_field_profile', JSON.stringify(response.data));
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend updateFieldProfile failed, saving locally:", e?.message);
+    }
+    const current = await this.getFieldProfile();
+    const updated = { ...current, ...profileData };
+    localStorage.setItem('smartfarm_field_profile', JSON.stringify(updated));
+    return updated;
+  },
+
+  async evaluateField(fieldData) {
+    try {
+      const response = await apiClient.post('/field/evaluate', fieldData);
+      return response.data?.assessment;
+    } catch (e) {
+      console.warn("Backend evaluateField failed:", e?.message);
+      return null;
+    }
+  },
+
+  // 12. Government Agriculture Schemes Endpoints
+  async getGovernmentSchemes(params = {}) {
+    try {
+      const response = await apiClient.get('/schemes', { params });
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend getGovernmentSchemes failed, using verified registry fallback:", e?.message);
+    }
+
+    // Client-side fallback filtering
+    let schemes = [...VERIFIED_GOVERNMENT_SCHEMES];
+    const { query = '', state = 'all', crop = 'all', category = 'all' } = params;
+
+    if (state && state !== 'all') {
+      const stNorm = state.toLowerCase();
+      schemes = schemes.filter(s => {
+        const supported = (s.rules?.supportedStates || ['All India']).map(x => x.toLowerCase());
+        return supported.includes('all india') || supported.some(x => x.includes(stNorm) || stNorm.includes(x));
+      });
+    }
+
+    if (crop && crop !== 'all') {
+      const cNorm = crop.toLowerCase();
+      schemes = schemes.filter(s => {
+        const supported = (s.rules?.supportedCrops || ['All']).map(x => x.toLowerCase());
+        return supported.includes('all') || supported.some(x => x.includes(cNorm) || cNorm.includes(x));
+      });
+    }
+
+    if (category && category !== 'all') {
+      const catNorm = category.toLowerCase();
+      schemes = schemes.filter(s => s.category.toLowerCase().includes(catNorm) || catNorm.includes(s.category.toLowerCase()));
+    }
+
+    if (query && query.trim()) {
+      const q = query.toLowerCase().trim();
+      schemes = schemes.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        (s.nameTa && s.nameTa.toLowerCase().includes(q)) ||
+        s.agency.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.benefits.toLowerCase().includes(q)
+      );
+    }
+
+    return schemes;
+  },
+
+  async evaluateSchemeEligibility(fieldProfile) {
+    try {
+      const response = await apiClient.post('/schemes/evaluate', { field_profile: fieldProfile });
+      if (response.data) {
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend evaluateSchemeEligibility failed, using client-side rule engine:", e?.message);
+    }
+
+    // Client-side rule evaluation
+    const evaluations = {};
+    let likelyEligibleCount = 0;
+    VERIFIED_GOVERNMENT_SCHEMES.forEach(scheme => {
+      const res = evalRules(scheme, fieldProfile);
+      evaluations[scheme.id] = res;
+      if (res.status === 'likely_eligible') {
+        likelyEligibleCount++;
+      }
+    });
+
+    return {
+      field_profile_summary: {
+        crop: fieldProfile?.crop_type,
+        field_size: fieldProfile?.field_size,
+        location: fieldProfile?.field_location
+      },
+      total_schemes_evaluated: VERIFIED_GOVERNMENT_SCHEMES.length,
+      likely_eligible_count: likelyEligibleCount,
+      evaluations
     };
   }
 };

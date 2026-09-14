@@ -1,0 +1,24 @@
+DISEASE: Tomato Target Spot
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Target spot of tomato
+
+SYMPTOMS:
+Target spot can produce circular brown lesions on leaves. Lesions may develop concentric rings that create a target-like pattern. Severe infection can cause yellowing and premature leaf loss. Fruit lesions may also occur.
+
+FAVORABLE CONDITIONS:
+Warm, humid conditions and prolonged leaf wetness can favor disease development.
+
+MANAGEMENT:
+Remove severely affected plant material where practical. Improve plant spacing and airflow. Avoid unnecessary leaf wetness. Maintain field sanitation and monitor disease progression.
+
+PREVENTION:
+Use healthy planting material. Maintain suitable spacing. Manage irrigation to reduce prolonged foliage wetness. Remove infected debris where appropriate.
+
+MONITORING:
+Inspect leaves regularly for circular brown lesions and concentric ring patterns.
+
+FARMER ACTION:
+Remove severely affected leaves where practical, improve sanitation and airflow, and consult local agricultural experts if symptoms spread.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority recommendations.

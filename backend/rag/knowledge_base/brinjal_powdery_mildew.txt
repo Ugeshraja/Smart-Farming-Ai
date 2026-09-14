@@ -1,0 +1,27 @@
+Brinjal Powdery Mildew Management (TNAU & ICAR Agronomic Compendium)
+======================================================================
+
+Causal Pathogen:
+Leveillula taurica (Oidiopsis taurica).
+
+Diagnostic Symptoms:
+- White, powdery, talcum-like fungal spots on the lower leaf surface, with corresponding chlorotic yellow patches on the upper surface.
+- In severe cases, powdery fungal growth covers both leaf surfaces; foliage curls inward, turns necrotic brown, and withers prematurely.
+- Extensive premature defoliation exposes fruits to sunscald, resulting in drastically reduced yield.
+
+Favorable Conditions:
+- Warm daytime temperatures (28-35°C) combined with high relative humidity at night followed by dry days.
+- Densely planted, shaded canopies with low air circulation.
+
+Integrated Disease Management:
+1. Cultural Practices:
+   - Avoid excessive nitrogen fertilization, which creates succulent dense foliage prone to fungal spore penetration.
+   - Maintain proper spacing (75 x 60 cm) and prune aged lower leaves to enhance ventilation.
+
+2. Fungicidal Spray Measures:
+   - Spray Wettable Sulphur 80% WP @ 2.5 g/L or Dinocap 48% EC @ 1 ml/L or Hexaconazole 5% EC @ 1 ml/L upon initial detection of powdery patches.
+   - For severe outbreaks, apply systemic Azoxystrobin 23% SC @ 1 ml/L or Difenoconazole 25% EC @ 0.5 ml/L.
+   - Repeat spray after 10-14 days if dry, warm conditions persist.
+
+3. Monitoring & Prevention:
+   - Inspect lower leaf surfaces in shaded canopy areas where mildew initiates.

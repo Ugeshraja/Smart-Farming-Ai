@@ -1,0 +1,24 @@
+DISEASE: Tomato Spider Mites
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Two-spotted spider mite
+
+SYMPTOMS:
+Spider mite infestation can cause small pale or yellow speckles on leaves. Severe infestation may produce bronzing, drying, and leaf drop. Fine webbing may sometimes be visible on heavily infested plants.
+
+FAVORABLE CONDITIONS:
+Hot and dry conditions can favor rapid spider mite population growth. Plant stress can increase susceptibility.
+
+MANAGEMENT:
+Inspect the underside of leaves regularly. Remove severely affected plant material where practical. Reduce plant stress through appropriate irrigation. Maintain field sanitation and follow locally recommended pest-management practices.
+
+PREVENTION:
+Maintain healthy plant growth and suitable irrigation. Monitor plants frequently during hot and dry weather. Avoid unnecessary plant stress.
+
+MONITORING:
+Check the undersides of leaves for tiny mites, fine webbing, pale speckling, yellowing, and bronzing.
+
+FARMER ACTION:
+Inspect affected plants carefully, improve crop management and irrigation where appropriate, and consult local agricultural experts for pest-management recommendations.
+
+IMPORTANT NOTE:
+Any pesticide or miticide recommendation should follow product labels and local agricultural authority guidance.

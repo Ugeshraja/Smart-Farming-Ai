@@ -1,0 +1,24 @@
+DISEASE: Tomato Early Blight
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Early blight of tomato
+
+SYMPTOMS:
+Tomato early blight commonly produces dark brown lesions on older leaves. Lesions may develop concentric rings and a target-like appearance. Leaves may yellow and dry as disease progresses. Stem and fruit symptoms may also occur.
+
+FAVORABLE CONDITIONS:
+Warm temperatures, humidity, prolonged leaf wetness, plant stress, and poor field sanitation can favor disease development.
+
+MANAGEMENT:
+Remove and properly dispose of severely affected plant material where practical. Maintain field sanitation. Improve plant spacing and airflow. Avoid unnecessary leaf wetness. Use healthy planting material and follow locally recommended management practices.
+
+PREVENTION:
+Use healthy planting material. Maintain adequate spacing. Avoid excessive irrigation that keeps foliage wet. Remove infected plant debris where appropriate and rotate crops when suitable.
+
+MONITORING:
+Inspect older leaves regularly for dark lesions, concentric rings, yellowing, and drying.
+
+FARMER ACTION:
+Remove severely affected leaves or plants where practical, improve sanitation and airflow, and seek local agricultural advice.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority recommendations.

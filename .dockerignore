@@ -1,0 +1,62 @@
+# Ignore environment secrets and private credentials
+.env
+.env.*
+*.env
+serviceAccountKey.json
+backend/serviceAccountKey.json
+backend/.env
+backend/.env.*
+
+# Ignore frontend build and dependencies
+node_modules/
+dist/
+farmer-portal/
+
+# Ignore Python runtime caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+ENV/
+
+# Ignore runtime media uploads and audio caches
+backend/static/predictions/*
+!backend/static/predictions/.gitkeep
+backend/static/tts/*
+!backend/static/tts/.gitkeep
+backend/cache/*
+!backend/cache/.gitkeep
+backend/cache/tts/*
+!backend/cache/tts/.gitkeep
+*.mp3
+*.wav
+
+# Ignore Git, IDE, and temporary files
+.git/
+.gitignore
+.dockerignore
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Ignore test files and scratch scripts
+backend/tests/
+backend/docs/
+tests/
+scratch/
+
+# Explicitly ensure models and RAG knowledge base are NOT ignored
+!backend/models/
+!backend/models/yolo11_best.pt
+!backend/models/resnet50_best_model.pth
+!backend/models/sam_vit_b_01ec64.pth
+!backend/models/brinjal/best_model.pth
+!backend/rag/
+!backend/rag/knowledge_base/
+!backend/rag/knowledge_base/*.txt

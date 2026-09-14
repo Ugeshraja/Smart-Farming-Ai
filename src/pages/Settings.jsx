@@ -1,24 +1,34 @@
 import React, { useState } from 'react';
-import { 
-  User, 
-  Globe, 
-  Bell, 
-  Sliders, 
-  Cpu, 
-  Sun, 
-  Save, 
-  CheckCircle2 
+import {
+  User,
+  Globe,
+  Bell,
+  Sliders,
+  Sun,
+  Moon,
+  Save,
+  CheckCircle2
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Settings() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, setUser } = useAuth();
+  const { user, setUser, updateProfile } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const [farmerName, setFarmerName] = useState(user?.name || "UGESHRAJA S");
   const [email, setEmail] = useState(user?.email || "ugeshraja@example.com");
-  const [location, setLocation] = useState(user?.location || "Dharmapuri, Tamil Nadu");
+  const [location, setLocation] = useState(user?.location || user?.farm_location || "Dharmapuri, Tamil Nadu");
+
+  React.useEffect(() => {
+    if (user) {
+      setFarmerName(user.name || '');
+      setEmail(user.email || '');
+      setLocation(user.farm_location || user.location || '');
+    }
+  }, [user]);
 
   const [notifications, setNotifications] = useState({
     diseaseAlerts: true,
@@ -31,21 +41,26 @@ export default function Settings() {
   const [refreshInterval, setRefreshInterval] = useState('10s');
   const [toastMessage, setToastMessage] = useState('');
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    setUser(prev => ({
-      ...prev,
-      name: farmerName,
-      email,
-      location
-    }));
-    setToastMessage(language === 'ta' ? 'அமைப்புகள் புதுப்பிக்கப்பட்டன!' : 'Settings updated successfully!');
+    try {
+      if (updateProfile) {
+        await updateProfile({
+          name: farmerName,
+          farm_location: location,
+          preferred_language: language
+        });
+      }
+      setToastMessage(language === 'ta' ? 'அமைப்புகள் சேமிக்கப்பட்டன!' : 'Settings saved successfully!');
+    } catch (err) {
+      setToastMessage(language === 'ta' ? 'அமைப்புகள் புதுப்பிக்கப்பட்டன (உள்ளூர்)!' : 'Settings updated locally!');
+    }
     setTimeout(() => setToastMessage(''), 3000);
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      
+
       {/* Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 bg-agri-700 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium z-50 animate-bounce flex items-center space-x-2">
@@ -183,7 +198,9 @@ export default function Settings() {
             </div>
 
             <div>
-              <label className="font-semibold text-gray-700 block mb-1">ESP32 Telemetry Refresh Rate</label>
+              <label className="font-semibold text-gray-700 block mb-1">
+                {language === 'ta' ? 'சென்சார் தரவு புதுப்பிப்பு வீதம்' : 'Sensor Telemetry Refresh Rate'}
+              </label>
               <select
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(e.target.value)}
@@ -197,39 +214,88 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 5. System Diagnostics & Appearance */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-3 text-xs">
-            <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-              <Cpu className="w-5 h-5 text-agri-600" />
-              <span>{t('systemDiagnostics')}</span>
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between p-2 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">FastAPI API:</span>
-                <span className="text-emerald-600 font-bold">200 OK</span>
-              </div>
-              <div className="flex justify-between p-2 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">ESP32 Hardware:</span>
-                <span className="text-emerald-600 font-bold">Online</span>
-              </div>
-              <div className="flex justify-between p-2 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Deep Learning Model:</span>
-                <span className="text-agri-700 font-mono font-bold">YOLO11+SAM+ResNet50</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-3 text-xs">
+        {/* 5. Appearance Theme */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4 text-xs">
+          <div className="border-b border-gray-100 pb-3">
             <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
               <Sun className="w-5 h-5 text-amber-500" />
-              <span>Appearance Theme</span>
+              <span>{language === 'ta' ? 'தோற்றம் (Appearance)' : 'Appearance'}</span>
             </h3>
-            <p className="text-gray-500">
-              Clean Light Theme is enforced for high outdoor daylight visibility during field project reviews.
+            <p className="text-xs text-gray-500 mt-1">
+              {language === 'ta'
+                ? 'SmartFarm AI வலைத்தளத்தின் காட்சி தீமைத் தேர்வு செய்யவும்.'
+                : 'Choose how SmartFarm AI looks.'}
             </p>
-            <div className="p-2.5 bg-agri-50 border border-agri-200 rounded-xl font-bold text-agri-800">
-              ✓ Clean Professional Light Theme Active
+          </div>
+
+          <div className="space-y-3">
+            <label className="font-semibold text-gray-700 block text-xs">
+              {language === 'ta' ? 'தீம் தேர்வு (Theme)' : 'Theme'}
+            </label>
+
+            {/* Light / Dark Mode Toggle Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+              {/* Light Theme Option */}
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                aria-label="Select Light Theme"
+                className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  theme === 'light'
+                    ? 'border-agri-600 bg-agri-50/50 shadow-xs ring-2 ring-agri-600/20 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                    <Sun className="w-5 h-5" />
+                  </div>
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    theme === 'light' ? 'border-agri-600' : 'border-gray-300'
+                  }`}>
+                    {theme === 'light' && <span className="w-2 h-2 rounded-full bg-agri-600" />}
+                  </span>
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-gray-900">
+                    {language === 'ta' ? 'லைட் (Light)' : 'Light'}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    {language === 'ta' ? 'பகலில் தெளிவான பார்வைக்கு ஏற்றது' : 'Optimized for daylight & field visibility'}
+                  </div>
+                </div>
+              </button>
+
+              {/* Dark Theme Option */}
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                aria-label="Select Dark Theme"
+                className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  theme === 'dark'
+                    ? 'border-agri-600 bg-agri-50/50 shadow-xs ring-2 ring-agri-600/20 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-indigo-400">
+                    <Moon className="w-5 h-5" />
+                  </div>
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    theme === 'dark' ? 'border-agri-600' : 'border-gray-300'
+                  }`}>
+                    {theme === 'dark' && <span className="w-2 h-2 rounded-full bg-agri-600" />}
+                  </span>
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-gray-900">
+                    {language === 'ta' ? 'டார்க் (Dark)' : 'Dark'}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    {language === 'ta' ? 'இரவு மற்றும் குறைந்த வெளிச்சத்திற்கு ஏற்றது' : 'Optimized for night & low-light usage'}
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
         </div>

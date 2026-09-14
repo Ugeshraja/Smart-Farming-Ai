@@ -1,0 +1,24 @@
+DISEASE: Tomato Healthy
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Healthy tomato plant
+
+SYMPTOMS:
+A healthy tomato plant generally has normally developed green leaves without characteristic disease lesions, widespread yellowing, abnormal curling, severe pest damage, or unusual drying.
+
+FAVORABLE CONDITIONS:
+Healthy growth is supported by suitable temperature, adequate soil moisture, balanced nutrition, sufficient sunlight, good drainage, and appropriate crop management.
+
+MANAGEMENT:
+Continue regular crop monitoring. Maintain suitable irrigation, nutrition, spacing, and field sanitation according to local recommendations.
+
+PREVENTION:
+Use healthy planting material. Maintain proper spacing and airflow. Avoid excessive irrigation. Maintain field sanitation and inspect plants regularly.
+
+MONITORING:
+Inspect leaves, stems, flowers, and fruit regularly for spots, lesions, yellowing, curling, wilting, pests, or unusual growth.
+
+FARMER ACTION:
+If the plant appears healthy, continue normal crop care and monitoring. If new symptoms appear, photograph the affected plant and seek agricultural advice.
+
+IMPORTANT NOTE:
+A healthy classification does not guarantee that a plant is free from every possible pest or disease.

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Printer, 
-  Download, 
-  Leaf, 
-  CheckCircle2, 
-  RefreshCw 
+import {
+  Printer,
+  Download,
+  Leaf,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -58,7 +58,7 @@ export default function AiReports() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      
+
       {/* Top Action Header */}
       <div className="no-print bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -89,7 +89,7 @@ export default function AiReports() {
 
       {/* Printable Report Container */}
       <div id="printable-report" className="bg-white rounded-2xl border border-gray-200 shadow-md p-8 space-y-8 text-gray-800">
-        
+
         {/* Document Header */}
         <div className="flex items-start justify-between border-b-2 border-agri-600 pb-6">
           <div className="flex items-center space-x-3">
@@ -162,11 +162,12 @@ export default function AiReports() {
         </div>
 
         {/* 3. AI Explanation */}
+        {/* 3. AI Explanation (LIME) */}
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
-            {isTa ? '3. AI விளக்கம் (LIME Heatmap)' : '3. AI Explanation (LIME Heatmap)'}
+            {isTa ? '3. AI காட்சி விளக்கம்' : '3. AI Visual Explanation'}
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-gray-200 rounded-xl p-3 text-center space-y-2">
               <span className="text-xs font-semibold text-gray-600 block">
@@ -176,14 +177,52 @@ export default function AiReports() {
                 <img src={prediction.imageUrl} alt="Original Leaf" className="h-full object-contain" />
               </div>
             </div>
-            
-            <div className="border border-gray-200 rounded-xl p-3 text-center space-y-2">
-              <span className="text-xs font-semibold text-agri-700 block">
-                {isTa ? 'LIME AI விளக்கம்' : 'LIME Explanation Heatmap'}
-              </span>
-              <div className="h-56 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
-                <img src={prediction.limeImageUrl} alt="LIME Heatmap" className="h-full object-contain" />
+
+            {/* LIME Text Explanation */}
+            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/70 space-y-3 text-left">
+              <div>
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                  {isTa ? 'கணிப்பு' : 'Prediction'}
+                </span>
+                <strong className="text-sm text-gray-900">{prediction.crop} — {prediction.disease}</strong>
               </div>
+
+              {prediction.limeExplanation && (
+                <div className="space-y-2 text-xs text-gray-700">
+                  <div>
+                    <span className="font-bold text-gray-800 block">
+                      {isTa ? 'மாதிரி இதை ஏன் கணித்தது:' : 'Why the model predicted this:'}
+                    </span>
+                    <p className="mt-0.5 text-gray-600 leading-relaxed">
+                      {isTa
+                        ? (prediction.limeExplanation.summary_ta || "AI மாதிரி பதிவேற்றப்பட்ட இலையின் பாதிக்கப்பட்ட பகுதிகளில் முக்கியமாக கவனம் செலுத்தியது.")
+                        : (prediction.limeExplanation.summary || "The AI model focused mainly on the affected regions of the uploaded leaf.")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="font-bold text-gray-800 block">
+                      {isTa ? 'முக்கிய பங்களிப்பு பகுதிகள்:' : 'Important contributing regions:'}
+                    </span>
+                    <ul className="list-disc list-inside space-y-0.5 text-gray-600 pt-0.5">
+                      {(prediction.limeExplanation.positive_regions || []).map((r, i) => (
+                        <li key={i}>
+                          {isTa ? `பகுதி ${r.id} — ${r.strength_ta || 'நேர்மறை பங்களிப்பு'} (${r.region_ta || r.region}: +${r.weight})` : `Region ${r.id} — ${r.strength || 'Positive contribution'} (${r.region}: +${r.weight})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <span className="font-bold text-gray-800 block">
+                      {isTa ? 'மாதிரி விளக்கம்:' : 'Model interpretation:'}
+                    </span>
+                    <p className="mt-0.5 text-gray-600 leading-relaxed">
+                      {isTa ? (prediction.limeExplanation.model_interpretation_ta || prediction.limeExplanation.model_interpretation) : prediction.limeExplanation.model_interpretation}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -191,7 +230,7 @@ export default function AiReports() {
         {/* 4. Environmental Conditions */}
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
-            {isTa ? '4. சுற்றுச்சூழல் நிலை (ESP32 சென்சார் அளவீடு)' : '4. Environmental Conditions (ESP32 Snapshot)'}
+            {isTa ? '4. சுற்றுச்சூழல் நிலை (கள சென்சார் அளவீடு)' : '4. Environmental Conditions (Field Sensor Snapshot)'}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">

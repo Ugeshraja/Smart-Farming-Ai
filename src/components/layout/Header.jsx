@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { Bell, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, User, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function Header({ pageTitle, onMenuToggle }) {
   const { language, setLanguage, t } = useLanguage();
   const { user } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const mockNotifications = [
     { id: 1, text: "High humidity alert (76%) - Risk of Late Blight.", time: "10 mins ago", type: "warning" },
-    { id: 2, text: "ESP32 telemetry re-synced successfully.", time: "1 hour ago", type: "info" },
+    { id: 2, text: "Field sensor telemetry re-synced successfully.", time: "1 hour ago", type: "info" },
     { id: 3, text: "Community post received 5 new replies.", time: "2 hours ago", type: "success" }
   ];
 
@@ -20,7 +24,7 @@ export default function Header({ pageTitle, onMenuToggle }) {
 
         {/* Left section: Mobile Menu Hamburger + Page Title */}
         <div className="flex items-center space-x-3">
-          <button 
+          <button
             onClick={onMenuToggle}
             className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
             aria-label="Toggle navigation menu"
@@ -29,7 +33,7 @@ export default function Header({ pageTitle, onMenuToggle }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          
+
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
               {pageTitle || t('dashboard')}
@@ -37,28 +41,40 @@ export default function Header({ pageTitle, onMenuToggle }) {
           </div>
         </div>
 
-        {/* Right Controls: Notification Icon, Language Selector, User Info */}
+        {/* Right Controls: Theme Toggle, Notification Icon, Language Selector, User Info */}
         <div className="flex items-center space-x-3 sm:space-x-4">
+
+          {/* Quick Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            title={isDark ? (language === 'ta' ? "லைட் தீமுக்கு மாற்றவும்" : "Switch to light mode") : (language === 'ta' ? "டார்க் தீமுக்கு மாற்றவும்" : "Switch to dark mode")}
+          >
+            {isDark ? (
+              <Sun className="w-5 h-5 text-amber-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
 
           {/* Language Switcher */}
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl p-1 text-xs font-medium">
             <button
               onClick={() => setLanguage('en')}
-              className={`px-3 py-1 rounded-lg transition-colors ${
-                language === 'en' 
-                  ? 'bg-agri-600 text-white shadow-2xs font-bold' 
+              className={`px-3 py-1 rounded-lg transition-colors ${language === 'en'
+                  ? 'bg-agri-600 text-white shadow-2xs font-bold'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               English
             </button>
             <button
               onClick={() => setLanguage('ta')}
-              className={`px-3 py-1 rounded-lg transition-colors ${
-                language === 'ta' 
-                  ? 'bg-agri-600 text-white shadow-2xs font-bold' 
+              className={`px-3 py-1 rounded-lg transition-colors ${language === 'ta'
+                  ? 'bg-agri-600 text-white shadow-2xs font-bold'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               தமிழ்
             </button>
@@ -66,7 +82,7 @@ export default function Header({ pageTitle, onMenuToggle }) {
 
           {/* Notification Bell */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors relative"
               aria-label="Notifications"
@@ -97,8 +113,12 @@ export default function Header({ pageTitle, onMenuToggle }) {
             )}
           </div>
 
-          {/* User Text Info (No Profile Picture/Avatar) */}
-          <div className="flex items-center space-x-2 pl-2 border-l border-gray-200">
+          {/* User Profile Badge (Clickable link to /profile) */}
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex items-center space-x-2 pl-2 border-l border-gray-200 hover:bg-gray-50 p-1.5 rounded-xl transition-colors text-left"
+            title="View Farmer Profile"
+          >
             <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600">
               <User className="w-4 h-4" />
             </div>
@@ -106,7 +126,7 @@ export default function Header({ pageTitle, onMenuToggle }) {
               <div className="text-xs font-bold text-gray-900 leading-tight">{user?.name || "UGESHRAJA S"}</div>
               <div className="text-[11px] text-gray-500 leading-tight truncate">{user?.email || "ugeshraja@example.com"}</div>
             </div>
-          </div>
+          </button>
 
         </div>
 

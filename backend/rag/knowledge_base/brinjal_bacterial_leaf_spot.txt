@@ -1,0 +1,28 @@
+Brinjal Bacterial Leaf Spot Management (TNAU & ICAR Agronomic Compendium)
+===========================================================================
+
+Causal Organism:
+Xanthomonas campestris pv. vesicatoria.
+
+Diagnostic Symptoms:
+- Small, dark brown to blackish water-soaked circular to angular lesions on foliage.
+- Lesions are distinctly surrounded by bright yellow chlorotic halos.
+- Advanced infection leads to severe defoliation, reducing photosynthesis and fruit size.
+
+Favorable Conditions:
+- Warm weather (25-30°C) accompanied by high humidity, fog, or overhead sprinkler irrigation.
+- Wind-driven rain and mechanical transmission via handling wet foliage.
+
+Integrated Disease Management:
+1. Agronomic Measures:
+   - Avoid overhead sprinkler irrigation; adopt drip irrigation to keep leaf canopy dry.
+   - Space plants adequately (60 x 60 cm or 75 x 60 cm) to ensure good aeration.
+   - Rogue out severely infected lower leaves touching damp soil.
+
+2. Bactericidal & Protective Sprays:
+   - Apply Copper Hydroxide 53.8% DF @ 2 g/L or Copper Oxychloride 50% WP @ 2.5 g/L mixed with Streptocycline @ 0.1 g/L.
+   - Alternate with Mancozeb 75% WP @ 2 g/L to prevent secondary fungal invasions.
+
+3. Monitoring & Prevention:
+   - Inspect lower canopy weekly during rainy periods.
+   - Treat seeds with hot water (50°C for 25 minutes) or Streptocycline solution before nursery sowing.

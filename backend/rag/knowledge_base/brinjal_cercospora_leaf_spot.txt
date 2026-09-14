@@ -1,0 +1,27 @@
+Brinjal Cercospora Leaf Spot Management (TNAU & ICAR Agronomic Compendium)
+===========================================================================
+
+Causal Organism:
+Cercospora melongenae (Foliar fungal pathogen).
+
+Diagnostic Symptoms:
+- Circular to irregular chlorotic spots on leaves that develop grayish-white centers with dark brown borders.
+- Concentric ring-like appearance in older spots; severely affected leaves turn yellow, dry up, and fall off prematurely.
+- Reduces photosynthetic leaf area and causes sunscald on unprotected developing fruits.
+
+Favorable Conditions:
+- Warm, humid weather (25-32°C) with persistent night dew and frequent rainfall.
+- Overcrowded crop canopy and poor weed management.
+
+Integrated Disease Management:
+1. Agronomic Measures:
+   - Remove and destroy infected lower leaves at first sight.
+   - Maintain clean weeding and prevent foliage contact with soil.
+   - Adopt drip irrigation to prevent water splashing onto foliage.
+
+2. Fungicidal Spray Schedule:
+   - Spray Carbendazim 12% + Mancozeb 63% WP @ 2 g/L or Chlorothalonil 75% WP @ 2 g/L upon notice of early leaf spots.
+   - If disease pressure is high, alternate with Azoxystrobin 23% SC @ 1 ml/L or Difenoconazole 25% EC @ 0.5 ml/L at 14-day intervals.
+
+3. Monitoring:
+   - Scout lower leaf canopy twice a week after rains.

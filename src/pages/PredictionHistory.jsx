@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  Eye, 
-  X, 
+import {
+  Search,
+  Eye,
+  X,
   AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -49,9 +49,9 @@ export default function PredictionHistory() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.disease.toLowerCase().includes(q) || 
-        p.crop.toLowerCase().includes(q) || 
+      result = result.filter(p =>
+        p.disease.toLowerCase().includes(q) ||
+        p.crop.toLowerCase().includes(q) ||
         p.id.toLowerCase().includes(q)
       );
     }
@@ -61,7 +61,7 @@ export default function PredictionHistory() {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header */}
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-2">
         <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
@@ -75,7 +75,7 @@ export default function PredictionHistory() {
       {/* Filter Controls Bar */}
       <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          
+
           {/* Search */}
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
@@ -182,11 +182,19 @@ export default function PredictionHistory() {
 
                     {/* Status */}
                     <td className="py-2.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        pred.status === 'Healthy' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {pred.status}
-                      </span>
+                      {(() => {
+                        const isHealthy = pred.status === 'Healthy' || pred.disease?.toLowerCase().includes('healthy');
+                        const statusText = pred.status || (isHealthy ? (isTa ? 'ஆரோக்கியமானது' : 'Healthy') : (isTa ? 'நோய் கண்டறியப்பட்டது' : 'Disease Detected'));
+                        return (
+                          <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-2xs ${
+                            isHealthy
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-amber-100 text-amber-900 border border-amber-200'
+                          }`}>
+                            {statusText}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Actions */}
@@ -217,13 +225,13 @@ export default function PredictionHistory() {
       {activeModalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-200 p-6 space-y-6">
-            
+
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <span className="text-xs font-semibold text-gray-400 font-mono">{activeModalItem.id}</span>
                 <h3 className="text-xl font-extrabold text-gray-900">{activeModalItem.disease}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setActiveModalItem(null)}
                 className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
               >
@@ -231,16 +239,10 @@ export default function PredictionHistory() {
               </button>
             </div>
 
-            {/* Images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-2">
-                <span className="text-xs font-semibold text-gray-600 block">{isTa ? 'அசல் இலை படம்' : 'Original Leaf Photo'}</span>
-                <img src={activeModalItem.imageUrl} alt="Leaf" className="h-48 w-full object-contain mx-auto" />
-              </div>
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-2">
-                <span className="text-xs font-semibold text-agri-700 block">{isTa ? 'LIME AI விளக்கம்' : 'LIME Heatmap Explanation'}</span>
-                <img src={activeModalItem.limeImageUrl} alt="LIME" className="h-48 w-full object-contain mx-auto" />
-              </div>
+            {/* Image */}
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-2 max-w-sm mx-auto">
+              <span className="text-xs font-semibold text-gray-600 block">{isTa ? 'அசல் இலை படம்' : 'Original Leaf Photo'}</span>
+              <img src={activeModalItem.imageUrl} alt="Leaf" className="h-48 w-full object-contain mx-auto" />
             </div>
 
             {/* Metadata */}

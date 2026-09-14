@@ -1,0 +1,24 @@
+DISEASE: Tomato Yellow Leaf Curl Virus
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Tomato yellow leaf curl virus
+
+SYMPTOMS:
+Infected tomato plants may show upward curling of leaves, yellowing, reduced leaf size, shortened internodes, and stunted growth. Young plants can be strongly affected.
+
+FAVORABLE CONDITIONS:
+Spread is associated with infected planting material and insect vectors, particularly whiteflies. Conditions that favor vector populations can increase disease spread.
+
+MANAGEMENT:
+Remove severely affected plants where practical to reduce sources of infection. Monitor and manage insect vectors according to local recommendations. Maintain field sanitation and use healthy planting material.
+
+PREVENTION:
+Use healthy planting material. Monitor crops for vector insects. Remove infected plants where appropriate. Maintain field hygiene and follow locally recommended vector-management practices.
+
+MONITORING:
+Inspect young leaves for curling, yellowing, reduced leaf size, and stunted growth. Check plants for whitefly activity.
+
+FARMER ACTION:
+Separate or remove severely affected plants where practical, inspect nearby plants, monitor vectors, and consult local agricultural experts.
+
+IMPORTANT NOTE:
+Vector-control recommendations should follow pesticide labels and local agricultural authority guidance.

@@ -1,0 +1,24 @@
+DISEASE: Potato Healthy
+CROP: Potato
+SCIENTIFIC / COMMON NAME: Healthy potato plant
+
+SYMPTOMS:
+A healthy potato plant generally has normally developed green leaves without characteristic disease lesions, widespread yellowing, unusual spots, or abnormal drying.
+
+FAVORABLE CONDITIONS:
+Healthy growth is supported by suitable temperature, adequate soil moisture, balanced nutrition, sufficient sunlight, good drainage, and appropriate crop management.
+
+MANAGEMENT:
+Continue regular crop monitoring. Maintain suitable irrigation and nutrition according to local recommendations. Keep the field clean and provide adequate spacing and airflow.
+
+PREVENTION:
+Use healthy planting material. Maintain appropriate plant spacing. Avoid excessive irrigation. Maintain field sanitation and monitor plants regularly.
+
+MONITORING:
+Inspect leaves and stems regularly for new spots, lesions, yellowing, wilting, or abnormal growth.
+
+FARMER ACTION:
+If the crop appears healthy, continue routine monitoring and good agricultural practices. If unusual symptoms appear, photograph the affected plant and seek appropriate agricultural advice.
+
+IMPORTANT NOTE:
+A healthy classification does not guarantee that a plant is free from every possible pest or disease.

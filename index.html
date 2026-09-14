@@ -6,6 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SmartFarm AI - Unified Smart Farming Platform</title>
     <meta name="description" content="AI-Driven Unified Smart Farming Platform for Early Crop Disease Detection (Tomato, Potato, Brinjal), Intelligent Farmer Advisory (RAG-LLM), and IoT IoT Sensor Monitoring." />
+    <!-- Prevent flash of light theme before React hydrates -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('smartfarm-theme');
+          if (saved === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

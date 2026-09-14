@@ -1,0 +1,26 @@
+Brinjal Little Leaf Disease Management (TNAU & ICAR Agronomic Compendium)
+========================================================================
+
+Causal Agent:
+Phytoplasma (Mycoplasma-like organism / MLO).
+
+Insect Vector:
+Brinjal Leafhopper (Hishimonus phycitis).
+
+Diagnostic Symptoms:
+- Dramatic and extreme reduction in leaf blade size; newly emerged leaves become minute, soft, glabrous, and yellowish-green.
+- Petioles shorten drastically; axillary buds sprout excessively giving the entire plant a compact, stunted, bushy "witch's broom" appearance.
+- Floral parts mutate into green leaf-like structures (phyllody), completely preventing fruit set and rendering the plant entirely sterile.
+
+Integrated Vector & Disease Management:
+1. Sanitary & Cultural Controls:
+   - Systematically rogue out and incinerate infected plants as soon as initial symptoms appear to eliminate phytoplasma reservoirs.
+   - Eradicate solanaceous weeds around field boundaries (Datura fastuosa, Solanum nigrum).
+
+2. Vector Control (Leafhopper Suppression):
+   - Install yellow sticky traps @ 15 traps per acre to monitor and trap adult leafhoppers.
+   - Spray Dimethoate 30% EC @ 1.5 ml/L or Imidacloprid 17.8% SL @ 0.3 ml/L or Thiamethoxam 25% WG @ 0.3 g/L at nursery stage and 15 days after transplanting.
+   - Apply Neem Seed Kernel Extract (NSKE 5%) as an eco-friendly vector repellent.
+
+3. Resistance & Prevention:
+   - Avoid collecting seeds from fields showing Little Leaf infestation.

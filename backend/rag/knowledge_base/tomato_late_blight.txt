@@ -1,0 +1,24 @@
+DISEASE: Tomato Late Blight
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Late blight of tomato
+
+SYMPTOMS:
+Tomato late blight can cause dark green, brown, or black water-soaked lesions on leaves. Lesions may expand rapidly. Severely affected foliage can brown, collapse, and die. Fruit may also develop dark lesions.
+
+FAVORABLE CONDITIONS:
+Cool to mild temperatures, high humidity, rainfall, and prolonged leaf wetness favor disease development.
+
+MANAGEMENT:
+Remove severely affected plant material where practical. Maintain field sanitation. Improve airflow through appropriate spacing. Avoid unnecessary leaf wetness. Monitor the crop closely during wet weather and follow local disease-management recommendations.
+
+PREVENTION:
+Use healthy planting material. Maintain proper plant spacing. Avoid unnecessary overhead irrigation. Remove infected plant debris where appropriate.
+
+MONITORING:
+Inspect plants frequently after rainfall and during humid conditions for rapidly expanding dark or water-soaked lesions.
+
+FARMER ACTION:
+Inspect nearby plants, remove severely affected material where practical, improve sanitation and airflow, and consult local agricultural experts.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority guidance.

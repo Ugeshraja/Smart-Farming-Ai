@@ -28,6 +28,219 @@
   background: #94a3b8;
 }
 
+/* ========================================================
+   GLOBAL HIGH-CONTRAST DARK THEME DESIGN SYSTEM
+   ======================================================== */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b0f19 !important;
+  color: #f8fafc !important;
+}
+
+/* Page background */
+html.dark .bg-\[\#F8FAF8\],
+html.dark .bg-bgLight {
+  background-color: #0b0f19 !important;
+}
+
+/* Cards, modals, sidebars, headers, floating bars */
+html.dark [class*="bg-white"] {
+  background-color: #151d2e !important;
+  border-color: #27354f !important;
+  color: #f8fafc;
+}
+
+/* Secondary & nested panels */
+html.dark [class*="bg-gray-50"],
+html.dark [class*="bg-gray-100"] {
+  background-color: #0f172a !important;
+  border-color: #27354f !important;
+}
+
+/* Borders */
+html.dark [class*="border-gray-100"],
+html.dark [class*="border-gray-200"],
+html.dark [class*="border-gray-300"],
+html.dark [class*="border-gray-400"] {
+  border-color: #27354f !important;
+}
+
+/* Primary text headings (Fixed: text-gray-950, text-gray-900, text-gray-800 are now bright white) */
+html.dark [class*="text-gray-950"],
+html.dark [class*="text-gray-900"],
+html.dark [class*="text-gray-800"] {
+  color: #f8fafc !important;
+}
+
+/* Secondary text */
+html.dark [class*="text-gray-700"],
+html.dark [class*="text-gray-600"] {
+  color: #cbd5e1 !important;
+}
+
+/* Muted text */
+html.dark [class*="text-gray-500"],
+html.dark [class*="text-gray-400"] {
+  color: #94a3b8 !important;
+}
+
+/* Agricultural accents & active cards (Fixed: deep dark emerald background with crisp readable text) */
+html.dark [class*="bg-agri-50"] {
+  background-color: #0f2918 !important;
+  border-color: #22c55e !important;
+}
+
+html.dark [class*="bg-agri-50"] h1,
+html.dark [class*="bg-agri-50"] h2,
+html.dark [class*="bg-agri-50"] h3,
+html.dark [class*="bg-agri-50"] h4,
+html.dark [class*="bg-agri-50"] [class*="text-gray-900"],
+html.dark [class*="bg-agri-50"] [class*="text-gray-800"] {
+  color: #ffffff !important;
+}
+
+html.dark [class*="bg-agri-50"] p,
+html.dark [class*="bg-agri-50"] [class*="text-gray-600"],
+html.dark [class*="bg-agri-50"] [class*="text-gray-700"] {
+  color: #bbf7d0 !important;
+}
+
+html.dark [class*="bg-agri-50"] [class*="text-agri-800"],
+html.dark [class*="bg-agri-50"] [class*="text-agri-900"] {
+  color: #4ade80 !important;
+}
+
+html.dark [class*="bg-agri-100"] {
+  background-color: #174026 !important;
+  color: #86efac !important;
+}
+
+html.dark [class*="text-agri-800"],
+html.dark [class*="text-agri-900"],
+html.dark [class*="text-agri-950"] {
+  color: #86efac !important;
+}
+
+html.dark [class*="border-agri-200"],
+html.dark [class*="border-agri-300"] {
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+/* Color-coded alert boxes in dark mode (Disease, Pest, Irrigation, Soil) */
+html.dark [class*="bg-red-50"] {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+html.dark [class*="text-red-950"],
+html.dark [class*="text-red-900"] {
+  color: #fca5a5 !important;
+}
+
+html.dark [class*="bg-amber-50"] {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+html.dark [class*="text-amber-950"],
+html.dark [class*="text-amber-900"] {
+  color: #fde68a !important;
+}
+
+html.dark [class*="bg-blue-50"] {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+html.dark [class*="text-blue-950"],
+html.dark [class*="text-blue-900"] {
+  color: #93c5fd !important;
+}
+
+html.dark [class*="bg-emerald-50"] {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+html.dark [class*="text-emerald-950"],
+html.dark [class*="text-emerald-900"] {
+  color: #86efac !important;
+}
+
+html.dark [class*="from-emerald-50"] {
+  background-image: none !important;
+  background-color: #151d2e !important;
+  border-color: #27354f !important;
+}
+
+/* Forms, inputs, dropdowns */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: #0f172a !important;
+  border-color: #27354f !important;
+  color: #f8fafc !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #4ade80 !important;
+  outline: none;
+}
+
+/* Hover states */
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #1e293b !important;
+}
+
+html.dark .hover\:bg-agri-50:hover {
+  background-color: rgba(46, 125, 50, 0.28) !important;
+}
+
+/* Table styling in dark mode */
+html.dark table th {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #27354f !important;
+}
+
+html.dark table td {
+  border-color: #27354f !important;
+}
+
+html.dark table tr:hover td {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* Dropdown & modal depth */
+html.dark .shadow-2xs,
+html.dark .shadow-xs,
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg,
+html.dark .shadow-xl {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dark scrollbars */
+html.dark ::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #27354f;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3b4d6e;
+}
+
 /* Clean print styling for AI Reports */
 @media print {
   body * {

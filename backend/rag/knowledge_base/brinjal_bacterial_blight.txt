@@ -1,0 +1,27 @@
+Brinjal Bacterial Blight Management (TNAU & ICAR Agronomic Compendium)
+========================================================================
+
+Causal Organism:
+Pseudomonas / Xanthomonas species affecting Solanum melongena.
+
+Diagnostic Symptoms:
+- Water-soaked circular to irregular dark brown lesions beginning at leaf tips and margins.
+- Rapid marginal necrosis and inward leaf scorching under warm, humid conditions.
+- Blighted leaves turn brittle, roll inward, and drop prematurely.
+
+Favorable Conditions:
+- High relative humidity (>80%) and temperatures between 26°C and 32°C.
+- Heavy rainfall, splashing water droplets, and leaf injuries.
+
+Integrated Disease Management:
+1. Cultural Practices:
+   - Provide proper drainage channels to avoid standing water.
+   - Destroy and burn infected foliage residues after harvest.
+   - Maintain crop rotation with non-solanaceous crops (e.g., maize, pulses).
+
+2. Chemical & Bactericidal Controls:
+   - Spray Copper Oxychloride 50% WP @ 2.5 g/L combined with Streptocycline @ 100 ppm (1 g in 10 L water) at the initial appearance of leaf lesions.
+   - Repeat spray at 10-12 day intervals if weather conditions remain humid.
+
+3. Preventative Bio-control:
+   - Foliar application of Pseudomonas fluorescens (5 g/L) or Bacillus subtilis (5 g/L) at transplanting and early vegetative growth.

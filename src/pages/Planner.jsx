@@ -1,28 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  CalendarDays, 
-  MapPin, 
-  Sprout, 
-  CheckCircle2, 
-  Clock, 
-  CloudRain, 
-  AlertTriangle, 
-  Sparkles, 
-  Check, 
-  ChevronRight, 
-  Filter, 
-  Volume2, 
-  VolumeX, 
-  ExternalLink, 
-  Calendar as CalendarIcon, 
-  Droplets, 
-  ShieldAlert, 
-  Activity, 
-  Sun, 
-  Thermometer, 
-  Wind, 
-  Info, 
+import {
+  CalendarDays,
+  MapPin,
+  Sprout,
+  CheckCircle2,
+  Clock,
+  CloudRain,
+  AlertTriangle,
+  Sparkles,
+  Check,
+  ChevronRight,
+  Filter,
+  Volume2,
+  VolumeX,
+  ExternalLink,
+  Calendar as CalendarIcon,
+  Droplets,
+  ShieldAlert,
+  Activity,
+  Sun,
+  Thermometer,
+  Wind,
+  Info,
   RotateCcw,
   CheckCircle,
   HelpCircle,
@@ -30,8 +30,10 @@ import {
   Tag
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useWeather } from '../context/WeatherContext';
 import { apiService } from '../services/apiService';
 import { mockCropPlanningConfigs } from '../services/mockData';
+import { speakText, stopSpeaking } from '../services/speechService';
 
 // Helper Date Utilities
 function parseIsoDate(isoStr) {
@@ -68,6 +70,33 @@ function getDaysDifference(targetIsoStr) {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// Location Presets
+const stateOptions = [
+  'Tamil Nadu',
+  'Karnataka',
+  'Andhra Pradesh',
+  'Maharashtra',
+  'Kerala'
+];
+
+const districtOptions = {
+  'Tamil Nadu': [
+    'Tiruchengode / Namakkal',
+    'Salem',
+    'Dharmapuri',
+    'Coimbatore',
+    'Dindigul',
+    'Krishnagiri',
+    'Theni',
+    'Madurai',
+    'Erode'
+  ],
+  'Karnataka': ['Kolar', 'Chikkaballapur', 'Bengaluru Rural', 'Belagavi', 'Hassan'],
+  'Andhra Pradesh': ['Chittoor', 'Anantapur', 'Guntur', 'Kurnool'],
+  'Maharashtra': ['Nashik', 'Pune', 'Ahmednagar', 'Satara'],
+  'Kerala': ['Palakkad', 'Wayanad', 'Idukki']
+};
+
 export default function Planner() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -91,42 +120,70 @@ export default function Planner() {
   const [activityCategoryFilter, setActivityCategoryFilter] = useState('All');
   const [selectedStageDetail, setSelectedStageDetail] = useState(null);
 
-  // 3. Live Weather & Alerts State
-  const [currentWeather, setCurrentWeather] = useState(null);
-  const [weatherAlerts, setWeatherAlerts] = useState([]);
-  const [weatherLoading, setWeatherLoading] = useState(false);
+  // 3. Centralized Weather & Alerts State from WeatherContext
+  const { weatherData, loading: weatherLoading, location: centralWeatherLoc, setLocation: setCentralWeatherLoc } = useWeather();
+
+  // Single Source of Truth Location Priority: central weather location -> weather data -> custom/selected
+  const activeLocation = centralWeatherLoc?.name || weatherData?.location_name || customLocation.trim() || `${selectedDistrict}, ${selectedState}`;
+
+  // Synchronize state & district dropdowns with centralized weather location
+  useEffect(() => {
+    if (!centralWeatherLoc?.name) return;
+    const locName = centralWeatherLoc.name;
+    const parts = locName.split(',').map(s => s.trim());
+
+    if (parts.length >= 2) {
+      const statePart = parts[1];
+      const matchedState = stateOptions.find(st => st.toLowerCase() === statePart.toLowerCase());
+      if (matchedState) {
+        setSelectedState(matchedState);
+        const districtPart = parts[0];
+        const matchedDist = (districtOptions[matchedState] || []).find(d =>
+          d.toLowerCase().includes(districtPart.toLowerCase()) || districtPart.toLowerCase().includes(d.toLowerCase())
+        );
+        if (matchedDist) {
+          setSelectedDistrict(matchedDist);
+        }
+      }
+    } else {
+      for (const st of stateOptions) {
+        const found = (districtOptions[st] || []).find(d =>
+          d.toLowerCase().includes(locName.toLowerCase()) || locName.toLowerCase().includes(d.toLowerCase())
+        );
+        if (found) {
+          setSelectedState(st);
+          setSelectedDistrict(found);
+          break;
+        }
+      }
+    }
+  }, [centralWeatherLoc?.name]);
+
+  const currentWeather = useMemo(() => {
+    if (!weatherData?.current) return null;
+    return {
+      temp: Math.round(weatherData.current.temperature),
+      condition: weatherData.current.description || weatherData.current.condition,
+      humidity: weatherData.current.humidity,
+      rainProbability: weatherData.current.rain_probability ?? 0,
+      windSpeed: weatherData.current.wind_speed ?? 0,
+      icon: weatherData.current.icon || '⛅',
+      location: weatherData.location_name || centralWeatherLoc?.name || activeLocation
+    };
+  }, [weatherData, centralWeatherLoc, activeLocation]);
+
+  const weatherAlerts = useMemo(() => {
+    if (!weatherData) return [];
+    return [
+      ...(weatherData.official_alerts || []),
+      ...(weatherData.smart_alerts || [])
+    ];
+  }, [weatherData]);
 
   // 4. LLM Agronomic Advisory State
   const [aiAdvisory, setAiAdvisory] = useState(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  // Location Presets
-  const stateOptions = [
-    'Tamil Nadu',
-    'Karnataka',
-    'Andhra Pradesh',
-    'Maharashtra',
-    'Kerala'
-  ];
-
-  const districtOptions = {
-    'Tamil Nadu': [
-      'Tiruchengode / Namakkal',
-      'Salem',
-      'Dharmapuri',
-      'Coimbatore',
-      'Dindigul',
-      'Krishnagiri',
-      'Theni',
-      'Madurai',
-      'Erode'
-    ],
-    'Karnataka': ['Kolar', 'Chikkaballapur', 'Bengaluru Rural', 'Belagavi', 'Hassan'],
-    'Andhra Pradesh': ['Chittoor', 'Anantapur', 'Guntur', 'Kurnool'],
-    'Maharashtra': ['Nashik', 'Pune', 'Ahmednagar', 'Satara'],
-    'Kerala': ['Palakkad', 'Wayanad', 'Idukki']
-  };
 
   // Quick Month Presets (6 upcoming months)
   const quickMonths = useMemo(() => {
@@ -142,7 +199,6 @@ export default function Planner() {
     return months;
   }, []);
 
-  const activeLocation = customLocation.trim() || `${selectedDistrict}, ${selectedState}`;
   const cropConfig = mockCropPlanningConfigs[selectedCropKey] || mockCropPlanningConfigs.Tomato;
 
   // Compute Dynamic Harvest Timeline Calculations
@@ -161,7 +217,7 @@ export default function Planner() {
     const computedStages = cropConfig.stages.map((stg) => {
       const stageStartIso = addDaysToDate(baseDate, stg.startDay - 1);
       const stageEndIso = addDaysToDate(baseDate, stg.endDay);
-      
+
       const startDiff = getDaysDifference(stageStartIso);
       const endDiff = getDaysDifference(stageEndIso);
 
@@ -182,7 +238,7 @@ export default function Planner() {
       };
     });
 
-    const activeStage = computedStages.find(s => s.status === 'active') || 
+    const activeStage = computedStages.find(s => s.status === 'active') ||
       (daysToPlanting > 0 ? { nameEn: 'Pre-Planting Planning', nameTa: 'விதைப்புக்கு முந்தைய திட்டமிடல்', duration: `Planting in ${daysToPlanting} days` } : computedStages[0]);
 
     return {
@@ -212,29 +268,6 @@ export default function Planner() {
     setSelectedStageDetail(null);
   }, [selectedCropKey, plantingDate, isTa]);
 
-  // Fetch Live Weather from existing weather service
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchWeather() {
-      setWeatherLoading(true);
-      try {
-        const [curr, alerts] = await Promise.all([
-          apiService.getWeatherCurrent(activeLocation),
-          apiService.getWeatherAlerts(activeLocation)
-        ]);
-        if (isMounted) {
-          setCurrentWeather(curr);
-          setWeatherAlerts(alerts || []);
-        }
-      } catch (err) {
-        console.error("Failed to load weather:", err);
-      } finally {
-        if (isMounted) setWeatherLoading(false);
-      }
-    }
-    fetchWeather();
-    return () => { isMounted = false; };
-  }, [activeLocation]);
 
   // Activity checkbox toggle
   const handleToggleActivity = async (id) => {
@@ -253,7 +286,7 @@ export default function Planner() {
     setIsGeneratingAi(true);
     try {
       const weatherSummary = currentWeather ? `${currentWeather.temp}°C, Humidity ${currentWeather.humidity}%, Rain Prob ${currentWeather.rainProbability}%` : 'Moderate temperatures';
-      const prompt = isTa 
+      const prompt = isTa
         ? `${selectedState} - ${selectedDistrict} பகுதியில் ${farmSize} ஏக்கரில் ${cropConfig.nameTa} பயிர் முன்-திட்டமிடல் (விதைப்பு தேதி: ${plantingDate}, எதிர்பார்க்கப்படும் அறுவடை: ${calculations.bestHarvestPeriodFormatted}, தற்போதைய வானிலை: ${weatherSummary}). பயிர் வளர்ச்சி நிலைகள் மற்றும் அறுவடைக்கான சிறந்த ஆலோசனையை வழங்கவும்.`
         : `Agronomic Pre-Planning for ${farmSize} Acres of ${cropConfig.nameEn} in ${activeLocation}. Planting Date: ${plantingDate}, Expected Best Harvest Window: ${calculations.bestHarvestPeriodFormatted}, Current Weather: ${weatherSummary}. Provide personalized crop stage management and harvesting advisory.`;
 
@@ -266,42 +299,39 @@ export default function Planner() {
     }
   };
 
-  // Text-To-Speech Speech Synthesis for Accessibility
+  // Text-To-Speech using reusable Browser SpeechSynthesis (Web Speech API)
   const handleToggleAudio = () => {
-    if (!('speechSynthesis' in window)) {
-      alert("Text-to-speech is not supported by your browser.");
-      return;
-    }
-
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      stopSpeaking();
       setIsSpeaking(false);
       return;
     }
 
-    const textToSpeak = aiAdvisory?.text || (isTa 
+    const textToSpeak = aiAdvisory?.text || (isTa
       ? `${cropConfig.nameTa} பயிர் திட்டம்: விதைப்பு தேதி ${formatDisplayDate(plantingDate, true)}. எதிர்பார்க்கப்படும் அறுவடை காலம் ${calculations.bestHarvestPeriodFormatted}.`
       : `${cropConfig.nameEn} Farm Plan: Planting on ${formatDisplayDate(plantingDate, false)}. Expected best harvesting window is ${calculations.bestHarvestPeriodFormatted}.`);
 
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = isTa ? 'ta-IN' : 'en-US';
-    utterance.rate = 0.95;
+    if (!textToSpeak || !textToSpeak.trim()) return;
 
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    speakText(textToSpeak, isTa ? 'ta' : 'en', {
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+      onWarn: (msg) => console.warn(msg)
+    });
   };
 
-  // Stop speech when unmounting
+  // Stop speech when unmounting or when language changes
   useEffect(() => {
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
   }, []);
+
+  useEffect(() => {
+    stopSpeaking();
+    setIsSpeaking(false);
+  }, [language]);
 
   // Filter activities
   const filteredActivities = useMemo(() => {
@@ -314,26 +344,26 @@ export default function Planner() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      
+
       {/* 1. Header Banner with Pre-Planning Title & AI Quick Action */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-10 h-10 rounded-xl bg-agri-50 border border-agri-200 flex items-center justify-center text-agri-600">
-                <CalendarDays className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                  <span>{t('plannerTitle')}</span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-agri-100 text-agri-800 border border-agri-300">
-                    Pre-Planning Mode
-                  </span>
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-agri-50 border border-agri-200 flex items-center justify-center text-agri-600 shrink-0 mt-0.5">
+              <CalendarDays className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
+                  {t('plannerTitle')}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {t('plannerSubtitle')}
-                </p>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-agri-100 text-agri-800 border border-agri-300 whitespace-nowrap shrink-0">
+                  {isTa ? "முன் திட்டமிடல் முறை" : "Pre-Planning Mode"}
+                </span>
               </div>
+              <p className="text-xs sm:text-sm text-gray-600">
+                {t('plannerSubtitle')}
+              </p>
             </div>
           </div>
 
@@ -383,11 +413,10 @@ export default function Planner() {
                 key={item.key}
                 type="button"
                 onClick={() => setSelectedCropKey(item.key)}
-                className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                  isSelected 
-                    ? item.activeBg + ' shadow-sm' 
+                className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${isSelected
+                    ? item.activeBg + ' shadow-sm'
                     : 'bg-white border-gray-200 hover:shadow-2xs text-gray-800 ' + item.border
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between w-full mb-2">
                   <div className="flex items-center space-x-2.5">
@@ -448,16 +477,18 @@ export default function Planner() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-          
+
           {/* State Selector */}
           <div>
             <label className="font-bold text-gray-700 block mb-1.5">{t('stateLabel')}</label>
             <select
               value={selectedState}
               onChange={(e) => {
-                setSelectedState(e.target.value);
-                const firstDistrict = districtOptions[e.target.value]?.[0] || 'Default District';
+                const newState = e.target.value;
+                setSelectedState(newState);
+                const firstDistrict = districtOptions[newState]?.[0] || 'Default District';
                 setSelectedDistrict(firstDistrict);
+                setCentralWeatherLoc?.(`${firstDistrict}, ${newState}`);
               }}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 font-semibold text-gray-900 focus:ring-2 focus:ring-agri-500 focus:bg-white transition-all"
             >
@@ -472,7 +503,11 @@ export default function Planner() {
             <label className="font-bold text-gray-700 block mb-1.5">{t('districtLabel')}</label>
             <select
               value={selectedDistrict}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
+              onChange={(e) => {
+                const newDist = e.target.value;
+                setSelectedDistrict(newDist);
+                setCentralWeatherLoc?.(`${newDist}, ${selectedState}`);
+              }}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 font-semibold text-gray-900 focus:ring-2 focus:ring-agri-500 focus:bg-white transition-all"
             >
               {(districtOptions[selectedState] || []).map(dist => (
@@ -528,11 +563,10 @@ export default function Planner() {
                 key={qm.iso}
                 type="button"
                 onClick={() => setPlantingDate(qm.iso)}
-                className={`px-2.5 py-1 rounded-lg font-medium text-xs transition-colors ${
-                  isMatching 
-                    ? 'bg-agri-600 text-white font-bold shadow-2xs' 
+                className={`px-2.5 py-1 rounded-lg font-medium text-xs transition-colors ${isMatching
+                    ? 'bg-agri-600 text-white font-bold shadow-2xs'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                  }`}
               >
                 {isTa ? qm.labelTa : qm.labelEn}
               </button>
@@ -559,7 +593,7 @@ export default function Planner() {
               {t('expectedHarvestHeading')}
             </h2>
             <p className="text-xs sm:text-sm text-emerald-200/90 font-medium">
-              {isTa 
+              {isTa
                 ? `தேர்ந்தெடுக்கப்பட்ட விதைப்பு தேதி: ${formatDisplayDate(plantingDate, true)} • இடம்: ${activeLocation}`
                 : `Configured Planting Date: ${formatDisplayDate(plantingDate, false)} • Location: ${activeLocation}`}
             </p>
@@ -575,10 +609,10 @@ export default function Planner() {
                 {t('harvestCountdown')}
               </span>
               <strong className="text-sm sm:text-base font-extrabold text-amber-300 block">
-                {calculations.daysToHarvestStart > 0 
-                  ? `${calculations.daysToHarvestStart} ${t('daysRemaining')}` 
-                  : (calculations.daysToPlanting > 0 
-                    ? `Planting in ${calculations.daysToPlanting} days` 
+                {calculations.daysToHarvestStart > 0
+                  ? `${calculations.daysToHarvestStart} ${t('daysRemaining')}`
+                  : (calculations.daysToPlanting > 0
+                    ? `Planting in ${calculations.daysToPlanting} days`
                     : t('todayStatus'))}
               </strong>
             </div>
@@ -587,7 +621,7 @@ export default function Planner() {
 
         {/* 3 Calculated Milestone Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-          
+
           {/* Harvest Start */}
           <div className="bg-white/10 backdrop-blur-sm border border-white/15 p-4 rounded-2xl space-y-1 hover:bg-white/15 transition-all">
             <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
@@ -660,7 +694,7 @@ export default function Planner() {
               <span>{t('cropCalendarHeading')}</span>
             </h3>
             <p className="text-xs text-gray-500">
-              {isTa 
+              {isTa
                 ? `${cropConfig.nameTa} பயிருக்கான கணக்கிடப்பட்ட காலவரிசை மற்றும் மேலாண்மை நிலைகள்`
                 : `Calculated stage-by-stage progression for ${cropConfig.nameEn} based on planting date.`}
             </p>
@@ -676,35 +710,32 @@ export default function Planner() {
           {calculations.computedStages.map((stage) => {
             const isSelected = selectedStageDetail?.id === stage.id;
             return (
-              <div 
-                key={stage.id} 
+              <div
+                key={stage.id}
                 onClick={() => setSelectedStageDetail(stage)}
-                className={`p-4 rounded-2xl border text-left space-y-2 transition-all cursor-pointer relative ${
-                  stage.status === 'active'
+                className={`p-4 rounded-2xl border text-left space-y-2 transition-all cursor-pointer relative ${stage.status === 'active'
                     ? 'bg-agri-50 border-agri-600 ring-2 ring-agri-400/40 shadow-xs'
                     : stage.status === 'passed'
-                    ? 'bg-gray-50/70 border-gray-200 opacity-80'
-                    : 'bg-white border-gray-200 hover:border-agri-400 hover:shadow-2xs'
-                } ${isSelected ? 'ring-2 ring-amber-500 bg-amber-50/50' : ''}`}
+                      ? 'bg-gray-50/70 border-gray-200 opacity-80'
+                      : 'bg-white border-gray-200 hover:border-agri-400 hover:shadow-2xs'
+                  } ${isSelected ? 'ring-2 ring-amber-500 bg-amber-50/50' : ''}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center ${
-                    stage.status === 'active'
+                  <span className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center ${stage.status === 'active'
                       ? 'bg-agri-600 text-white'
                       : stage.status === 'passed'
-                      ? 'bg-gray-200 text-gray-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}>
+                        ? 'bg-gray-200 text-gray-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
                     {stage.id}
                   </span>
 
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    stage.status === 'active'
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stage.status === 'active'
                       ? 'bg-emerald-100 text-emerald-800'
                       : stage.status === 'passed'
-                      ? 'bg-gray-100 text-gray-600'
-                      : 'bg-blue-50 text-blue-700'
-                  }`}>
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}>
                     {stage.status === 'active' ? 'Active Stage' : stage.status === 'passed' ? 'Completed' : 'Upcoming'}
                   </span>
                 </div>
@@ -734,7 +765,7 @@ export default function Planner() {
                 <Info className="w-4 h-4 text-amber-600" />
                 <span>Stage {selectedStageDetail.id}: {isTa ? selectedStageDetail.nameTa : selectedStageDetail.nameEn}</span>
               </span>
-              <button 
+              <button
                 onClick={() => setSelectedStageDetail(null)}
                 className="text-amber-800 hover:text-amber-950 font-bold text-xs"
               >
@@ -753,7 +784,7 @@ export default function Planner() {
 
       {/* 6. LIVE WEATHER INTEGRATION & WEATHER-AWARE RECOMMENDATIONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left 2 Cols: Weather-Aware Smart Recommendations */}
         <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -773,7 +804,7 @@ export default function Planner() {
           </div>
 
           <div className="space-y-3 text-xs">
-            
+
             {/* Real-time alert 1: Rain & Irrigation warning */}
             <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 space-y-1">
               <div className="flex items-center justify-between">
@@ -786,7 +817,7 @@ export default function Planner() {
                 </span>
               </div>
               <p className="text-blue-900/90 leading-relaxed font-medium">
-                {isTa 
+                {isTa
                   ? `திட்டமிடப்பட்ட நீர்ப்பாசன சுழற்சியை வானிலைக்கேற்ப மாற்றவும். மழை வாய்ப்பு உள்ளதால் சொட்டுநீர் நேரத்தைக் குறைத்து வேரழுகலைத் தவிர்க்கவும்.`
                   : `Rain forecast indicates moderate precipitation in ${activeLocation}. If rainfall exceeds 15mm, postpone automated drip fertigation to prevent nutrient leaching.`}
               </p>
@@ -804,7 +835,7 @@ export default function Planner() {
                 </span>
               </div>
               <p className="text-amber-900/90 leading-relaxed font-medium">
-                {isTa 
+                {isTa
                   ? `அறுவடை காலத்தில் ஈரப்பதம் அதிகமாக இருந்தால் தக்காளி மற்றும் கத்தரி பழங்களில் விரிசல் ஏற்படலாம். வெயில் உள்ள காலை நேரங்களில் அறுவடை செய்யவும்.`
                   : `Ensure dry conditions during planned harvest window (${calculations.bestHarvestPeriodFormatted}). In case of sudden showers, pick at breaker stage to prevent skin splitting.`}
               </p>
@@ -817,7 +848,7 @@ export default function Planner() {
                 <span>Disease & Pest Environmental Risk</span>
               </strong>
               <p className="text-purple-900/90 leading-relaxed font-medium">
-                {isTa 
+                {isTa
                   ? `இரவு நேர வெப்பநிலை மற்றும் 80%க்கும் அதிகமான ஈரப்பதம் பிளைட் மற்றும் பூஞ்சை நோய்களைத் தூண்டும். AI கேமரா மூலம் இலைகளை ஆய்வு செய்யவும்.`
                   : `High relative humidity (${currentWeather?.humidity || 68}%) favors foliar fungal blight spores in ${selectedCropKey}. Inspect lower canopy leaves every 48 hours.`}
               </p>
@@ -906,18 +937,17 @@ export default function Planner() {
                 key={cat}
                 type="button"
                 onClick={() => setActivityCategoryFilter(cat)}
-                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs ${
-                  activityCategoryFilter === cat
+                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs ${activityCategoryFilter === cat
                     ? 'bg-agri-600 text-white shadow-2xs'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                }`}
+                  }`}
               >
                 {cat === 'All' ? t('filterAll')
                   : cat === 'Fertilizer' ? t('filterFertilizer')
-                  : cat === 'Irrigation' ? t('filterIrrigation')
-                  : cat === 'Disease' ? t('filterDisease')
-                  : cat === 'Pest' ? t('filterPest')
-                  : t('filterHarvest')}
+                    : cat === 'Irrigation' ? t('filterIrrigation')
+                      : cat === 'Disease' ? t('filterDisease')
+                        : cat === 'Pest' ? t('filterPest')
+                          : t('filterHarvest')}
               </button>
             ))}
           </div>
@@ -926,19 +956,17 @@ export default function Planner() {
         {/* Activities List */}
         <div className="space-y-3">
           {filteredActivities.map((act) => (
-            <div 
-              key={act.id} 
-              className={`p-4 rounded-2xl border space-y-2.5 text-xs transition-all ${
-                act.status === 'Completed' ? 'bg-gray-50/70 border-gray-200 opacity-75' : 'bg-white border-gray-200 shadow-2xs hover:border-gray-300'
-              }`}
+            <div
+              key={act.id}
+              className={`p-4 rounded-2xl border space-y-2.5 text-xs transition-all ${act.status === 'Completed' ? 'bg-gray-50/70 border-gray-200 opacity-75' : 'bg-white border-gray-200 shadow-2xs hover:border-gray-300'
+                }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-start space-x-3">
                   <button
                     onClick={() => handleToggleActivity(act.id)}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-all mt-0.5 shrink-0 ${
-                      act.status === 'Completed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white border-gray-300 text-transparent hover:border-agri-500'
-                    }`}
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-all mt-0.5 shrink-0 ${act.status === 'Completed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white border-gray-300 text-transparent hover:border-agri-500'
+                      }`}
                   >
                     <Check className="w-3.5 h-3.5" />
                   </button>
@@ -956,9 +984,8 @@ export default function Planner() {
                 </div>
 
                 <div className="flex items-center space-x-2 self-end sm:self-center">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    act.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${act.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
                     {act.status === 'Completed' ? t('statusCompleted') : t('statusUpcoming')}
                   </span>
                 </div>
@@ -999,13 +1026,24 @@ export default function Planner() {
 
           <div className="flex items-center space-x-2">
             <button
+              id="planner-listen-audio-btn"
               onClick={handleToggleAudio}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-colors ${
-                isSpeaking ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-all shadow-2xs ${
+                isSpeaking
+                  ? 'bg-red-100 hover:bg-red-200 text-red-700 border border-red-200'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
               }`}
             >
-              {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              <span>{isSpeaking ? t('stopAudio') : t('listenAudio')}</span>
+              {isSpeaking ? (
+                <VolumeX className="w-3.5 h-3.5 text-red-600" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+              )}
+              <span>
+                {isSpeaking
+                  ? t('stopAudio')
+                  : t('listenAudio')}
+              </span>
             </button>
 
             <button

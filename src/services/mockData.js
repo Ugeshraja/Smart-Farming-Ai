@@ -4,41 +4,44 @@
 export const generateLeafSvg = (crop, disease, isLime = false) => {
   const isHealthy = disease.toLowerCase().includes('healthy');
   let baseColor = isHealthy ? '#4CAF50' : '#81C784';
-  let spotColor = disease.toLowerCase().includes('late blight') ? '#3E2723' 
-                : disease.toLowerCase().includes('early blight') ? '#5D4037'
-                : disease.toLowerCase().includes('spot') ? '#BF360C'
-                : disease.toLowerCase().includes('mold') ? '#7CB342'
-                : '#795548';
+  let spotColor = disease.toLowerCase().includes('late blight') ? '#3E2723'
+    : disease.toLowerCase().includes('early blight') ? '#5D4037'
+      : disease.toLowerCase().includes('spot') ? '#BF360C'
+        : disease.toLowerCase().includes('mold') ? '#7CB342'
+          : '#795548';
 
+  let rawSvg = '';
   if (isLime) {
-    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-      <rect width="400" height="400" fill="%23f1f5f9"/>
-      <path d="M 200 40 C 320 120 340 280 200 360 C 60 280 80 120 200 40 Z" fill="${baseColor}" stroke="%232E7D32" stroke-width="4"/>
-      <path d="M 200 40 L 200 360" stroke="%231B5E20" stroke-width="3"/>
+    rawSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+      <rect width="400" height="400" fill="#f1f5f9"/>
+      <path d="M 200 40 C 320 120 340 280 200 360 C 60 280 80 120 200 40 Z" fill="${baseColor}" stroke="#2E7D32" stroke-width="4"/>
+      <path d="M 200 40 L 200 360" stroke="#1B5E20" stroke-width="3"/>
       ${!isHealthy ? `
         <circle cx="170" cy="180" r="35" fill="${spotColor}" opacity="0.85"/>
         <circle cx="230" cy="220" r="28" fill="${spotColor}" opacity="0.8"/>
       ` : ''}
       <rect width="400" height="400" fill="black" opacity="0.25"/>
-      <circle cx="170" cy="180" r="55" fill="%23ff0000" opacity="0.65"/>
-      <circle cx="170" cy="180" r="35" fill="%23ffff00" opacity="0.75"/>
-      <circle cx="230" cy="220" r="45" fill="%23ff0000" opacity="0.6"/>
-      <rect x="15" y="15" width="170" height="32" rx="6" fill="%231e293b" opacity="0.9"/>
-      <text x="25" y="36" fill="%234ade80" font-family="sans-serif" font-size="14" font-weight="bold">LIME AI Heatmap</text>
+      <circle cx="170" cy="180" r="55" fill="#ff0000" opacity="0.65"/>
+      <circle cx="170" cy="180" r="35" fill="#ffff00" opacity="0.75"/>
+      <circle cx="230" cy="220" r="45" fill="#ff0000" opacity="0.6"/>
+      <rect x="15" y="15" width="170" height="32" rx="6" fill="#1e293b" opacity="0.9"/>
+      <text x="25" y="36" fill="#4ade80" font-family="sans-serif" font-size="14" font-weight="bold">LIME AI Heatmap</text>
+    </svg>`;
+  } else {
+    rawSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+      <rect width="400" height="400" fill="#f8faf8"/>
+      <path d="M 200 40 C 320 120 340 280 200 360 C 60 280 80 120 200 40 Z" fill="${baseColor}" stroke="#2E7D32" stroke-width="4"/>
+      <path d="M 200 40 L 200 360" stroke="#1B5E20" stroke-width="3"/>
+      ${!isHealthy ? `
+        <circle cx="170" cy="180" r="35" fill="${spotColor}" opacity="0.85"/>
+        <circle cx="230" cy="220" r="28" fill="${spotColor}" opacity="0.8"/>
+      ` : ''}
+      <rect x="15" y="15" width="140" height="32" rx="6" fill="#2E7D32" opacity="0.9"/>
+      <text x="25" y="36" fill="white" font-family="sans-serif" font-size="14" font-weight="bold">${crop} Leaf</text>
     </svg>`;
   }
 
-  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-    <rect width="400" height="400" fill="%23f8faf8"/>
-    <path d="M 200 40 C 320 120 340 280 200 360 C 60 280 80 120 200 40 Z" fill="${baseColor}" stroke="%232E7D32" stroke-width="4"/>
-    <path d="M 200 40 L 200 360" stroke="%231B5E20" stroke-width="3"/>
-    ${!isHealthy ? `
-      <circle cx="170" cy="180" r="35" fill="${spotColor}" opacity="0.85"/>
-      <circle cx="230" cy="220" r="28" fill="${spotColor}" opacity="0.8"/>
-    ` : ''}
-    <rect x="15" y="15" width="140" height="32" rx="6" fill="%232E7D32" opacity="0.9"/>
-    <text x="25" y="36" fill="white" font-family="sans-serif" font-size="14" font-weight="bold">${crop} Leaf</text>
-  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(rawSvg);
 };
 
 // Initial predictions history dataset
@@ -49,8 +52,113 @@ export const mockPredictions = [
     disease: "Late Blight",
     confidence: 96.4,
     status: "Disease Detected",
-    imageUrl: generateLeafSvg("Tomato", "Late Blight", false),
-    limeImageUrl: generateLeafSvg("Tomato", "Late Blight", true),
+    imageUrl: "/static/predictions/leaf_crop_1789032066_cefee14f.jpg",
+    limeExplanation: {
+      summary: "The AI model focused mainly on the affected regions of the uploaded leaf.",
+      summary_ta: "AI மாதிரி பதிவேற்றப்பட்ட இலையின் பாதிக்கப்பட்ட பகுதிகளில் முக்கியமாக கவனம் செலுத்தியது.",
+      predicted_disease: "Tomato Late Blight",
+      positive_contributions: [
+        "Region 1 — Strong positive contribution (Dark brown / necrotic lesion area: +0.243)",
+        "Region 2 — Positive contribution (Dark brown / necrotic lesion area: +0.148)",
+        "Region 3 — Positive contribution (Dark brown / necrotic lesion area: +0.118)",
+        "Region 4 — Moderate positive contribution (Yellowing / chlorotic halo: +0.056)"
+      ],
+      negative_contributions: [
+        "Region 5 — Lower / negative contribution (Pale / dry lesion patch: -0.221)",
+        "Region 6 — Lower / negative contribution (Pale / dry lesion patch: -0.181)",
+        "Region 7 — Lower / negative contribution (Pale / dry lesion patch: -0.139)"
+      ],
+      positive_regions: [
+        {
+          id: 1,
+          region: "Dark brown / necrotic lesion area",
+          region_ta: "அடர் பழுப்பு / காய்ந்த புண் பகுதி",
+          region_type: "necrotic_lesion",
+          weight: 0.243,
+          strength: "Strong positive contribution",
+          strength_ta: "வலுவான நேர்மறை பங்களிப்பு",
+          contribution: "positive"
+        },
+        {
+          id: 2,
+          region: "Dark brown / necrotic lesion area",
+          region_ta: "அடர் பழுப்பு / காய்ந்த புண் பகுதி",
+          region_type: "necrotic_lesion",
+          weight: 0.1483,
+          strength: "Positive contribution",
+          strength_ta: "நேர்மறை பங்களிப்பு",
+          contribution: "positive"
+        },
+        {
+          id: 3,
+          region: "Dark brown / necrotic lesion area",
+          region_ta: "அடர் பழுப்பு / காய்ந்த புண் பகுதி",
+          region_type: "necrotic_lesion",
+          weight: 0.1179,
+          strength: "Positive contribution",
+          strength_ta: "நேர்மறை பங்களிப்பு",
+          contribution: "positive"
+        },
+        {
+          id: 4,
+          region: "Yellowing / chlorotic halo around affected areas",
+          region_ta: "பாதிக்கப்பட்ட பகுதிகளைச் சுற்றியுள்ள மஞ்சள் வளையம்",
+          region_type: "chlorotic_yellowing",
+          weight: 0.0559,
+          strength: "Moderate positive contribution",
+          strength_ta: "மிதமான நேர்மறை பங்களிப்பு",
+          contribution: "positive"
+        }
+      ],
+      negative_regions: [
+        {
+          id: 5,
+          region: "Pale / dry lesion patch",
+          region_ta: "வெளிறிய / உலர்ந்த புண் பகுதி",
+          region_type: "pale_dry",
+          weight: -0.2212,
+          strength: "Lower / negative contribution",
+          strength_ta: "குறைந்த / எதிர்மறை பங்களிப்பு",
+          contribution: "negative"
+        },
+        {
+          id: 6,
+          region: "Pale / dry lesion patch",
+          region_ta: "வெளிறிய / உலர்ந்த புண் பகுதி",
+          region_type: "pale_dry",
+          weight: -0.1808,
+          strength: "Lower / negative contribution",
+          strength_ta: "குறைந்த / எதிர்மறை பங்களிப்பு",
+          contribution: "negative"
+        },
+        {
+          id: 7,
+          region: "Pale / dry lesion patch",
+          region_ta: "வெளிறிய / உலர்ந்த புண் பகுதி",
+          region_type: "pale_dry",
+          weight: -0.1393,
+          strength: "Lower / negative contribution",
+          strength_ta: "குறைந்த / எதிர்மறை பங்களிப்பு",
+          contribution: "negative"
+        }
+      ],
+      why_predicted: [
+        "The AI model focused mainly on the affected regions of the uploaded leaf.",
+        "Dark necrotic lesion regions contributed positively to this prediction.",
+        "Yellowing / chlorotic tissue around affected areas contributed to the prediction.",
+        "Healthy green background regions contributed less to this disease prediction."
+      ],
+      why_predicted_ta: [
+        "AI மாதிரி பதிவேற்றப்பட்ட இலையின் பாதிக்கப்பட்ட பகுதிகளில் முக்கியமாக கவனம் செலுத்தியது.",
+        "அடர் பழுப்பு / காய்ந்த புண் பகுதிகள் இந்த கணிப்பிற்கு நேர்மறையாக பங்களித்தன.",
+        "பாதிக்கப்பட்ட பகுதிகளைச் சுற்றியுள்ள மஞ்சள் திசுக்கள் கணிப்பிற்கு பங்களித்தன.",
+        "சுற்றியுள்ள ஆரோக்கியமான பச்சை பகுதிகள் இந்த நோய் கணிப்பிற்கு குறைந்த பங்களிப்பை அளித்தன."
+      ],
+      less_influential_summary: "Healthy green areas contributed less to the prediction.",
+      less_influential_summary_ta: "ஆரோக்கியமான பச்சை பகுதிகள் கணிப்பிற்கு குறைந்த பங்களிப்பையே அளித்தன.",
+      model_interpretation: "The ResNet-50 model based its prediction primarily on visual patterns in the affected portions of the leaf.",
+      model_interpretation_ta: "ResNet-50 மாதிரி இலையின் பாதிக்கப்பட்ட பகுதிகளில் உள்ள காட்சி வடிவங்களின் அடிப்படையில் தனது கணிப்பை உருவாக்கியது."
+    },
     processingTime: "1.18 sec",
     createdAt: "2026-08-11 09:30 AM",
     farmerName: "UGESHRAJA S",
@@ -77,8 +185,7 @@ export const mockPredictions = [
     disease: "Early Blight",
     confidence: 94.1,
     status: "Disease Detected",
-    imageUrl: generateLeafSvg("Potato", "Early Blight", false),
-    limeImageUrl: generateLeafSvg("Potato", "Early Blight", true),
+    imageUrl: "/static/predictions/leaf_crop_1789022932_cfaf2ca4.jpg",
     processingTime: "1.05 sec",
     createdAt: "2026-08-10 04:15 PM",
     farmerName: "UGESHRAJA S",
@@ -134,9 +241,9 @@ export const mockAiInsights = [
     id: 1,
     type: "warning",
     title: { en: "High Humidity & Leaf Moisture Alert", ta: "அதிக ஈரப்பதம் மற்றும் இலை ஈரப்பதம் எச்சரிக்கை" },
-    description: { 
+    description: {
       en: "Current ambient humidity is 76%. High humidity creates ideal conditions for Phytophthora infestans (Tomato & Potato Late Blight). Inspect crop foliage closely.",
-      ta: "தற்போதைய காற்று ஈரப்பதம் 76% ஆக உள்ளது. அதிக ஈரப்பதம் தக்காளி மற்றும் உருளைக்கிழங்கு பயிர்களில் லேட் பிளைட் நோய் பரவுவதற்கு சாதகமானது." 
+      ta: "தற்போதைய காற்று ஈரப்பதம் 76% ஆக உள்ளது. அதிக ஈரப்பதம் தக்காளி மற்றும் உருளைக்கிழங்கு பயிர்களில் லேட் பிளைட் நோய் பரவுவதற்கு சாதகமானது."
     },
     action: "Schedule preventive Copper spray"
   },
@@ -144,7 +251,7 @@ export const mockAiInsights = [
     id: 2,
     type: "info",
     title: { en: "Optimal Irrigation Level", ta: "சரியான பாசன அளவு" },
-    description: { 
+    description: {
       en: "Soil moisture is currently at 62%, which is within the target 60-70% root zone requirement for Solanaceae crops.",
       ta: "மண் ஈரப்பதம் தற்போது 62% ஆக உள்ளது. இது தக்காளி, உருளை, கத்தரி பயிர்களின் வேர் மண்டலத்திற்கு ஏற்றது."
     },
@@ -218,7 +325,7 @@ export const mockFarmerWeatherAlerts = [
     severity: "HIGH",
     icon: "🌧️",
     title: { en: "Heavy Rain Forecast (75% Chance)", ta: "கனமழை வாய்ப்பு (75%)" },
-    message: { 
+    message: {
       en: "High rainfall is expected tomorrow. Avoid unnecessary irrigation and monitor field drainage to prevent waterlogging in roots.",
       ta: "நாளை கனமழை பெய்யக்கூடும். தேவையற்ற பாசனத்தைத் தவிர்க்கவும் மற்றும் வடிகால் வசதியை சரிபார்க்கவும்."
     }
@@ -230,7 +337,7 @@ export const mockFarmerWeatherAlerts = [
     severity: "HIGH",
     icon: "💧",
     title: { en: "High Humidity Alert (76%)", ta: "அதிக ஈரப்பதம் (76%)" },
-    message: { 
+    message: {
       en: "High humidity is expected. Monitor crop leaves regularly because humid conditions can favor fungal disease development (Late Blight).",
       ta: "அதிக ஈரப்பதம் இலைகளில் பூஞ்சை நோய்களை உருவாக்கலாம். பயிர் இலைகளை அடிக்கடி கண்காணிக்கவும்."
     }
@@ -420,6 +527,178 @@ export const mockLibraryArticles = [
       harvest: {
         en: "Harvest tender glossy fruits before seed hardening occurs.",
         ta: "விதை கடினமாவதற்கு முன் இளஞ்சத்தான காய்களை அறுவடை செய்யவும்."
+      }
+    }
+  },
+  {
+    id: "LIB-104",
+    cropId: "all",
+    category: "Soil Management",
+    titleEn: "Soil Fertility, pH Balance & NPK Management",
+    titleTa: "மண் வளம், pH கார அமிலத்தன்மை மற்றும் NPK உர மேலாண்மை",
+    summaryEn: "Essential soil science practices for maintaining optimal pH (6.0-6.8), balanced NPK ratios, and incorporating organic humus for vegetables.",
+    summaryTa: "காய்கறி பயிர்களுக்கான மண் pH கார அமிலத்தன்மை, NPK சமச்சீர் உரமிடுதல் மற்றும் மண்புழு உர பயன்பாட்டு வழிகாட்டி.",
+    sections: {
+      overview: {
+        en: "Healthy soil with balanced pH and organic matter ensures vigorous root system development and optimal uptake of essential macro and micronutrients.",
+        ta: "சீரான pH மற்றும் கரிம சத்துக்கள் நிறைந்த மண் ஆரோக்கியமான வேர் வளர்ச்சிக்கும் ஊட்டச்சத்துக்கள் உறிஞ்சப்படுவதற்கும் மிகவும் அவசியம்."
+      },
+      growingConditions: {
+        en: "Target soil pH: 6.0–6.8 for Solanaceae vegetables. Soils outside this range restrict availability of Phosphorus and micronutrients.",
+        ta: "பரிந்துரைக்கப்படும் மண் pH அளவு: 6.0–6.8. இந்த வரம்பிற்கு வெளியே உள்ள நிலங்களில் ஊட்டச்சத்து குறைபாடுகள் தோன்றும்."
+      },
+      commonDiseases: {
+        en: "Excess Nitrogen produces tender sappy tissue vulnerable to foliar blights. Calcium deficiency leads to Blossom End Rot in acidic soils.",
+        ta: "அதிகப்படியான தழைச்சத்து இலைக்கருகல் நோய்களை ஈர்க்கும்; கால்சியம் பற்றாக்குறை காய்களில் அடி அழுகலை உண்டாக்கும்."
+      },
+      commonPests: {
+        en: "Root-knot nematodes and subterranean grubs thrive in poorly conditioned soils, stunting nutrient absorption.",
+        ta: "மண்ணில் உள்ள நூற்புழுக்கள் மற்றும் வேர்ப்புழுக்கள் ஊட்டச்சத்து உறிஞ்சுதலைத் தடை செய்கின்றன."
+      },
+      irrigation: {
+        en: "Avoid soil waterlogging which causes root asphyxiation and nutrient leaching. Maintain 60-70% available field moisture capacity.",
+        ta: "நிலத்தில் நீர் தேங்குவது வேர் அழுகலை உண்டாக்கும் என்பதால் வடிகால் வசதி செய்து சீரான ஈரப்பதம் பராமரிக்கவும்."
+      },
+      soil: {
+        en: "Apply well-rotted FYM @ 10-12 tonnes/acre or Vermicompost @ 2 tonnes/acre basally along with recommended NPK soil test ratios.",
+        ta: "ஏக்கருக்கு 10 டன் மட்கிய தொழு உரம் அல்லது 2 டன் மண்புழு உரத்தை நிலம் தயாரிப்பின் போது இடவும்."
+      },
+      management: {
+        en: "Conduct periodic soil testing every 2 cropping seasons. Split Nitrogen and Potassium applications into multiple topdressings to avoid leaching.",
+        ta: "இரண்டு பருவங்களுக்கு ஒருமுறை மண் பரிசோதனை செய்து, தழைச்சத்து மற்றும் சாம்பல் சத்தை பிரித்து இடவும்."
+      },
+      harvest: {
+        en: "Adequate Potassium and micro-nutrients ensure uniform fruit size, thick fruit walls, and longer market shelf life.",
+        ta: "போதுமான சாம்பல் சத்து காய்களுக்கு சீரான திரட்சியையும், நீண்ட நாள் சந்தை சேமிப்புத் திறனையும் அளிக்கும்."
+      }
+    }
+  },
+  {
+    id: "LIB-105",
+    cropId: "all",
+    category: "Irrigation",
+    titleEn: "Precision Drip Irrigation & Water Conservation Guide",
+    titleTa: "துல்லிய சொட்டுநீர்ப் பாசனம் மற்றும் நீர் சேமிப்பு வழிகாட்டி",
+    summaryEn: "Modern micro-irrigation practices, emitter spacing, water requirement scheduling, and avoiding moisture stress in field vegetables.",
+    summaryTa: "காய்கறி பயிர்களுக்கான சொட்டுநீர் பாசன முறைகள், நீர் தேவை கணக்கீடு மற்றும் நீர் மேலாண்மை வழிமுறைகள்.",
+    sections: {
+      overview: {
+        en: "Micro-irrigation optimizes water use efficiency up to 90%, delivering water and dissolved nutrients directly to active root zones without wetting foliage.",
+        ta: "சொட்டுநீர்ப் பாசனம் 90% வரை நீர் பயன்பாட்டுத் திறனை உயர்த்தி, இலைகள் நனையாமல் நேரடியாக வேர்ப் பகுதிக்கு நீர் அளிக்கிறது."
+      },
+      growingConditions: {
+        en: "Daily water consumption ranges from 2.5 to 4.5 liters per mature vegetable plant depending on ambient temperature and canopy size.",
+        ta: "பயிரின் வளர்ச்சி நிலை மற்றும் காலநிலைக்கு ஏற்ப ஒரு செடிக்கு தினமும் 2.5 முதல் 4.5 லிட்டர் வரை நீர் தேவைப்படுகிறது."
+      },
+      commonDiseases: {
+        en: "Drip irrigation eliminates leaf canopy wetness, drastically suppressing fungal blight and bacterial speck outbreaks compared to overhead sprinklers.",
+        ta: "சொட்டுநீர்ப் பாசனத்தில் இலைகள் நனையாததால் இலைக்கருகல் மற்றும் பூஞ்சை நோய்கள் பரவுவது பெருமளவு குறைகிறது."
+      },
+      commonPests: {
+        en: "Severe drought stress and low relative humidity exacerbate Red Spider Mite and Thrips populations.",
+        ta: "கடும் வறட்சி மற்றும் குறைந்த காற்று ஈரப்பதம் சிலந்தி மற்றும் இலைப்பேன் பெருக்கத்தை ஊக்குவிக்கும்."
+      },
+      irrigation: {
+        en: "Operate inline drip laterals (2 LPH emitters at 40-50 cm spacing) for 1.5 to 2 hours every alternate day based on soil moisture and evaporation.",
+        ta: "40-50 செ.மீ இடைவெளியுள்ள 2 LPH சொட்டுநீர் குழாய்களை மண் தன்மைக்கேற்ப ஒரு நாள் விட்டு ஒரு நாள் 1.5 முதல் 2 மணி நேரம் இயக்கவும்."
+      },
+      soil: {
+        en: "Combine drip lines with organic or reflective mulch to reduce soil moisture evaporation by 40-50% and maintain stable root temperature.",
+        ta: "மூடாக்கு அமைப்பது நிலத்தின் ஈரப்பதம் ஆவியாவதை 40-50% குறைத்து வேர் வெப்பநிலையை சீராக வைக்கிறது."
+      },
+      management: {
+        en: "Flush drip lateral ends fortnightly to eliminate silt buildup and check inline filters periodically for optimal line pressure.",
+        ta: "சொட்டுநீர் குழாய்களின் நுனிகளை 15 நாட்களுக்கு ஒருமுறை திறந்து மண்ணை வெளியேற்றி அடைப்புகளை நீக்கவும்."
+      },
+      harvest: {
+        en: "Gradually taper off irrigation 2-3 days before final picking to prevent fruit skin splitting and water dilution in harvested produce.",
+        ta: "அறுவடைக்கு 2-3 நாட்களுக்கு முன் பாசனத்தை குறைப்பது பழங்கள் வெடிப்பதைத் தடுத்து தரத்தை உயர்த்தும்."
+      }
+    }
+  },
+  {
+    id: "LIB-106",
+    cropId: "all",
+    category: "Organic Farming",
+    titleEn: "Organic Farming Principles, Bio-Inputs & Botanicals",
+    titleTa: "இயற்கை விவசாயக் கோட்பாடுகள், உயிர் உரங்கள் மற்றும் மூலிகை பூச்சி விரட்டிகள்",
+    summaryEn: "Sustainable organic farming methods including Panchagavya, Jeevamrutham, beneficial bio-agents (Trichoderma, Pseudomonas), and neem extracts.",
+    summaryTa: "பஞ்சகாவ்யா, ஜீவாமிர்தம், நன்மை செய்யும் நுண்ணுயிர்கள் மற்றும் வேப்பிலை சாறு கொண்டு இயற்கை விவசாயம் செய்யும் வழிகாட்டி.",
+    sections: {
+      overview: {
+        en: "Organic cultivation eliminates synthetic chemicals, relying on natural bio-fertilizers, fermented microbial inoculants, and biological control agents to build enduring soil vitality.",
+        ta: "ரசாயன உரங்களைத் தவிர்த்து மண்புழு உரம், பஞ்சகாவ்யா மற்றும் நன்மை செய்யும் நுண்ணுயிர்கள் மூலம் இயற்கை முறையில் சாகுபடி செய்தல்."
+      },
+      growingConditions: {
+        en: "Thrives in soils with rich microbial biodiversity, adequate compost incorporation, and unpolluted irrigation sources.",
+        ta: "மண்புழுக்கள் மற்றும் நன்மை செய்யும் நுண்ணுயிர்கள் நிறைந்த வளமான மண்ணில் இயற்கை விவசாயம் சிறந்து விளங்கும்."
+      },
+      commonDiseases: {
+        en: "Soil-borne root rot, damping-off, and fungal wilts are bio-controlled through preventive soil inoculation with Trichoderma viride.",
+        ta: "டிரைக்கோடெர்மா விரிடி மற்றும் சூடோமோனாஸ் நன்மை செய்யும் நுண்ணுயிரிகள் வேர் அழுகல் மற்றும் வாடல் நோய்களைத் தடுக்கின்றன."
+      },
+      commonPests: {
+        en: "Sucking insects and young caterpillars are effectively deterred by bitter neem triterpenoids (azadirachtin).",
+        ta: "சாறு உறிஞ்சும் பூச்சிகள் மற்றும் புழுக்களை வேப்பங்கொட்டை சாறு அல்லது மூலிகைக் கரைசல்கள் மூலம் கட்டுப்படுத்தலாம்."
+      },
+      irrigation: {
+        en: "Incorporate liquid organic manures such as Jeevamrutham (200 L/acre) into irrigation water every 15-20 days to stimulate soil flora.",
+        ta: "15-20 நாட்களுக்கு ஒருமுறை பாசன நீரில் 200 லிட்டர் ஜீவாமிர்தம் கலந்து விடுவது நன்மை செய்யும் நுண்ணுயிரிகளைப் பெருக்கும்."
+      },
+      soil: {
+        en: "Incorporate 5 tonnes FYM, 1 tonne Vermicompost, and biofertilizers (Azospirillum & Phosphobacteria @ 2 kg/acre) during land preparation.",
+        ta: "நிலம் தயாரிப்பின் போது ஏக்கருக்கு 5 டன் தொழு உரம், 1 டன் மண்புழு உரம் மற்றும் அசோஸ்பைரில்லம் 2 கிலோ இடவும்."
+      },
+      management: {
+        en: "Foliar spray Panchagavya @ 30ml/L or Vermiwash @ 50ml/L every 2-3 weeks. Spray 5% Neem Seed Kernel Extract (NSKE) at first sign of pest scouting.",
+        ta: "2-3 வாரங்களுக்கு ஒருமுறை 3% பஞ்சகாவ்யா அல்லது மண்புழு வடிநீர் தெளிக்கவும். பூச்சிகளுக்கு 5% வேப்பங்கொட்டை சாறு தெளிக்கவும்."
+      },
+      harvest: {
+        en: "Organically grown vegetables have zero chemical pesticide residues, earning organic market premiums and offering superior nutrition.",
+        ta: "ரசாயன நஞ்சற்ற இயற்கை காய்கறிகள் கூடுதல் ஊட்டச்சத்து மற்றும் சிறந்த சந்தை மதிப்பைப் பெறுகின்றன."
+      }
+    }
+  },
+  {
+    id: "LIB-107",
+    cropId: "all",
+    category: "Agricultural Guidelines",
+    titleEn: "Good Agricultural Practices (GAP) & Farm Safety Guidelines",
+    titleTa: "நல்வேளாண் நெறிமுறைகள் (GAP) மற்றும் பண்ணை பாதுகாப்பு வழிகாட்டுதல்கள்",
+    summaryEn: "Comprehensive agricultural standard operating procedures: seed certification, nursery hygiene, personal protective equipment, and post-harvest standards.",
+    summaryTa: "சான்று பெற்ற விதை தேர்வு, நாற்றங்கால் தூய்மை, பயிர் சுழற்சி மற்றும் அறுவடைப் பின்சார் பாதுகாப்பு நெறிமுறைகள்.",
+    sections: {
+      overview: {
+        en: "Good Agricultural Practices (GAP) provide standardized protocols that ensure food safety, worker health, environmental conservation, and sustained farm profitability.",
+        ta: "நல்வேளாண் நெறிமுறைகள் (GAP) உணவுப் பாதுகாப்பு, விவசாயிகளின் ஆரோக்கியம், சுற்றுச்சூழல் மற்றும் நீடித்த லாபத்தை உறுதி செய்கின்றன."
+      },
+      growingConditions: {
+        en: "Maintain comprehensive farm record books covering input application dates, batch numbers, water testing reports, and harvest quantities.",
+        ta: "விதைப்பு, உரமிடுதல், பூச்சி மேலாண்மை மற்றும் அறுவடை விவரங்களை பண்ணை பதிவேட்டில் முறையாகப் பராமரிக்கவும்."
+      },
+      commonDiseases: {
+        en: "Crop rotation with non-host botanical families every 2 years disrupts soil disease lifecycles and pathogen spore persistence.",
+        ta: "இரண்டு ஆண்டுகளுக்கு ஒருமுறை மாற்றுப் பயிர் சுழற்சி செய்வது மண் மூலம் பரவும் நோய்களை இயற்கையாகக் குறைக்கும்."
+      },
+      commonPests: {
+        en: "Utilize pest monitoring traps (pheromone and yellow/blue sticky traps) to identify Economic Threshold Levels (ETL) before spraying.",
+        ta: "பொருளாதார சேத நிலையை அறிய இனக்கவர்ச்சி மற்றும் ஒட்டும் பொறிகளைப் பயன்படுத்தி பூச்சி தாக்குதலை கண்காணிக்கவும்."
+      },
+      irrigation: {
+        en: "Use certified clean irrigation water free from industrial contamination, heavy metals, or untreated sewage runoff.",
+        ta: "கழிவுநீர் கலக்காத சுத்தமான பாசன நீரைப் பயன்படுத்துவது மண் மற்றும் விளைபொருள் பாதுகாப்பிற்கு அவசியம்."
+      },
+      soil: {
+        en: "Test soil health at certified laboratories once every 2 years to adjust fertilizer schedules accurately according to available nutrients.",
+        ta: "இரண்டு ஆண்டுகளுக்கு ஒருமுறை அரசு அல்லது அங்கீகரிக்கப்பட்ட ஆய்வகத்தில் மண் பரிசோதனை செய்து உரமிடவும்."
+      },
+      management: {
+        en: "Always wear personal protective equipment (gloves, masks) during spray operations. Strictly observe the Pre-Harvest Interval (PHI) stated on labels.",
+        ta: "மருந்து தெளிக்கும் போது கையுறை, முகக்கவசம் அணியவும். அறுவடைக்கு முந்தைய காத்திருப்பு காலத்தை (PHI) கட்டாயம் பின்பற்றவும்."
+      },
+      harvest: {
+        en: "Harvest with clean, sanitized crates and store produce in shaded, cool sorting facilities before dispatch to maintain cold-chain freshness.",
+        ta: "சுத்தமான கூடைகளில் காய்களைப் பறித்து, நிழலான குளிரான இடத்தில் தரம் பிரித்து சந்தைக்கு அனுப்பவும்."
       }
     }
   }

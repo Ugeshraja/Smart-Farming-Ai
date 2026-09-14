@@ -1,0 +1,24 @@
+DISEASE: Potato Late Blight
+CROP: Potato
+SCIENTIFIC / COMMON NAME: Late blight of potato
+
+SYMPTOMS:
+Potato late blight can produce dark green to brown or black water-soaked lesions on leaves. Lesions may enlarge rapidly under favorable conditions. Affected foliage can become brown and collapse. Tubers may also be affected, developing dark or brown areas.
+
+FAVORABLE CONDITIONS:
+Disease development is favored by cool to mild temperatures combined with high humidity, frequent rainfall, and prolonged leaf wetness.
+
+MANAGEMENT:
+Remove and properly dispose of severely affected plant material where practical. Maintain good field sanitation. Improve air circulation through suitable plant spacing. Avoid unnecessary periods of leaf wetness. Monitor the crop closely during cool, wet weather. Follow locally recommended disease-management practices.
+
+PREVENTION:
+Use healthy planting material. Maintain appropriate plant spacing. Avoid unnecessary overhead irrigation. Remove infected plant debris where appropriate. Monitor crops regularly during periods favorable for disease development.
+
+MONITORING:
+Inspect leaves frequently for water-soaked, darkening lesions and rapid disease progression. Pay particular attention after rainfall or prolonged humid conditions.
+
+FARMER ACTION:
+If symptoms appear, inspect surrounding plants, remove severely affected material where practical, improve sanitation and airflow, and seek advice from local agricultural experts.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and the recommendations of local agricultural authorities.

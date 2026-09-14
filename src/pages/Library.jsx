@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Search, 
-  Sparkles, 
-  CheckCircle2, 
-  Droplets, 
-  Sun, 
-  Layers, 
-  ShieldAlert, 
-  Bug, 
-  Sprout, 
+import {
+  BookOpen,
+  Search,
+  Sparkles,
+  CheckCircle2,
+  Droplets,
+  Sun,
+  Layers,
+  ShieldAlert,
+  Bug,
+  Sprout,
   MessageSquare,
   ArrowRight
 } from 'lucide-react';
@@ -48,53 +48,52 @@ export default function Library() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      
+
       {/* 1. Page Title Header & In-Page Search Bar ONLY */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
+      <div className="bg-white dark:bg-slate-800/90 p-6 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-2xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center space-x-2">
-              <BookOpen className="w-6 h-6 text-agri-600" />
+            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center space-x-2">
+              <BookOpen className="w-6 h-6 text-agri-600 dark:text-emerald-400" />
               <span>{t('libraryTitle')}</span>
             </h2>
-            <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300 mt-0.5">
               {t('librarySubtitle')}
             </p>
           </div>
 
-          <div className="flex items-center space-x-2 bg-agri-50 px-3 py-1.5 rounded-xl border border-agri-200 text-xs font-semibold text-agri-800">
-            <Sparkles className="w-4 h-4 text-agri-600" />
+          <div className="flex items-center space-x-2 bg-agri-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-agri-200 dark:border-emerald-800 text-xs font-semibold text-agri-800 dark:text-emerald-300">
+            <Sparkles className="w-4 h-4 text-agri-600 dark:text-emerald-400" />
             <span>RAG Vector Knowledge Source</span>
           </div>
         </div>
 
         {/* Page-Specific Search Field ONLY */}
-        <div className="relative pt-2 border-t border-gray-100">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-5" />
+        <div className="relative pt-2 border-t border-gray-100 dark:border-slate-700">
+          <Search className="w-4 h-4 text-gray-400 dark:text-slate-400 absolute left-3 top-5" />
           <input
             type="text"
             placeholder={t('searchLibraryPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-agri-500 focus:bg-white transition-all font-medium"
+            className="w-full bg-gray-50 dark:bg-slate-900/90 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-agri-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-medium placeholder-gray-400 dark:placeholder-slate-500"
           />
         </div>
       </div>
 
       {/* 2. Knowledge Category Cards */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider px-1">
+        <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider px-1">
           {t('libraryCategories')}
         </h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
           <button
             onClick={() => { setSelectedCropCategory('all'); setSelectedTopicCategory('all'); }}
-            className={`p-2.5 rounded-xl border text-center space-y-1 transition-all ${
-              selectedCropCategory === 'all' && selectedTopicCategory === 'all'
-                ? 'bg-agri-600 text-white font-bold border-agri-600 shadow-xs'
-                : 'bg-white text-gray-700 hover:bg-agri-50 border-gray-200'
-            }`}
+            className={`p-2.5 rounded-xl border text-center space-y-1 transition-all ${selectedCropCategory === 'all' && selectedTopicCategory === 'all'
+              ? 'bg-agri-600 text-white font-bold border-agri-600 shadow-xs'
+              : 'bg-white text-gray-700 hover:bg-agri-50 border-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
+              }`}
           >
             <div className="text-xl">📚</div>
             <span className="text-[11px] font-semibold block leading-tight truncate">All Topics</span>
@@ -108,14 +107,14 @@ export default function Library() {
                   setSelectedCropCategory(cat.id);
                   setSelectedTopicCategory('all');
                 } else {
+                  setSelectedCropCategory('all');
                   setSelectedTopicCategory(cat.titleEn);
                 }
               }}
-              className={`p-2.5 rounded-xl border text-center space-y-1 transition-all ${
-                selectedCropCategory === cat.id || selectedTopicCategory === cat.titleEn
-                  ? 'bg-agri-600 text-white font-bold border-agri-600 shadow-xs scale-102'
-                  : 'bg-white text-gray-700 hover:bg-agri-50 border-gray-200'
-              }`}
+              className={`p-2.5 rounded-xl border text-center space-y-1 transition-all ${selectedCropCategory === cat.id || selectedTopicCategory === cat.titleEn
+                ? 'bg-agri-600 text-white font-bold border-agri-600 shadow-xs scale-102'
+                : 'bg-white text-gray-700 hover:bg-agri-50 border-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
+                }`}
             >
               <div className="text-xl">{cat.icon}</div>
               <span className="text-[11px] font-semibold block leading-tight truncate">
@@ -128,120 +127,137 @@ export default function Library() {
 
       {/* 3. Articles Grid & Article Detailed View */}
       {loading ? (
-        <div className="p-8 bg-white rounded-2xl border border-gray-200 text-center text-xs text-gray-500">
+        <div className="p-8 bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-200 dark:border-slate-700 text-center text-xs text-gray-500 dark:text-slate-400">
           Loading agricultural library guides...
         </div>
       ) : articles.length === 0 ? (
-        <div className="p-12 bg-white rounded-2xl border border-gray-200 text-center text-xs text-gray-400 space-y-2">
-          <BookOpen className="w-8 h-8 text-gray-300 mx-auto" />
-          <p>No agricultural articles found for "{searchQuery}". Try searching for Tomato, Late Blight, or Irrigation.</p>
+        <div className="p-12 bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-200 dark:border-slate-700 text-center text-xs text-gray-400 dark:text-slate-400 space-y-2">
+          <BookOpen className="w-8 h-8 text-gray-300 dark:text-slate-600 mx-auto" />
+          <p>
+            {searchQuery && searchQuery.trim()
+              ? `No agricultural articles found for "${searchQuery}". Try searching for Tomato, Late Blight, or Irrigation.`
+              : (isTa
+                ? "தேர்ந்தெடுக்கப்பட்ட பிரிவில் கட்டுரைகள் எதுவும் கிடைக்கவில்லை."
+                : "No agricultural articles found in the selected category.")}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Left Col: Articles List */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider px-1">
+            <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider px-1">
               Articles ({articles.length})
             </h3>
 
             <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
-              {articles.map((art) => (
-                <div
-                  key={art.id}
-                  onClick={() => setSelectedArticle(art)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-2 ${
-                    selectedArticle?.id === art.id
-                      ? 'bg-agri-50/90 border-agri-500 shadow-xs'
-                      : 'bg-white border-gray-200 hover:border-agri-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full bg-agri-100 text-agri-800 font-bold text-[10px] uppercase">
-                      {art.category}
-                    </span>
-                    <span className="text-[10px] font-mono text-gray-400">{art.id}</span>
+              {articles.map((art) => {
+                const isSelected = selectedArticle?.id === art.id;
+                return (
+                  <div
+                    key={art.id}
+                    onClick={() => setSelectedArticle(art)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-2 ${isSelected
+                      ? 'bg-agri-50/90 dark:bg-emerald-950/70 border-agri-500 dark:border-emerald-500 shadow-xs ring-1 ring-agri-500/40 dark:ring-emerald-500/50'
+                      : 'bg-white dark:bg-slate-800/90 border-gray-200 dark:border-slate-700/80 hover:border-agri-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase ${isSelected
+                        ? 'bg-agri-200 dark:bg-emerald-800/90 text-agri-900 dark:text-emerald-200'
+                        : 'bg-agri-100 dark:bg-slate-700 text-agri-800 dark:text-emerald-300'
+                        }`}>
+                        {art.category}
+                      </span>
+                      <span className="text-[10px] font-mono text-gray-400 dark:text-slate-400">{art.id}</span>
+                    </div>
+
+                    <h4 className={`text-sm font-bold leading-snug ${isSelected
+                      ? 'text-agri-950 dark:text-white'
+                      : 'text-gray-900 dark:text-slate-200'
+                      }`}>
+                      {isTa ? art.titleTa : art.titleEn}
+                    </h4>
+
+                    <p className={`text-xs line-clamp-2 leading-relaxed ${isSelected
+                      ? 'text-agri-800 dark:text-emerald-200/90'
+                      : 'text-gray-600 dark:text-slate-400'
+                      }`}>
+                      {isTa ? art.summaryTa : art.summaryEn}
+                    </p>
                   </div>
-
-                  <h4 className="text-sm font-bold text-gray-900 leading-snug">
-                    {isTa ? art.titleTa : art.titleEn}
-                  </h4>
-
-                  <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                    {isTa ? art.summaryTa : art.summaryEn}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* Right 2 Cols: Detailed Article View with Sections */}
           {selectedArticle && (
-            <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-gray-200 shadow-md space-y-6">
-              
+            <div className="lg:col-span-2 bg-white dark:bg-slate-800/90 p-6 sm:p-8 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-md space-y-6">
+
               {/* Article Header */}
-              <div className="border-b border-gray-100 pb-4 space-y-2">
+              <div className="border-b border-gray-100 dark:border-slate-700 pb-4 space-y-2">
                 <div className="flex items-center space-x-2">
                   <span className="px-3 py-1 bg-agri-600 text-white font-bold text-xs rounded-full shadow-2xs">
                     {selectedArticle.category}
                   </span>
-                  <span className="text-xs text-gray-400 uppercase font-mono font-bold">
+                  <span className="text-xs text-gray-400 dark:text-slate-400 uppercase font-mono font-bold">
                     Crop: {selectedArticle.cropId}
                   </span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">
                   {isTa ? selectedArticle.titleTa : selectedArticle.titleEn}
                 </h3>
 
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-slate-300 leading-relaxed font-medium">
                   {isTa ? selectedArticle.summaryTa : selectedArticle.summaryEn}
                 </p>
               </div>
 
               {/* Sections Breakdown */}
               <div className="space-y-5 text-xs">
-                
+
                 {/* Overview */}
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-1">
-                  <h4 className="font-bold text-gray-900 uppercase text-[11px] flex items-center space-x-1">
-                    <BookOpen className="w-3.5 h-3.5 text-agri-600" />
+                <div className="bg-gray-50 dark:bg-slate-900/60 p-4 rounded-xl border border-gray-200 dark:border-slate-700 space-y-1">
+                  <h4 className="font-bold text-gray-900 dark:text-emerald-400 uppercase text-[11px] flex items-center space-x-1">
+                    <BookOpen className="w-3.5 h-3.5 text-agri-600 dark:text-emerald-400" />
                     <span>{t('cropOverview')}</span>
                   </h4>
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
                     {isTa ? selectedArticle.sections.overview.ta : selectedArticle.sections.overview.en}
                   </p>
                 </div>
 
                 {/* Growing Conditions */}
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-1">
-                  <h4 className="font-bold text-gray-900 uppercase text-[11px] flex items-center space-x-1">
+                <div className="bg-gray-50 dark:bg-slate-900/60 p-4 rounded-xl border border-gray-200 dark:border-slate-700 space-y-1">
+                  <h4 className="font-bold text-gray-900 dark:text-amber-400 uppercase text-[11px] flex items-center space-x-1">
                     <Sun className="w-3.5 h-3.5 text-amber-500" />
                     <span>{t('growingConditions')}</span>
                   </h4>
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
                     {isTa ? selectedArticle.sections.growingConditions.ta : selectedArticle.sections.growingConditions.en}
                   </p>
                 </div>
 
                 {/* Grid of Common Diseases & Pests */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-red-50/60 p-4 rounded-xl border border-red-200 space-y-1">
-                    <h4 className="font-bold text-red-900 uppercase text-[11px] flex items-center space-x-1">
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
+                  <div className="bg-red-50/60 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/60 space-y-1">
+                    <h4 className="font-bold text-red-900 dark:text-red-300 uppercase text-[11px] flex items-center space-x-1">
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                       <span>{t('commonDiseases')}</span>
                     </h4>
-                    <p className="text-red-950 leading-relaxed whitespace-pre-line">
+                    <p className="text-red-950 dark:text-red-200 leading-relaxed whitespace-pre-line">
                       {isTa ? selectedArticle.sections.commonDiseases.ta : selectedArticle.sections.commonDiseases.en}
                     </p>
                   </div>
 
-                  <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200 space-y-1">
-                    <h4 className="font-bold text-amber-900 uppercase text-[11px] flex items-center space-x-1">
-                      <Bug className="w-3.5 h-3.5 text-amber-600" />
+                  <div className="bg-amber-50/60 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-1">
+                    <h4 className="font-bold text-amber-900 dark:text-amber-300 uppercase text-[11px] flex items-center space-x-1">
+                      <Bug className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       <span>{t('commonPests')}</span>
                     </h4>
-                    <p className="text-amber-950 leading-relaxed">
+                    <p className="text-amber-950 dark:text-amber-200 leading-relaxed">
                       {isTa ? selectedArticle.sections.commonPests.ta : selectedArticle.sections.commonPests.en}
                     </p>
                   </div>
@@ -249,45 +265,45 @@ export default function Library() {
 
                 {/* Grid of Irrigation & Soil */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-200 space-y-1">
-                    <h4 className="font-bold text-blue-900 uppercase text-[11px] flex items-center space-x-1">
-                      <Droplets className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="bg-blue-50/60 dark:bg-blue-950/40 p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 space-y-1">
+                    <h4 className="font-bold text-blue-900 dark:text-blue-300 uppercase text-[11px] flex items-center space-x-1">
+                      <Droplets className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>{t('irrigationReq')}</span>
                     </h4>
-                    <p className="text-blue-950 leading-relaxed">
+                    <p className="text-blue-950 dark:text-blue-200 leading-relaxed">
                       {isTa ? selectedArticle.sections.irrigation.ta : selectedArticle.sections.irrigation.en}
                     </p>
                   </div>
 
-                  <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 space-y-1">
-                    <h4 className="font-bold text-emerald-900 uppercase text-[11px] flex items-center space-x-1">
-                      <Sprout className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 space-y-1">
+                    <h4 className="font-bold text-emerald-900 dark:text-emerald-300 uppercase text-[11px] flex items-center space-x-1">
+                      <Sprout className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>{t('soilReq')}</span>
                     </h4>
-                    <p className="text-emerald-950 leading-relaxed">
+                    <p className="text-emerald-950 dark:text-emerald-200 leading-relaxed">
                       {isTa ? selectedArticle.sections.soil.ta : selectedArticle.sections.soil.en}
                     </p>
                   </div>
                 </div>
 
                 {/* Crop Management & Harvest */}
-                <div className="bg-agri-50 border border-agri-200 p-4 rounded-xl space-y-2">
-                  <h4 className="font-bold text-agri-900 uppercase text-[11px] flex items-center space-x-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-agri-600" />
+                <div className="bg-agri-50 dark:bg-emerald-950/40 border border-agri-200 dark:border-emerald-900/60 p-4 rounded-xl space-y-2">
+                  <h4 className="font-bold text-agri-900 dark:text-emerald-300 uppercase text-[11px] flex items-center space-x-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-agri-600 dark:text-emerald-400" />
                     <span>{t('cropManagement')} & {t('harvestInfo')}</span>
                   </h4>
-                  <p className="text-agri-950 leading-relaxed">
+                  <p className="text-agri-950 dark:text-emerald-100 leading-relaxed">
                     {isTa ? selectedArticle.sections.management.ta : selectedArticle.sections.management.en}
                   </p>
-                  <p className="text-agri-950 leading-relaxed pt-2 border-t border-agri-200">
-                    <strong>Harvesting:</strong> {isTa ? selectedArticle.sections.harvest.ta : selectedArticle.sections.harvest.en}
+                  <p className="text-agri-950 dark:text-emerald-100 leading-relaxed pt-2 border-t border-agri-200 dark:border-emerald-900/60">
+                    <strong className="text-agri-950 dark:text-emerald-200">Harvesting:</strong> {isTa ? selectedArticle.sections.harvest.ta : selectedArticle.sections.harvest.en}
                   </p>
                 </div>
 
               </div>
 
               {/* RAG-LLM Connect Button */}
-              <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <div className="pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-end">
                 <button
                   onClick={() => navigate(`/assistant?query=${encodeURIComponent(isTa ? `${selectedArticle.titleTa} பற்றி கூடுதல் விவரங்களை விளக்குக.` : `Explain key practices for ${selectedArticle.titleEn}`)}`)}
                   className="px-5 py-2.5 bg-agri-600 hover:bg-agri-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors flex items-center space-x-2"

@@ -1,0 +1,24 @@
+DISEASE: Tomato Septoria Leaf Spot
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Septoria leaf spot of tomato
+
+SYMPTOMS:
+Septoria leaf spot commonly produces numerous small circular spots on leaves. Lesions may have dark margins and lighter centers and can contain tiny dark structures. Older leaves are often affected first and may yellow and fall.
+
+FAVORABLE CONDITIONS:
+Warm, humid weather, rainfall, overhead irrigation, and prolonged leaf wetness can favor disease development.
+
+MANAGEMENT:
+Remove severely affected leaves where practical. Maintain field sanitation. Avoid unnecessary leaf wetness. Improve plant spacing and airflow. Remove infected debris and follow local disease-management recommendations.
+
+PREVENTION:
+Use healthy planting material. Maintain good sanitation. Avoid working with wet foliage when practical. Provide suitable spacing and manage irrigation appropriately.
+
+MONITORING:
+Inspect lower and older leaves regularly for small circular spots, yellowing, and premature leaf loss.
+
+FARMER ACTION:
+Remove severely affected leaves where practical, improve sanitation and airflow, and seek local agricultural advice if the disease progresses.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority guidance.

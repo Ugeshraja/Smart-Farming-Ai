@@ -1,0 +1,44 @@
+DISEASE: Potato Early Blight
+
+CROP: Potato
+
+SCIENTIFIC / COMMON NAME:
+Early blight of potato
+
+SYMPTOMS:
+Potato early blight commonly produces dark brown to black lesions on older leaves.
+Lesions may develop concentric ring patterns, giving them a target-like appearance.
+Affected leaves may gradually turn yellow and dry.
+Disease symptoms can progress from older foliage toward younger foliage when conditions favor disease development.
+
+FAVORABLE CONDITIONS:
+Disease development is favored by warm and humid conditions.
+Extended periods of leaf wetness can increase disease development.
+Plant stress and poor crop management can increase susceptibility.
+
+MANAGEMENT:
+Remove and properly dispose of severely affected plant material.
+Maintain good field sanitation.
+Avoid unnecessary leaf wetness.
+Provide adequate spacing between plants to improve air circulation.
+Use healthy planting material.
+Rotate crops where appropriate.
+Follow locally recommended agricultural disease-management practices.
+
+PREVENTION:
+Use disease-free planting material.
+Maintain proper plant spacing.
+Avoid excessive irrigation that keeps foliage wet for long periods.
+Remove infected plant debris after harvest.
+Monitor older leaves regularly for early symptoms.
+
+MONITORING:
+Inspect older leaves frequently.
+Look for dark lesions, concentric rings, yellowing, and drying foliage.
+Monitor disease progression after periods of warm and humid weather.
+
+FARMER ACTION:
+If symptoms are detected, isolate the affected area when practical, remove severely affected leaves or plants, improve field sanitation and airflow, and consult local agricultural experts for appropriate disease-management recommendations.
+
+IMPORTANT:
+Chemical control recommendations should follow the pesticide labels and the recommendations of local agricultural authorities.

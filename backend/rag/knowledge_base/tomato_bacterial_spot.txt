@@ -1,0 +1,24 @@
+DISEASE: Tomato Bacterial Spot
+CROP: Tomato
+SCIENTIFIC / COMMON NAME: Bacterial spot of tomato
+
+SYMPTOMS:
+Bacterial spot can produce small dark or water-soaked spots on leaves. Lesions may become brown and can sometimes occur on stems and fruit. Severe infection may cause leaf damage and premature leaf loss.
+
+FAVORABLE CONDITIONS:
+Disease development is favored by warm, humid conditions, rainfall, overhead irrigation, and prolonged leaf wetness.
+
+MANAGEMENT:
+Remove severely affected plant material where practical. Maintain field sanitation. Avoid unnecessary leaf wetness and overhead irrigation. Provide suitable plant spacing and airflow. Use healthy planting material and follow local disease-management recommendations.
+
+PREVENTION:
+Use healthy seed and planting material. Maintain good sanitation. Avoid working with plants when foliage is wet when practical. Improve airflow and manage irrigation appropriately.
+
+MONITORING:
+Inspect leaves, stems, and fruit regularly for small dark spots and spreading lesions, especially during warm and humid weather.
+
+FARMER ACTION:
+Remove severely affected material where practical, improve sanitation and airflow, reduce unnecessary leaf wetness, and consult local agricultural experts.
+
+IMPORTANT NOTE:
+Chemical control recommendations should follow pesticide labels and local agricultural authority guidance.

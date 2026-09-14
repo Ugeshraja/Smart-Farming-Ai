@@ -1,0 +1,26 @@
+[
+  {
+    "test_id": "TEST_1_TAMIL_VOICE",
+    "name": "TEST 1 — Tamil voice: Tomato yellow leaves",
+    "status": "FAILED",
+    "error": "Audio synthesis failed: Failed to synthesize test query audio: 402 - {\"error\":{\"message\":\"No credits available.\",\"code\":\"insufficient_quota_error\",\"request_id\":\"20260914_4f3ca3d7-4e05-44af-a1dd-628d693cc240\"}}"
+  },
+  {
+    "test_id": "TEST_2_ENGLISH_VOICE",
+    "name": "TEST 2 — English voice: Tomato yellow leaves",
+    "status": "FAILED",
+    "error": "Audio synthesis failed: Failed to synthesize test query audio: 402 - {\"error\":{\"message\":\"No credits available.\",\"code\":\"insufficient_quota_error\",\"request_id\":\"20260914_a9a12cc0-49bc-4489-93e9-eb6b9d34eb88\"}}"
+  },
+  {
+    "test_id": "TEST_3_NEW_TAMIL_VOICE",
+    "name": "TEST 3 — New Tamil question: Brinjal flower drop",
+    "status": "FAILED",
+    "error": "Audio synthesis failed: Failed to synthesize test query audio: 402 - {\"error\":{\"message\":\"No credits available.\",\"code\":\"insufficient_quota_error\",\"request_id\":\"20260914_65a970c8-08ad-42ed-a840-b53b531c668a\"}}"
+  },
+  {
+    "test_id": "TEST_4_NEW_ENGLISH_VOICE",
+    "name": "TEST 4 — New English question: Brinjal fertilizer application",
+    "status": "FAILED",
+    "error": "Audio synthesis failed: Failed to synthesize test query audio: 402 - {\"error\":{\"message\":\"No credits available.\",\"code\":\"insufficient_quota_error\",\"request_id\":\"20260914_942e9536-3db4-406a-92ce-5bf0b2ea2011\"}}"
+  }
+]

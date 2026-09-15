@@ -21,3 +21,9 @@ backend/cache/tts/
 backend/models/*.pth
 backend/models/*.pt
 backend/models/brinjal/*.pth
+
+# Local real-image test files
+backend/tests/sample_files/*_real.jpg
+backend/tests/sample_files/*_real.png
+
+.env.production

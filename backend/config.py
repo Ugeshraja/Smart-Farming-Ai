@@ -102,6 +102,11 @@ class Settings(BaseSettings):
     RAG_KNOWLEDGE_PATH: str = "rag/knowledge_base"
     CHROMA_DB_DIR: str = str(CHROMA_DB_DIR)
 
+    # Hugging Face Model Repository Configuration (Private Model Hosting)
+    HF_MODEL_REPO_ID: str = "ugeshraja007/smartfarm-ai-models"
+    HF_TOKEN: str = ""
+    HF_MODEL_REVISION: str = "main"
+
     # Environment & Database status accessors
     @property
     def is_production(self) -> bool:
@@ -276,6 +281,31 @@ class Settings(BaseSettings):
         return ""
 
     @property
+    def hf_token(self) -> str:
+        token = (
+            self.HF_TOKEN
+            or os.environ.get("HF_TOKEN", "")
+        ).strip()
+        if token:
+            return token
+
+        if ENV_PATH.exists():
+            try:
+                with open(ENV_PATH, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("#") or "=" not in line:
+                            continue
+                        k_name, _, k_val = line.partition("=")
+                        k_name = k_name.strip()
+                        k_val = k_val.strip().strip('"').strip("'")
+                        if k_name == "HF_TOKEN" and k_val:
+                            return k_val
+            except Exception:
+                pass
+        return ""
+
+    @property
     def openweather_key(self) -> str:
         return (
             self.OPENWEATHER_API_KEY
@@ -327,6 +357,7 @@ class Settings(BaseSettings):
             "models_present": models_status,
             "rag_present": Path(self.clean_rag_path).exists(),
             "gemini_configured": bool(self.gemini_api_key),
+            "hf_configured": bool(self.hf_token),
             "database_configured": self.database_configured,
             "cors_origins_count": len(self.cors_origins_list)
         }

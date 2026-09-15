@@ -20,6 +20,7 @@ from config import settings
 from routes import auth, weather, chat, voice, predict, library, sensors, field, schemes
 from services.firebase_service import firebase_service
 from services.ai_pipeline_service import ai_pipeline_service
+from services.model_bootstrap import bootstrap_models
 from database.connection import check_database_connection
 
 logger = logging.getLogger("smartfarm.main")
@@ -81,7 +82,14 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Server starting: loading AI models once into memory...")
+    logger.info("Server starting: verifying and bootstrapping AI model checkpoints...")
+    try:
+        bootstrap_models()
+        logger.info("Model bootstrap verification completed successfully.")
+    except Exception as e:
+        logger.error(f"Error during model bootstrap: {e}")
+
+    logger.info("Loading AI models once into memory...")
     try:
         ai_pipeline_service.initialize()
         logger.info("AI models initialized successfully on startup.")

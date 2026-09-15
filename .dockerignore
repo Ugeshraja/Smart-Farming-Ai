@@ -51,12 +51,12 @@ backend/docs/
 tests/
 scratch/
 
-# Explicitly ensure models and RAG knowledge base are NOT ignored
-!backend/models/
-!backend/models/yolo11_best.pt
-!backend/models/resnet50_best_model.pth
-!backend/models/sam_vit_b_01ec64.pth
-!backend/models/brinjal/best_model.pth
+# Exclude model weights from Docker build context (provisioned via model_bootstrap from Hugging Face Hub)
+backend/models/*.pt
+backend/models/*.pth
+backend/models/brinjal/*.pth
+
+# Explicitly ensure RAG knowledge base is included
 !backend/rag/
 !backend/rag/knowledge_base/
 !backend/rag/knowledge_base/*.txt

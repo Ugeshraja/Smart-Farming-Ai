@@ -26,16 +26,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy dependencies manifest first to leverage Docker layer caching
 COPY requirements.txt /app/requirements.txt
 
-# Install PyTorch CPU wheels and project Python dependencies
+# Install PyTorch CUDA 12.8 pinned wheels and project Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision && \
+    pip install --no-cache-dir \
+        torch==2.11.0 \
+        torchvision==0.26.0 \
+        --index-url https://download.pytorch.org/whl/cu128 && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy backend application source code, models, and RAG knowledge base
 COPY . /app
 
-# Ensure runtime writable directories exist for static media and audio caches
-RUN mkdir -p /app/static/predictions \
+# Ensure runtime writable directories exist for models, static media, and audio caches
+RUN mkdir -p /app/models/brinjal \
+             /app/static/predictions \
              /app/static/tts \
              /app/cache/tts \
              /app/cache

@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/backend/:path*",
+      "destination": "/api/backend?path=:path*"
+    },
+    {
       "source": "/((?!api/backend).*)",
       "destination": "/index.html"
     }

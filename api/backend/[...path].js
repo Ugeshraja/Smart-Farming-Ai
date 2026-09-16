@@ -1,7 +1,3 @@
-import { IncomingForm } from 'formidable';
-import fs from 'fs';
-import FormData from 'form-data';
-
 export const config = {
   api: {
     bodyParser: false,
@@ -25,90 +21,56 @@ export default async function handler(req, res) {
   queryString.delete('path');
 
   const query = queryString.toString();
+  const cleanPath = targetPath.replace(/^\/+/, '');
+  const base = backendUrl.replace(/\/+$/, '');
   const targetUrl =
-    `${backendUrl.replace(/\/$/, '')}/${targetPath}` +
+    (cleanPath ? `${base}/${cleanPath}` : base) +
     (query ? `?${query}` : '');
 
   try {
-    // GET/HEAD requests do not need multipart parsing.
-    if (req.method === 'GET' || req.method === 'HEAD') {
-      const response = await fetch(targetUrl, {
-        method: req.method,
-        headers: {
-          Authorization: `Bearer ${lightningApiKey}`,
-        },
-      });
+    const forwardHeaders = {
+      Authorization: `Bearer ${lightningApiKey}`,
+    };
 
-      const contentType = response.headers.get('content-type');
-
-      if (contentType) {
-        res.setHeader('Content-Type', contentType);
-      }
-
-      const body = await response.arrayBuffer();
-
-      return res.status(response.status).send(Buffer.from(body));
-    }
-
-    // Multipart handling for image/file uploads.
-    const form = new IncomingForm({
-      multiples: true,
-      keepExtensions: true,
-    });
-
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve([fields, files]);
-      });
-    });
-
-    const formData = new FormData();
-
-    for (const [key, value] of Object.entries(fields)) {
-      const values = Array.isArray(value) ? value : [value];
-
-      for (const item of values) {
-        formData.append(key, item);
-      }
-    }
-
-    for (const [key, value] of Object.entries(files)) {
-      const fileList = Array.isArray(value) ? value : [value];
-
-      for (const file of fileList) {
-        formData.append(
-          key,
-          fs.createReadStream(file.filepath),
-          {
-            filename: file.originalFilename || 'upload',
-            contentType: file.mimetype || 'application/octet-stream',
-          }
-        );
-      }
-    }
-
-    const response = await fetch(targetUrl, {
-      method: req.method,
-      headers: {
-        ...formData.getHeaders(),
-        Authorization: `Bearer ${lightningApiKey}`,
-      },
-      body: formData,
-    });
-
-    const contentType = response.headers.get('content-type');
-
+    const contentType = req.headers['content-type'];
     if (contentType) {
-      res.setHeader('Content-Type', contentType);
+      forwardHeaders['Content-Type'] = contentType;
+    }
+
+    if (req.headers['accept']) {
+      forwardHeaders['Accept'] = req.headers['accept'];
+    }
+
+    const fetchOptions = {
+      method: req.method,
+      headers: forwardHeaders,
+    };
+
+    // GET and HEAD requests cannot include a body
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const chunks = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      const rawBody = Buffer.concat(chunks);
+
+      if (rawBody.length > 0) {
+        fetchOptions.body = rawBody;
+        forwardHeaders['Content-Length'] = String(rawBody.length);
+      }
+    }
+
+    const response = await fetch(targetUrl, fetchOptions);
+
+    const resContentType = response.headers.get('content-type');
+    if (resContentType) {
+      res.setHeader('Content-Type', resContentType);
     }
 
     const body = await response.arrayBuffer();
-
     return res.status(response.status).send(Buffer.from(body));
   } catch (error) {
-    console.error('Backend proxy error:', error);
-
+    console.error('Backend proxy error:', error?.message || 'Request failed');
     return res.status(500).json({
       error: 'Backend proxy request failed',
     });

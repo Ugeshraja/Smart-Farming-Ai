@@ -19,6 +19,11 @@ export default function AiReports() {
 
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [prediction?.id, prediction?.imageUrl]);
 
   useEffect(() => {
     async function loadReport() {
@@ -174,7 +179,26 @@ export default function AiReports() {
                 {isTa ? 'அசல் இலை படம்' : 'Original Field Leaf Sample'}
               </span>
               <div className="h-56 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
-                <img src={prediction.imageUrl} alt="Original Leaf" className="h-full object-contain" />
+                {(!prediction.imageUrl || imageError || prediction.imageUrl.includes('localhost') || prediction.imageUrl.includes('127.0.0.1')) ? (
+                  <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center space-y-2">
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+                      <Leaf className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">
+                      {isTa ? 'அசல் இலை படம் கிடைக்கவில்லை' : 'Image unavailable'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 max-w-xs">
+                      {isTa ? 'பழைய பதிவுகளில் படம் சேமிக்கப்படவில்லை அல்லது கிடைக்கவில்லை' : 'Original leaf sample not stored for this historical record'}
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={prediction.imageUrl}
+                    alt="Original Leaf"
+                    className="h-full object-contain"
+                    onError={() => setImageError(true)}
+                  />
+                )}
               </div>
             </div>
 

@@ -238,10 +238,11 @@ export const apiService = {
         const isHealthy = diseaseClean.toLowerCase().includes('healthy');
         const confidencePct = Number((rawConf <= 1.0 ? rawConf * 100 : rawConf).toFixed(1));
 
-        // Ensure Original Leaf Photo resolves properly
-        const resolvedOriginalUrl = resolveBackendMediaUrl(data.original_image?.image_url);
+        // Ensure Original Leaf Photo resolves to persistent storage URL
+        const resolvedOriginalUrl = resolveBackendMediaUrl(data.original_image?.image_url || data.image_url);
         const resolvedLeafCropUrl = resolveBackendMediaUrl(data.leaf_crop?.image_url);
-        const imageUrl = formData.get('imagePreviewUrl') || resolvedOriginalUrl || resolvedLeafCropUrl || '';
+        const persistentImageUrl = data.persistent_image_url || (resolvedOriginalUrl?.startsWith('http') ? resolvedOriginalUrl : null);
+        const imageUrl = persistentImageUrl || resolvedOriginalUrl || formData.get('imagePreviewUrl') || resolvedLeafCropUrl || '';
 
         const top3Predictions = data.top3_predictions || [];
         const segmentationData = data.segmentation ? {

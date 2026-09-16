@@ -4,6 +4,8 @@
  * to the Hugging Face Space Gradio API.
  */
 
+import { uploadLeafImageToSupabase } from './supabaseStorage.js';
+
 const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://ugeshraja007-smartfarm-ai-backend.hf.space';
 
 export async function handleCropPrediction(req, res, rawBody) {
@@ -204,21 +206,44 @@ export async function handleCropPrediction(req, res, rawBody) {
         // use raw string
       }
 
-      return res.status(502).json({
+      const lowerErr = parsedError.toLowerCase();
+      const isQuota = lowerErr.includes('quota') || lowerErr.includes('rate limit') || lowerErr.includes('exceeded') || lowerErr.includes('zerogpu');
+      return res.status(isQuota ? 429 : 502).json({
         success: false,
-        status: 'connection_error',
-        valid_image: false,
-        message: `Hugging Face ZeroGPU inference error: ${parsedError}`,
+        status: isQuota ? 'prediction_quota_exceeded' : 'prediction_service_unavailable',
+        valid_image: true,
+        message: isQuota
+          ? 'ZeroGPU inference quota exceeded. Please wait a few moments and try again.'
+          : `Hugging Face ZeroGPU inference error: ${parsedError}`,
       });
     }
 
     if (!predictionResult) {
       return res.status(502).json({
         success: false,
-        status: 'connection_error',
-        valid_image: false,
+        status: 'prediction_service_unavailable',
+        valid_image: true,
         message: 'Hugging Face Space closed event stream without returning prediction result.',
       });
+    }
+
+    // Persist leaf image to Supabase Storage if configured
+    try {
+      const storageUpload = await uploadLeafImageToSupabase(imageBuffer, filename, mimeType);
+      if (storageUpload.success && storageUpload.url) {
+        predictionResult.image_url = storageUpload.url;
+        predictionResult.persistent_image_url = storageUpload.url;
+        if (!predictionResult.original_image || typeof predictionResult.original_image !== 'object') {
+          predictionResult.original_image = {};
+        }
+        predictionResult.original_image.image_url = storageUpload.url;
+        if (!predictionResult.leaf_crop || typeof predictionResult.leaf_crop !== 'object') {
+          predictionResult.leaf_crop = {};
+        }
+        predictionResult.leaf_crop.image_url = storageUpload.url;
+      }
+    } catch (storageErr) {
+      console.warn('[HF Proxy] Non-blocking Supabase Storage error:', storageErr?.message);
     }
 
     return res.status(200).json(predictionResult);
@@ -231,8 +256,8 @@ export async function handleCropPrediction(req, res, rawBody) {
 
     return res.status(isTimeout ? 504 : 500).json({
       success: false,
-      status: 'connection_error',
-      valid_image: false,
+      status: isTimeout ? 'prediction_timeout' : 'prediction_service_unavailable',
+      valid_image: true,
       message: isTimeout
         ? 'Hugging Face ZeroGPU inference timed out. Please try again.'
         : `Crop prediction failed: ${error?.message || 'Internal proxy error'}`,

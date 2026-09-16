@@ -1,4 +1,6 @@
 import { handleCropPrediction } from './hfGradioPredict.js';
+import { handleGeminiChat } from './geminiChat.js';
+import { handleWeatherRequest } from './weatherHandler.js';
 
 export const config = {
   api: {
@@ -23,13 +25,34 @@ export default async function handler(req, res) {
     rawBody = Buffer.concat(chunks);
   }
 
-  // Route POST prediction requests to Hugging Face ZeroGPU Space
+  // 1. Route POST prediction requests to Hugging Face ZeroGPU Space
   const isPredict =
     req.method === 'POST' &&
     (cleanPath === 'api/predict' || cleanPath === 'predict');
 
   if (isPredict) {
     return handleCropPrediction(req, res, rawBody);
+  }
+
+  // 2. Route AI Farmer Assistant requests to serverless Gemini API
+  const isChat =
+    cleanPath === 'api/chat' ||
+    cleanPath === 'chat' ||
+    cleanPath === 'api/chat/status' ||
+    cleanPath === 'chat/status';
+
+  if (isChat) {
+    return handleGeminiChat(req, res, rawBody);
+  }
+
+  // 3. Route Weather requests to serverless OpenWeather handler
+  const isWeather =
+    cleanPath.startsWith('api/weather') ||
+    cleanPath.startsWith('weather');
+
+  if (isWeather) {
+    const subPath = cleanPath.replace(/^api\/weather\/?/, '').replace(/^weather\/?/, '');
+    return handleWeatherRequest(req, res, subPath);
   }
 
   // Preserve existing Lightning proxy fallback for non-prediction endpoints

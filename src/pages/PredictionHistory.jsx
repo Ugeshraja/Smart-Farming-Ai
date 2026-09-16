@@ -4,10 +4,66 @@ import {
   Search,
   Eye,
   X,
-  AlertCircle
+  AlertCircle,
+  Leaf
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/apiService';
+
+function HistoryThumbnail({ pred, isTa }) {
+  const [failed, setFailed] = useState(false);
+  const isInvalid = !pred?.imageUrl || pred.imageUrl.includes('localhost') || pred.imageUrl.includes('127.0.0.1');
+
+  if (isInvalid || failed) {
+    return (
+      <div
+        className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 p-0.5 text-center select-none"
+        title={isTa ? 'படம் கிடைக்கவில்லை' : 'Image unavailable'}
+      >
+        <Leaf className="w-4 h-4 text-gray-400 mb-0.5" />
+        <span className="text-[7.5px] leading-none font-medium text-gray-500">
+          {isTa ? 'இல்லை' : 'No img'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+      <img
+        src={pred.imageUrl}
+        alt={pred.disease}
+        className="w-full h-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
+function ModalLeafImage({ item, isTa }) {
+  const [failed, setFailed] = useState(false);
+  const isInvalid = !item?.imageUrl || item.imageUrl.includes('localhost') || item.imageUrl.includes('127.0.0.1');
+
+  if (isInvalid || failed) {
+    return (
+      <div className="h-48 w-full flex flex-col items-center justify-center bg-gray-100 rounded-lg text-gray-400 p-4 space-y-1 text-center">
+        <Leaf className="w-8 h-8 text-gray-400" />
+        <span className="text-xs font-semibold text-gray-500">
+          {isTa ? 'அசல் இலை படம் கிடைக்கவில்லை' : 'Image unavailable'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={item.imageUrl}
+      alt="Leaf"
+      className="h-48 w-full object-contain mx-auto"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export default function PredictionHistory() {
   const { t, language } = useLanguage();
@@ -152,9 +208,7 @@ export default function PredictionHistory() {
                   <tr key={pred.id} className="hover:bg-gray-50/80 transition-colors">
                     {/* Thumbnail */}
                     <td className="py-2.5 px-4">
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                        <img src={pred.imageUrl} alt={pred.disease} className="w-full h-full object-cover" />
-                      </div>
+                      <HistoryThumbnail pred={pred} isTa={isTa} />
                     </td>
 
                     {/* ID & Date */}
@@ -242,7 +296,7 @@ export default function PredictionHistory() {
             {/* Image */}
             <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center space-y-2 max-w-sm mx-auto">
               <span className="text-xs font-semibold text-gray-600 block">{isTa ? 'அசல் இலை படம்' : 'Original Leaf Photo'}</span>
-              <img src={activeModalItem.imageUrl} alt="Leaf" className="h-48 w-full object-contain mx-auto" />
+              <ModalLeafImage item={activeModalItem} isTa={isTa} />
             </div>
 
             {/* Metadata */}

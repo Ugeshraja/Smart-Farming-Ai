@@ -161,7 +161,7 @@ export async function fetchOpenWeatherData(lat, lon, forceRefresh = false) {
     response = await fetch(`${API_BASE_URL}/weather/data?lat=${lat}&lon=${lon}&units=metric`);
   } catch (netErr) {
     throw new Error(
-      "Cannot connect to the backend weather proxy. Ensure the FastAPI backend is running on port 8000."
+      "Cannot connect to the weather service. Please check your network connection and retry."
     );
   }
 

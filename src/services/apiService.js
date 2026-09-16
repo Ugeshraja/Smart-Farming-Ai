@@ -18,7 +18,7 @@ import {
 import { fetchOpenWeatherData, geocodeLocation } from './weatherService';
 import { VERIFIED_GOVERNMENT_SCHEMES, evaluateSchemeEligibility as evalRules } from './schemesData';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -59,7 +59,7 @@ export function resolveBackendMediaUrl(url) {
     return url;
   }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
   try {
     const parsed = new URL(apiBase);
     return `${parsed.origin}${cleanPath}`;

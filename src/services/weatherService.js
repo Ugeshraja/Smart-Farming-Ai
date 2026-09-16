@@ -1,7 +1,7 @@
 // OpenWeather Real Weather Integration Service for SmartFarm AI
 // Communicates with backend proxy at /api/weather/data to protect API credentials.
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
 
 export const KNOWN_AGRICULTURAL_LOCATIONS = {
   "tiruchengode": { name: "Tiruchengode, Tamil Nadu", lat: 11.38, lon: 77.89 },

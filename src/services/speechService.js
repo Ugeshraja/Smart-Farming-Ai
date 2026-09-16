@@ -66,8 +66,10 @@ class SpeechService {
     // In dev, Vite proxies /static to http://127.0.0.1:8000
     // In production, resolve against backend origin if VITE_API_BASE_URL is configured
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-    const backendOrigin = apiBase.startsWith('http') ? apiBase.replace(/\/api\/?$/, '') : '';
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
+    const backendOrigin = apiBase.startsWith('http')
+      ? apiBase.replace(/\/api\/?$/, '')
+      : (apiBase.startsWith('/') ? apiBase.replace(/\/api\/?$/, '') : '');
     return backendOrigin ? `${backendOrigin}${cleanPath}` : cleanPath;
   }
 

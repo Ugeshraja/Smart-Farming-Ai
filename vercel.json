@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "api/backend.js": {
+      "maxDuration": 60
+    },
+    "api/backend/[...path].js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/api/backend/:path*",

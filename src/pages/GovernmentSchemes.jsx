@@ -582,47 +582,28 @@ export default function GovernmentSchemes() {
 
               {/* Action Buttons & Official Portal Link */}
               <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveModalScheme(scheme)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer"
-                  >
-                    <Info className="w-3.5 h-3.5 text-gray-500" />
-                    {isTa ? "முழு விவரம்" : "View Details"}
-                  </button>
+                <button
+                  onClick={() => setActiveModalScheme(scheme)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer"
+                >
+                  <Info className="w-3.5 h-3.5 text-gray-500" />
+                  {isTa ? "முழு விவரம்" : "View Details"}
+                </button>
 
-                  {scheme.officialWebsite && (
-                    <a
-                      href={scheme.officialWebsite}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleOpenExternalUrl(scheme.officialWebsite);
-                      }}
-                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
-                      title={`Visit ${scheme.officialWebsite}`}
-                    >
-                      <span>{isTa ? "இணையதளம்" : "Official Website"}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-
-                {scheme.applicationUrl ? (
+                {scheme.officialWebsite ? (
                   <a
-                    href={scheme.applicationUrl}
+                    href={scheme.officialWebsite}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleOpenExternalUrl(scheme.applicationUrl);
+                      handleOpenExternalUrl(scheme.officialWebsite);
                     }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-xs cursor-pointer"
-                    title={`Apply on official website: ${scheme.applicationUrl}`}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                    title={`Visit ${scheme.officialWebsite}`}
                   >
-                    <span>{isTa ? "விண்ணப்பிக்கவும்" : "Apply Officially"}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span>{isTa ? "இணையதளம்" : "Official Website"}</span>
+                    <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
                   <span className="text-xs text-gray-400 italic bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">

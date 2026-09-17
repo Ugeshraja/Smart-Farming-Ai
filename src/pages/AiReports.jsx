@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Printer,
   Download,
   Leaf,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  FileBarChart,
+  ScanSearch,
+  Sparkles
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,12 +17,15 @@ import { apiService } from '../services/apiService';
 export default function AiReports() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reportId = searchParams.get('id');
 
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+
+  const isTa = language === 'ta';
 
   useEffect(() => {
     setImageError(false);
@@ -28,12 +34,43 @@ export default function AiReports() {
   useEffect(() => {
     async function loadReport() {
       setLoading(true);
+
+      // 1. Read the same prediction history source: localStorage key "smartfarm_predictions"
+      const stored = localStorage.getItem('smartfarm_predictions');
+
+      // 2. If localStorage key exists:
+      if (stored !== null) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            // If key exists and contains [] -> treat as having zero reports (do NOT restore mock data)
+            if (parsed.length === 0) {
+              setPrediction(null);
+              setLoading(false);
+              return;
+            }
+            // If records exist and reportId requested
+            if (reportId) {
+              const match = parsed.find(p => p.id === reportId);
+              setPrediction(match || null);
+            } else {
+              setPrediction(parsed[0] || null);
+            }
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn("Error reading stored predictions:", e);
+        }
+      }
+
+      // 3. If localStorage key does not exist: preserve application's existing behavior
       if (reportId) {
         const item = await apiService.getPredictionById(reportId);
-        setPrediction(item);
+        setPrediction(item || null);
       } else {
         const list = await apiService.getPredictions();
-        setPrediction(list[0]);
+        setPrediction(list && list.length > 0 ? list[0] : null);
       }
       setLoading(false);
     }
@@ -57,10 +94,6 @@ export default function AiReports() {
     );
   }
 
-  if (!prediction) return null;
-
-  const isTa = language === 'ta';
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
 
@@ -68,32 +101,117 @@ export default function AiReports() {
       <div className="no-print bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
-            {t('aiReports')}
+            {isTa ? 'AI அறிக்கைகள்' : t('aiReports')}
           </h2>
-          <p className="text-xs text-gray-500">Official Solanaceae Phytopathology & Agronomic Treatment Report</p>
+          <p className="text-xs text-gray-500">
+            {isTa
+              ? 'பயிர் நோய்க்கான அதிகாரப்பூர்வ தாவர நோய் மற்றும் வேளாண் சிகிச்சை அறிக்கை'
+              : 'Official Solanaceae Phytopathology & Agronomic Treatment Report'}
+          </p>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleDownloadPdf}
-            className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs"
-          >
-            <Download className="w-4 h-4 text-agri-600" />
-            <span>{t('downloadPdf')}</span>
-          </button>
+        {prediction && (
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleDownloadPdf}
+              className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-agri-600" />
+              <span>{t('downloadPdf')}</span>
+            </button>
 
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-agri-600 hover:bg-agri-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center space-x-2"
-          >
-            <Printer className="w-4 h-4" />
-            <span>{t('printReport')}</span>
-          </button>
-        </div>
+            <button
+              onClick={handlePrint}
+              className="px-4 py-2 bg-agri-600 hover:bg-agri-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center space-x-2"
+            >
+              <Printer className="w-4 h-4" />
+              <span>{t('printReport')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Printable Report Container */}
-      <div id="printable-report" className="bg-white rounded-2xl border border-gray-200 shadow-md p-8 space-y-8 text-gray-800">
+      {!prediction ? (
+        /* Empty State Card when Zero Prediction Records Exist */
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-8 sm:p-12 text-center space-y-8">
+          {/* Centered Icon & Heading */}
+          <div className="max-w-md mx-auto space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-agri-50 border border-agri-200 flex items-center justify-center text-agri-600 mx-auto shadow-2xs">
+              <FileBarChart className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
+              {isTa ? 'AI அறிக்கைகள் எதுவும் இல்லை' : 'No AI reports available yet'}
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+              {isTa
+                ? 'சேமிக்கப்பட்ட பயிர் நோய் கணிப்புகளிலிருந்து AI அறிக்கைகள் உருவாக்கப்படுகின்றன. விரிவான AI அறிக்கையை உருவாக்க ஒரு பயிரை ஆய்வு செய்யவும்.'
+                : 'AI reports are generated from your saved crop disease predictions. Analyze a crop to generate a detailed AI-powered report.'}
+            </p>
+          </div>
+
+          {/* Primary Action Button */}
+          <div className="space-y-2">
+            <button
+              onClick={() => navigate('/crop-disease')}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all hover:scale-102 cursor-pointer"
+            >
+              <ScanSearch className="w-4 h-4" />
+              <span>{isTa ? 'புதிய பயிரை ஆய்வு செய்யவும்' : 'Analyze New Crop'}</span>
+            </button>
+            <p className="text-[11px] text-gray-400 font-medium">
+              {isTa
+                ? 'ஆய்வுக்குப் பிறகு உங்கள் அறிக்கைகள் இங்கே தோன்றும்.'
+                : 'Your reports will appear here after analysis.'}
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 max-w-lg mx-auto" />
+
+          {/* Secondary Information Section */}
+          <div className="max-w-lg mx-auto text-left space-y-4 bg-gray-50/70 border border-gray-200 rounded-2xl p-6">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-agri-600" />
+              <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 uppercase tracking-wide">
+                {isTa ? 'உங்கள் AI அறிக்கையில் உள்ளவை' : 'What your AI Report will contain'}
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-gray-700 font-medium">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'நோய் அடையாளம்' : 'Disease identification'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'நம்பிக்கை மதிப்பெண்' : 'Confidence score'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'இலை ஆய்வு மற்றும் விளக்கம்' : 'Leaf analysis & explanation'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'LIME விளக்கத்திறன்' : 'LIME explainability'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'RAG அடிப்படையிலான விவசாய வழிகாட்டுதல்' : 'RAG-based agricultural guidance'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'Gemini விவசாயி ஆலோசனை' : 'Gemini farmer advisory'}</span>
+              </div>
+              <div className="flex items-center space-x-2 sm:col-span-2">
+                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
+                <span>{isTa ? 'பரிந்துரைக்கப்பட்ட மேலாண்மை நடைமுறைகள்' : 'Recommended management practices'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Printable Report Container */
+        <div id="printable-report" className="bg-white rounded-2xl border border-gray-200 shadow-md p-8 space-y-8 text-gray-800">
 
         {/* Document Header */}
         <div className="flex items-start justify-between border-b-2 border-agri-600 pb-6">
@@ -314,6 +432,7 @@ export default function AiReports() {
         </div>
 
       </div>
+      )}
 
     </div>
   );

@@ -741,20 +741,24 @@ export const apiService = {
   },
 
   async getPredictionById(id) {
-    if (!id) return mockPredictions[0];
     try {
       const stored = localStorage.getItem('smartfarm_predictions');
       if (stored !== null) {
         const list = JSON.parse(stored);
         if (Array.isArray(list)) {
-          const found = list.find(p => p.id === id);
-          if (found) return found;
+          if (list.length === 0) return null;
+          if (id) {
+            const found = list.find(p => p.id === id);
+            return found || null;
+          }
+          return list[0] || null;
         }
       }
     } catch (e) {}
 
+    if (!id) return mockPredictions[0];
     const found = mockPredictions.find(p => p.id === id);
-    return found || mockPredictions[0];
+    return found || null;
   },
 
   async savePrediction(prediction) {

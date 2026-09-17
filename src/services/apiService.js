@@ -69,8 +69,47 @@ export function resolveBackendMediaUrl(url) {
   }
 }
 
+/**
+ * Validates whether an image URL is a usable, non-broken URL.
+ * Rejects localhost, 127.0.0.1, 0.0.0.0, /tmp/, file://, /static/, and /api/backend/static/.
+ * Accepts valid HTTPS/HTTP (non-local) and data:image/ URLs.
+ */
+export function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return false;
+
+  // Reject loopback and localhost
+  if (trimmed.includes('localhost') || trimmed.includes('127.0.0.1') || trimmed.includes('0.0.0.0')) {
+    return false;
+  }
+
+  // Reject local file/temp paths
+  if (trimmed.startsWith('file://') || trimmed.startsWith('/tmp') || trimmed.includes('/tmp/')) {
+    return false;
+  }
+
+  // Reject relative static prediction paths (cannot be served by Vercel serverless functions)
+  if (trimmed.startsWith('/static/') || trimmed.startsWith('/api/backend/static/') || trimmed.includes('/static/predictions/')) {
+    return false;
+  }
+
+  // Allow valid Data URLs (e.g. uploaded preview Data URL)
+  if (trimmed.startsWith('data:image/')) {
+    return true;
+  }
+
+  // Allow valid HTTPS / HTTP remote URLs (e.g. Supabase Storage)
+  if (trimmed.startsWith('https://') || (trimmed.startsWith('http://') && !trimmed.includes('localhost'))) {
+    return true;
+  }
+
+  return false;
+}
+
 export const apiService = {
   resolveBackendMediaUrl,
+  isValidImageUrl,
 
   // 1. Agriculture Library Endpoints
   async getLibraryCategories() {
@@ -238,11 +277,13 @@ export const apiService = {
         const isHealthy = diseaseClean.toLowerCase().includes('healthy');
         const confidencePct = Number((rawConf <= 1.0 ? rawConf * 100 : rawConf).toFixed(1));
 
-        // Ensure Original Leaf Photo resolves to persistent storage URL
-        const resolvedOriginalUrl = resolveBackendMediaUrl(data.original_image?.image_url || data.image_url);
+        // Ensure Original Leaf Photo resolves to persistent storage URL if valid, else uploaded preview Data URL
+        const rawPersistentUrl = data.persistent_image_url || data.original_image?.image_url || data.image_url;
+        const persistentImageUrl = isValidImageUrl(rawPersistentUrl) ? rawPersistentUrl : null;
+        const previewFallback = formData?.get ? formData.get('imagePreviewUrl') : null;
+        const imageUrl = persistentImageUrl || (isValidImageUrl(previewFallback) ? previewFallback : '') || '';
+        const resolvedOriginalUrl = persistentImageUrl || resolveBackendMediaUrl(data.original_image?.image_url || data.image_url);
         const resolvedLeafCropUrl = resolveBackendMediaUrl(data.leaf_crop?.image_url);
-        const persistentImageUrl = data.persistent_image_url || (resolvedOriginalUrl?.startsWith('http') ? resolvedOriginalUrl : null);
-        const imageUrl = persistentImageUrl || resolvedOriginalUrl || formData.get('imagePreviewUrl') || resolvedLeafCropUrl || '';
 
         const top3Predictions = data.top3_predictions || [];
         const segmentationData = data.segmentation ? {

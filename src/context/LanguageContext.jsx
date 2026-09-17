@@ -172,6 +172,13 @@ export const translations = {
     limeNegativeContribution: "Negative contribution",
     limeModelInterpretation: "Diagnostic interpretation",
     originalLeafPhoto: "Original Leaf Photo",
+    imageUnavailable: "Image unavailable",
+    directLeafClassification: "Direct Leaf Classification",
+    resnetActive: "ResNet-50 Analysis Active",
+    brinjalPipelineNote: "Brinjal disease classification uses the dedicated ResNet-50 model without YOLO/SAM segmentation.",
+    directResnetBadge: "Direct ResNet-50",
+    directAnalysisFooter: "Direct leaf classification and analysis",
+    segmentedImageUnavailable: "Segmented leaf image unavailable",
 
     // Chatbot & Voice
     chatTitle: "AI Farmer Assistant",
@@ -378,6 +385,13 @@ export const translations = {
     limeNegativeContribution: "எதிர்மறை பங்களிப்பு",
     limeModelInterpretation: "கணிப்பு விளக்கம்",
     originalLeafPhoto: "அசல் இலை படம்",
+    imageUnavailable: "படம் கிடைக்கவில்லை",
+    directLeafClassification: "நேரடி இலை வகைப்பாடு",
+    resnetActive: "ResNet-50 ஆய்வு செயலில் உள்ளது",
+    brinjalPipelineNote: "கத்தரிக்காய் நோய் வகைப்பாடு YOLO/SAM பிரித்தெடுத்தல் இல்லாமல் பிரத்யேக ResNet-50 மாதிரியைப் பயன்படுத்துகிறது.",
+    directResnetBadge: "நேரடி ResNet-50",
+    directAnalysisFooter: "நேரடி இலை வகைப்பாடு மற்றும் பகுப்பாய்வு",
+    segmentedImageUnavailable: "பிரித்தெடுக்கப்பட்ட இலை படம் கிடைக்கவில்லை",
 
     // Chatbot & Voice
     chatTitle: "AI விவசாய உதவியாளர்",

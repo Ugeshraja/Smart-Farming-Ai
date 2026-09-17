@@ -35,21 +35,30 @@ export default function MyFieldCard() {
   const [previewAssessment, setPreviewAssessment] = useState(null);
   const [validationError, setValidationError] = useState(null);
 
-  const [formData, setFormData] = useState({
-    crop_type: fieldProfile?.crop_type || "Brinjal",
-    soil_type: fieldProfile?.soil_type || "Loamy",
-    soil_ph: fieldProfile?.soil_ph ?? 6.4,
-    water_capacity: fieldProfile?.water_capacity || "72%",
-    field_size: fieldProfile?.field_size ?? 2.0,
-    field_size_unit: fieldProfile?.field_size_unit || "Acre",
-    npk_nitrogen: fieldProfile?.npk_nitrogen ?? 80,
-    npk_phosphorus: fieldProfile?.npk_phosphorus ?? 40,
-    npk_potassium: fieldProfile?.npk_potassium ?? 40,
-    sowing_date: fieldProfile?.sowing_date || "2026-06-15",
-    irrigation_method: fieldProfile?.irrigation_method || "Drip",
-    field_location: fieldProfile?.field_location || "Tamil Nadu",
-    season: fieldProfile?.season || "Kharif"
+  const getInitialFormData = (profile) => ({
+    crop_type: profile?.crop_type || "Brinjal",
+    soil_type: profile?.soil_type || "Loamy",
+    soil_ph: profile?.soil_ph !== undefined && profile?.soil_ph !== null ? profile.soil_ph : 6.4,
+    water_capacity: profile?.water_capacity !== undefined && profile?.water_capacity !== null ? String(profile.water_capacity) : "72%",
+    field_size: profile?.field_size !== undefined && profile?.field_size !== null ? profile.field_size : 2.0,
+    field_size_unit: profile?.field_size_unit || "Acre",
+    npk_nitrogen: profile?.npk_nitrogen !== undefined && profile?.npk_nitrogen !== null ? profile.npk_nitrogen : 80,
+    npk_phosphorus: profile?.npk_phosphorus !== undefined && profile?.npk_phosphorus !== null ? profile.npk_phosphorus : 40,
+    npk_potassium: profile?.npk_potassium !== undefined && profile?.npk_potassium !== null ? profile.npk_potassium : 40,
+    sowing_date: profile?.sowing_date || "2026-06-15",
+    irrigation_method: profile?.irrigation_method || "Drip",
+    field_location: profile?.field_location || "Tamil Nadu",
+    season: profile?.season || "Kharif"
   });
+
+  const [formData, setFormData] = useState(() => getInitialFormData(fieldProfile));
+
+  // Keep formData in sync if fieldProfile loads or updates while not editing
+  useEffect(() => {
+    if (!isEditing && fieldProfile) {
+      setFormData(getInitialFormData(fieldProfile));
+    }
+  }, [fieldProfile, isEditing]);
 
   // Ensure fresh assessment exists on mount
   useEffect(() => {
@@ -59,21 +68,7 @@ export default function MyFieldCard() {
   }, [fieldAssessment, fieldProfile, refreshFieldProfile]);
 
   const handleOpenEdit = () => {
-    setFormData({
-      crop_type: fieldProfile?.crop_type || "Brinjal",
-      soil_type: fieldProfile?.soil_type || "Loamy",
-      soil_ph: fieldProfile?.soil_ph ?? 6.4,
-      water_capacity: fieldProfile?.water_capacity || "72%",
-      field_size: fieldProfile?.field_size ?? 2.0,
-      field_size_unit: fieldProfile?.field_size_unit || "Acre",
-      npk_nitrogen: fieldProfile?.npk_nitrogen ?? 80,
-      npk_phosphorus: fieldProfile?.npk_phosphorus ?? 40,
-      npk_potassium: fieldProfile?.npk_potassium ?? 40,
-      sowing_date: fieldProfile?.sowing_date || "2026-06-15",
-      irrigation_method: fieldProfile?.irrigation_method || "Drip",
-      field_location: fieldProfile?.field_location || "Tamil Nadu",
-      season: fieldProfile?.season || "Kharif"
-    });
+    setFormData(getInitialFormData(fieldProfile));
     setPreviewAssessment(null);
     setValidationError(null);
     setIsEditing(true);
@@ -84,13 +79,19 @@ export default function MyFieldCard() {
     setEvaluating(true);
     setValidationError(null);
     try {
+      const parsedPh = parseFloat(formData.soil_ph);
+      const parsedSize = parseFloat(formData.field_size);
+      const parsedN = parseInt(formData.npk_nitrogen, 10);
+      const parsedP = parseInt(formData.npk_phosphorus, 10);
+      const parsedK = parseInt(formData.npk_potassium, 10);
+
       const cleanData = {
         ...formData,
-        soil_ph: parseFloat(formData.soil_ph),
-        field_size: parseFloat(formData.field_size) || 1.0,
-        npk_nitrogen: parseInt(formData.npk_nitrogen) || 0,
-        npk_phosphorus: parseInt(formData.npk_phosphorus) || 0,
-        npk_potassium: parseInt(formData.npk_potassium) || 0
+        soil_ph: Number.isFinite(parsedPh) ? parsedPh : formData.soil_ph,
+        field_size: Number.isFinite(parsedSize) ? parsedSize : 2.0,
+        npk_nitrogen: Number.isFinite(parsedN) ? parsedN : 0,
+        npk_phosphorus: Number.isFinite(parsedP) ? parsedP : 0,
+        npk_potassium: Number.isFinite(parsedK) ? parsedK : 0
       };
       const assessment = await apiService.evaluateField(cleanData);
       if (assessment) {
@@ -108,13 +109,30 @@ export default function MyFieldCard() {
     setSaving(true);
     setValidationError(null);
     try {
+      const parsedPh = parseFloat(formData.soil_ph);
+      const parsedSize = parseFloat(formData.field_size);
+      const parsedN = parseInt(formData.npk_nitrogen, 10);
+      const parsedP = parseInt(formData.npk_phosphorus, 10);
+      const parsedK = parseInt(formData.npk_potassium, 10);
+
+      let waterCap = formData.water_capacity;
+      if (typeof waterCap === 'number') {
+        waterCap = `${waterCap}%`;
+      } else if (typeof waterCap === 'string' && waterCap.trim() !== '' && !waterCap.includes('%')) {
+        const num = parseFloat(waterCap);
+        if (Number.isFinite(num)) {
+          waterCap = `${num}%`;
+        }
+      }
+
       const cleanData = {
         ...formData,
-        soil_ph: parseFloat(formData.soil_ph),
-        field_size: parseFloat(formData.field_size) || 2.0,
-        npk_nitrogen: parseInt(formData.npk_nitrogen) || 0,
-        npk_phosphorus: parseInt(formData.npk_phosphorus) || 0,
-        npk_potassium: parseInt(formData.npk_potassium) || 0
+        soil_ph: Number.isFinite(parsedPh) ? parsedPh : formData.soil_ph,
+        water_capacity: waterCap ?? "72%",
+        field_size: Number.isFinite(parsedSize) ? parsedSize : 2.0,
+        npk_nitrogen: Number.isFinite(parsedN) ? parsedN : 0,
+        npk_phosphorus: Number.isFinite(parsedP) ? parsedP : 0,
+        npk_potassium: Number.isFinite(parsedK) ? parsedK : 0
       };
 
       await updateFieldProfile(cleanData);
@@ -122,7 +140,11 @@ export default function MyFieldCard() {
       setPreviewAssessment(null);
     } catch (err) {
       console.error("Failed to save field profile:", err);
-      setValidationError(err?.message || "Failed to save field profile.");
+      setValidationError(
+        isTa
+          ? "வயல் தரவை சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
+          : (err?.message || "Unable to save field data. Please try again.")
+      );
     } finally {
       setSaving(false);
     }
@@ -258,7 +280,7 @@ export default function MyFieldCard() {
                   {isTa ? "மண் pH" : "Soil pH"}
                 </span>
                 <span className="font-bold text-gray-900 text-sm block">
-                  {fieldProfile.soil_ph ?? "6.4"}
+                  {fieldProfile.soil_ph !== undefined && fieldProfile.soil_ph !== null ? fieldProfile.soil_ph : "—"}
                 </span>
               </div>
 
@@ -268,7 +290,9 @@ export default function MyFieldCard() {
                   {isTa ? "நீர் கொள்ளளவு" : "Water Capacity"}
                 </span>
                 <span className="font-bold text-gray-900 text-sm block">
-                  {fieldProfile.water_capacity || "72%"}
+                  {fieldProfile.water_capacity !== undefined && fieldProfile.water_capacity !== null
+                    ? (typeof fieldProfile.water_capacity === 'number' ? `${fieldProfile.water_capacity}%` : fieldProfile.water_capacity)
+                    : "—"}
                 </span>
               </div>
 
@@ -278,7 +302,7 @@ export default function MyFieldCard() {
                   {isTa ? "நில அளவு" : "Field Size"}
                 </span>
                 <span className="font-bold text-gray-900 text-sm block">
-                  {fieldProfile.field_size} {fieldProfile.field_size_unit || "Acres"}
+                  {fieldProfile.field_size ?? "—"} {fieldProfile.field_size_unit || "Acres"}
                 </span>
               </div>
 
@@ -291,7 +315,7 @@ export default function MyFieldCard() {
                   <span className="text-[9px] text-gray-400 font-semibold">(kg/ha)</span>
                 </div>
                 <span className="font-bold text-emerald-700 text-sm block font-mono">
-                  {fieldProfile.npk_nitrogen ?? 80} - {fieldProfile.npk_phosphorus ?? 40} - {fieldProfile.npk_potassium ?? 40}
+                  {fieldProfile.npk_nitrogen ?? 0} - {fieldProfile.npk_phosphorus ?? 0} - {fieldProfile.npk_potassium ?? 0}
                 </span>
               </div>
 
@@ -552,10 +576,10 @@ export default function MyFieldCard() {
                   <div className="flex items-center space-x-2">
                     <input
                       type="range"
-                      min="4.0"
-                      max="9.0"
+                      min="3.0"
+                      max="11.0"
                       step="0.1"
-                      value={formData.soil_ph}
+                      value={Number.isFinite(parseFloat(formData.soil_ph)) ? parseFloat(formData.soil_ph) : 6.4}
                       onChange={(e) => setFormData({ ...formData, soil_ph: parseFloat(e.target.value) })}
                       className="w-full accent-agri-600 cursor-pointer"
                     />
@@ -565,7 +589,7 @@ export default function MyFieldCard() {
                       min="3.0"
                       max="11.0"
                       value={formData.soil_ph}
-                      onChange={(e) => setFormData({ ...formData, soil_ph: parseFloat(e.target.value) || 6.4 })}
+                      onChange={(e) => setFormData({ ...formData, soil_ph: e.target.value })}
                       className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold text-xs"
                     />
                   </div>
@@ -580,7 +604,7 @@ export default function MyFieldCard() {
                     type="text"
                     value={formData.water_capacity}
                     onChange={(e) => setFormData({ ...formData, water_capacity: e.target.value })}
-                    placeholder="e.g. 72%"
+                    placeholder="e.g. 70% or 0%"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:ring-2 focus:ring-agri-500 focus:outline-none"
                   />
                 </div>
@@ -596,7 +620,7 @@ export default function MyFieldCard() {
                       step="0.1"
                       min="0.1"
                       value={formData.field_size}
-                      onChange={(e) => setFormData({ ...formData, field_size: parseFloat(e.target.value) || 1.0 })}
+                      onChange={(e) => setFormData({ ...formData, field_size: e.target.value })}
                       className="w-2/3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:ring-2 focus:ring-agri-500 focus:outline-none"
                     />
                     <select
@@ -691,7 +715,7 @@ export default function MyFieldCard() {
                       type="number"
                       min="0"
                       value={formData.npk_nitrogen}
-                      onChange={(e) => setFormData({ ...formData, npk_nitrogen: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, npk_nitrogen: e.target.value })}
                       className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs text-emerald-950 font-bold"
                     />
                   </div>
@@ -703,7 +727,7 @@ export default function MyFieldCard() {
                       type="number"
                       min="0"
                       value={formData.npk_phosphorus}
-                      onChange={(e) => setFormData({ ...formData, npk_phosphorus: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, npk_phosphorus: e.target.value })}
                       className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs text-emerald-950 font-bold"
                     />
                   </div>
@@ -715,7 +739,7 @@ export default function MyFieldCard() {
                       type="number"
                       min="0"
                       value={formData.npk_potassium}
-                      onChange={(e) => setFormData({ ...formData, npk_potassium: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, npk_potassium: e.target.value })}
                       className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs text-emerald-950 font-bold"
                     />
                   </div>

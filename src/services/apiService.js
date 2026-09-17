@@ -17,6 +17,7 @@ import {
 } from './mockData';
 import { fetchOpenWeatherData, geocodeLocation } from './weatherService';
 import { VERIFIED_GOVERNMENT_SCHEMES, evaluateSchemeEligibility as evalRules } from './schemesData';
+import { evaluateFieldSuitability } from './fieldEvaluator';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
 
@@ -868,61 +869,160 @@ export const apiService = {
 
   // 11. My Field Profile Endpoints
   async getFieldProfile() {
+    let profile = null;
+    let assessment = null;
+
+    // 1. Try Backend API
     try {
       const response = await apiClient.get('/field');
       if (response.data) {
-        localStorage.setItem('smartfarm_field_profile', JSON.stringify(response.data));
-        return response.data;
+        profile = response.data.field || response.data;
+        if (response.data.assessment) {
+          assessment = response.data.assessment;
+        }
       }
     } catch (e) {
       console.warn("Backend getFieldProfile failed, using local storage fallback:", e?.message);
     }
+
+    // 2. Local Storage Fallback if backend failed
+    if (!profile) {
+      try {
+        const stored = localStorage.getItem('smartfarm_field_profile');
+        if (stored) {
+          profile = JSON.parse(stored);
+        }
+      } catch { }
+    }
+
+    // 3. Default demo profile if no saved profile exists
+    if (!profile) {
+      profile = {
+        crop_type: "Brinjal",
+        soil_type: "Loamy",
+        soil_ph: 6.4,
+        water_capacity: "72%",
+        field_size: 2.0,
+        field_size_unit: "Acre",
+        npk_nitrogen: 80,
+        npk_phosphorus: 40,
+        npk_potassium: 40,
+        sowing_date: "2026-06-15",
+        irrigation_method: "Drip",
+        field_location: "Tamil Nadu",
+        season: "Kharif"
+      };
+    }
+
+    // 4. Clean stored profile (strip stale assessment field if embedded)
+    const cleanProfile = { ...profile };
+    delete cleanProfile.assessment;
+    delete cleanProfile.field;
+
+    // 5. Always calculate the assessment from THAT EXACT profile!
+    // Never reuse a stale assessment that could mismatch current field parameters.
+    assessment = evaluateFieldSuitability(cleanProfile);
+
+    // Save synchronized state to localStorage
     try {
-      const stored = localStorage.getItem('smartfarm_field_profile');
-      if (stored) return JSON.parse(stored);
+      localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
+      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
     } catch { }
-    // Default demo profile for initial load
+
     return {
-      crop_type: "Brinjal",
-      soil_type: "Loamy",
-      soil_ph: 6.4,
-      water_capacity: "72%",
-      field_size: 2.0,
-      field_size_unit: "Acre",
-      npk_nitrogen: 80,
-      npk_phosphorus: 40,
-      npk_potassium: 40,
-      sowing_date: "2026-06-15",
-      irrigation_method: "Drip",
-      field_location: "Tamil Nadu",
-      season: "Kharif"
+      ...cleanProfile,
+      field: cleanProfile,
+      assessment: assessment
     };
   },
 
   async updateFieldProfile(profileData) {
+    // 1. Clean and normalize the profile
+    const current = await this.getFieldProfile();
+    const currentField = current.field || current;
+
+    // Normalize water_capacity (handle number 0, string '0', '0%', etc.)
+    let normWater = profileData.water_capacity !== undefined ? profileData.water_capacity : currentField.water_capacity;
+    if (typeof normWater === 'number') {
+      normWater = `${normWater}%`;
+    } else if (typeof normWater === 'string' && normWater.trim() !== '' && !normWater.includes('%')) {
+      const parsedNum = parseFloat(normWater);
+      if (Number.isFinite(parsedNum)) {
+        normWater = `${parsedNum}%`;
+      }
+    }
+
+    const updated = {
+      ...currentField,
+      ...profileData,
+      soil_ph: profileData.soil_ph !== undefined ? (Number.isFinite(parseFloat(profileData.soil_ph)) ? parseFloat(profileData.soil_ph) : currentField.soil_ph) : currentField.soil_ph,
+      water_capacity: normWater ?? "72%",
+      field_size: profileData.field_size !== undefined ? (Number.isFinite(parseFloat(profileData.field_size)) ? parseFloat(profileData.field_size) : currentField.field_size) : currentField.field_size,
+      npk_nitrogen: profileData.npk_nitrogen !== undefined ? (Number.isFinite(parseInt(profileData.npk_nitrogen, 10)) ? parseInt(profileData.npk_nitrogen, 10) : currentField.npk_nitrogen) : currentField.npk_nitrogen,
+      npk_phosphorus: profileData.npk_phosphorus !== undefined ? (Number.isFinite(parseInt(profileData.npk_phosphorus, 10)) ? parseInt(profileData.npk_phosphorus, 10) : currentField.npk_phosphorus) : currentField.npk_phosphorus,
+      npk_potassium: profileData.npk_potassium !== undefined ? (Number.isFinite(parseInt(profileData.npk_potassium, 10)) ? parseInt(profileData.npk_potassium, 10) : currentField.npk_potassium) : currentField.npk_potassium,
+    };
+    delete updated.assessment;
+    delete updated.field;
+
+    // 2. Immediately calculate suitability from the updated canonical profile
+    const calculatedAssessment = evaluateFieldSuitability(updated);
+
+    // 3. Persist canonical state immediately to localStorage
     try {
-      const response = await apiClient.put('/field', profileData);
+      localStorage.setItem('smartfarm_field_profile', JSON.stringify(updated));
+      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(calculatedAssessment));
+    } catch { }
+
+    // 4. Try syncing with backend API if reachable
+    let finalAssessment = calculatedAssessment;
+    try {
+      const response = await apiClient.put('/field', updated);
       if (response.data) {
-        localStorage.setItem('smartfarm_field_profile', JSON.stringify(response.data));
-        return response.data;
+        const backendField = response.data.field || response.data;
+        delete backendField.assessment;
+        delete backendField.field;
+        if (response.data.assessment) {
+          finalAssessment = response.data.assessment;
+          try {
+            localStorage.setItem('smartfarm_field_assessment', JSON.stringify(finalAssessment));
+          } catch { }
+        }
       }
     } catch (e) {
-      console.warn("Backend updateFieldProfile failed, saving locally:", e?.message);
+      console.warn("Backend updateFieldProfile failed, using verified client-side assessment:", e?.message);
     }
-    const current = await this.getFieldProfile();
-    const updated = { ...current, ...profileData };
-    localStorage.setItem('smartfarm_field_profile', JSON.stringify(updated));
-    return updated;
+
+    return {
+      ...updated,
+      field: updated,
+      assessment: finalAssessment
+    };
   },
 
   async evaluateField(fieldData) {
+    // 1. Clean/normalize fieldData
+    const cleanData = {
+      ...fieldData,
+      soil_ph: fieldData.soil_ph !== undefined && fieldData.soil_ph !== null ? (Number.isFinite(parseFloat(fieldData.soil_ph)) ? parseFloat(fieldData.soil_ph) : fieldData.soil_ph) : fieldData.soil_ph,
+      field_size: fieldData.field_size !== undefined && fieldData.field_size !== null ? (Number.isFinite(parseFloat(fieldData.field_size)) ? parseFloat(fieldData.field_size) : 2.0) : 2.0,
+      npk_nitrogen: fieldData.npk_nitrogen !== undefined && fieldData.npk_nitrogen !== null ? (Number.isFinite(parseInt(fieldData.npk_nitrogen, 10)) ? parseInt(fieldData.npk_nitrogen, 10) : 0) : 0,
+      npk_phosphorus: fieldData.npk_phosphorus !== undefined && fieldData.npk_phosphorus !== null ? (Number.isFinite(parseInt(fieldData.npk_phosphorus, 10)) ? parseInt(fieldData.npk_phosphorus, 10) : 0) : 0,
+      npk_potassium: fieldData.npk_potassium !== undefined && fieldData.npk_potassium !== null ? (Number.isFinite(parseInt(fieldData.npk_potassium, 10)) ? parseInt(fieldData.npk_potassium, 10) : 0) : 0,
+    };
+
+    // 2. Try the existing backend /field/evaluate endpoint
     try {
-      const response = await apiClient.post('/field/evaluate', fieldData);
-      return response.data?.assessment;
+      const response = await apiClient.post('/field/evaluate', cleanData);
+      if (response.data?.assessment) {
+        return response.data.assessment;
+      }
     } catch (e) {
-      console.warn("Backend evaluateField failed:", e?.message);
-      return null;
+      console.warn("Backend evaluateField failed, using client-side agronomic rule evaluator:", e?.message);
     }
+
+    // 3. Client-side agronomic rule evaluator fallback
+    return evaluateFieldSuitability(cleanData);
   },
 
   // 12. Government Agriculture Schemes Endpoints

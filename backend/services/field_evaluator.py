@@ -435,7 +435,9 @@ def evaluate_field_suitability(field_data: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     # --- 2. Water Capacity / Availability Evaluation (Critical) ---
-    water_val = parse_water_percentage(field_data.get("water_capacity", 72)) or 72.0
+    water_val = parse_water_percentage(field_data.get("water_capacity", 72))
+    if water_val is None:
+        water_val = 72.0
     w_rules = rules["water_capacity"]
     w_opt_min, w_opt_max = w_rules["optimal_min"], w_rules["optimal_max"]
     w_tol_min, w_tol_max = w_rules["tolerable_min"], w_rules["tolerable_max"]

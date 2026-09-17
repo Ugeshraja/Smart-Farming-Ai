@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
+import { evaluateFieldSuitability } from '../services/fieldEvaluator';
 
 const AuthContext = createContext();
 
@@ -64,44 +65,66 @@ export const AuthProvider = ({ children }) => {
     return null;
   });
 
+  const DEFAULT_FIELD_PROFILE = {
+    crop_type: "Brinjal",
+    soil_type: "Loamy",
+    soil_ph: 6.4,
+    water_capacity: "72%",
+    field_size: 2.0,
+    field_size_unit: "Acre",
+    npk_nitrogen: 80,
+    npk_phosphorus: 40,
+    npk_potassium: 40,
+    sowing_date: "2026-06-15",
+    irrigation_method: "Drip",
+    field_location: "Tamil Nadu",
+    season: "Kharif"
+  };
+
   const [fieldProfile, setFieldProfile] = useState(() => {
     try {
       const stored = localStorage.getItem('smartfarm_field_profile');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        delete parsed.assessment;
+        delete parsed.field;
+        return parsed;
+      }
       const storedUser = localStorage.getItem('smartfarm_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        if (parsed.field_profile) return parsed.field_profile;
+        if (parsed.field_profile) {
+          const prof = { ...parsed.field_profile };
+          delete prof.assessment;
+          delete prof.field;
+          return prof;
+        }
       }
     } catch {}
-    return {
-      crop_type: "Brinjal",
-      soil_type: "Loamy",
-      soil_ph: 6.4,
-      water_capacity: "72%",
-      field_size: 2.0,
-      field_size_unit: "Acre",
-      npk_nitrogen: 80,
-      npk_phosphorus: 40,
-      npk_potassium: 40,
-      sowing_date: "2026-06-15",
-      irrigation_method: "Drip",
-      field_location: "Tamil Nadu",
-      season: "Kharif"
-    };
+    return DEFAULT_FIELD_PROFILE;
   });
 
   const [fieldAssessment, setFieldAssessment] = useState(() => {
+    // Crucial: ALWAYS calculate assessment from current fieldProfile on load!
+    // Never reuse an old assessment that may have mismatched values.
     try {
-      const stored = localStorage.getItem('smartfarm_field_assessment');
-      if (stored) return JSON.parse(stored);
-      const storedProf = localStorage.getItem('smartfarm_field_profile');
-      if (storedProf) {
-        const parsed = JSON.parse(storedProf);
-        if (parsed.assessment) return parsed.assessment;
+      const stored = localStorage.getItem('smartfarm_field_profile');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        delete parsed.assessment;
+        delete parsed.field;
+        const freshAssessment = evaluateFieldSuitability(parsed);
+        try {
+          localStorage.setItem('smartfarm_field_assessment', JSON.stringify(freshAssessment));
+        } catch {}
+        return freshAssessment;
       }
     } catch {}
-    return null;
+    const initAssessment = evaluateFieldSuitability(DEFAULT_FIELD_PROFILE);
+    try {
+      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(initAssessment));
+    } catch {}
+    return initAssessment;
   });
 
   const [loading, setLoading] = useState(false);
@@ -297,21 +320,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Refresh field profile and assessment from authoritative backend
+  // Refresh field profile and assessment from authoritative backend or local state
   const refreshFieldProfile = async () => {
     try {
       const data = await apiService.getFieldProfile();
       if (data) {
         const profile = data.field || data;
-        const assessment = data.assessment || null;
-        setFieldProfile(profile);
-        if (assessment) {
-          setFieldAssessment(assessment);
+        const cleanProfile = { ...profile };
+        delete cleanProfile.assessment;
+        delete cleanProfile.field;
+        const assessment = data.assessment || evaluateFieldSuitability(cleanProfile);
+
+        setFieldProfile(cleanProfile);
+        setFieldAssessment(assessment);
+        try {
+          localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
           localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-        }
+        } catch {}
       }
     } catch (e) {
       console.warn("Error refreshing field profile:", e);
+      if (fieldProfile) {
+        const cleanProfile = { ...fieldProfile };
+        delete cleanProfile.assessment;
+        delete cleanProfile.field;
+        const assessment = evaluateFieldSuitability(cleanProfile);
+        setFieldAssessment(assessment);
+        try {
+          localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
+        } catch {}
+      }
     }
   };
 
@@ -325,26 +363,50 @@ export const AuthProvider = ({ children }) => {
     try {
       const updated = await apiService.updateFieldProfile(fieldData);
       const profile = updated.field || updated;
-      const assessment = updated.assessment || null;
-      setFieldProfile(profile);
-      if (assessment) {
-        setFieldAssessment(assessment);
+      const cleanProfile = { ...profile };
+      delete cleanProfile.assessment;
+      delete cleanProfile.field;
+      const assessment = updated.assessment || evaluateFieldSuitability(cleanProfile);
+
+      setFieldProfile(cleanProfile);
+      setFieldAssessment(assessment);
+      try {
+        localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
         localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-      }
-      localStorage.setItem('smartfarm_field_profile', JSON.stringify(profile));
+      } catch {}
+
       setUser(prev => {
         if (!prev) return prev;
-        const newUser = { ...prev, field_profile: profile };
-        localStorage.setItem('smartfarm_user', JSON.stringify(newUser));
+        const newUser = { ...prev, field_profile: cleanProfile };
+        try {
+          localStorage.setItem('smartfarm_user', JSON.stringify(newUser));
+        } catch {}
         return newUser;
       });
-      return { field: profile, assessment };
+      return { field: cleanProfile, assessment };
     } catch (err) {
       console.warn("updateFieldProfile error:", err);
-      const updated = { ...fieldProfile, ...fieldData };
-      setFieldProfile(updated);
-      localStorage.setItem('smartfarm_field_profile', JSON.stringify(updated));
-      return { field: updated, assessment: fieldAssessment };
+      const cleanProfile = { ...fieldProfile, ...fieldData };
+      delete cleanProfile.assessment;
+      delete cleanProfile.field;
+      const assessment = evaluateFieldSuitability(cleanProfile);
+
+      setFieldProfile(cleanProfile);
+      setFieldAssessment(assessment);
+      try {
+        localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
+        localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
+      } catch {}
+
+      setUser(prev => {
+        if (!prev) return prev;
+        const newUser = { ...prev, field_profile: cleanProfile };
+        try {
+          localStorage.setItem('smartfarm_user', JSON.stringify(newUser));
+        } catch {}
+        return newUser;
+      });
+      return { field: cleanProfile, assessment };
     } finally {
       setLoading(false);
     }

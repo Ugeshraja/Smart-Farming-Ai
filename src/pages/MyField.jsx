@@ -46,7 +46,7 @@ export default function MyField() {
               {isTa ? "பயிர் & பரப்பளவு" : "Active Farm Profile"}
             </div>
             <div className="text-sm font-bold text-gray-900">
-              {fieldProfile?.crop_type || "Brinjal"} • {fieldProfile?.field_size || 2.0} {fieldProfile?.field_size_unit || "Acre"}
+              {fieldProfile?.crop_type || "Brinjal"} • {fieldProfile?.field_size ?? 2.0} {fieldProfile?.field_size_unit || "Acre"}
             </div>
             <div className="text-[11px] text-agri-700 font-semibold">
               {fieldProfile?.field_location || "Tamil Nadu"}

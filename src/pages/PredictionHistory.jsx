@@ -5,34 +5,35 @@ import {
   Eye,
   X,
   AlertCircle,
-  Leaf
+  Leaf,
+  Trash2
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/apiService';
 
 function HistoryThumbnail({ pred, isTa }) {
   const [failed, setFailed] = useState(false);
-  const isInvalid = !pred?.imageUrl || pred.imageUrl.includes('localhost') || pred.imageUrl.includes('127.0.0.1');
+  const resolvedUrl = apiService.resolveThumbnailUrl(pred);
 
-  if (isInvalid || failed) {
+  if (!resolvedUrl || failed) {
     return (
       <div
-        className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 p-0.5 text-center select-none"
+        className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 p-0.5 text-center select-none shrink-0"
         title={isTa ? 'படம் கிடைக்கவில்லை' : 'Image unavailable'}
       >
-        <Leaf className="w-4 h-4 text-gray-400 mb-0.5" />
-        <span className="text-[7.5px] leading-none font-medium text-gray-500">
-          {isTa ? 'இல்லை' : 'No img'}
+        <Leaf className="w-4 h-4 text-gray-400 mb-0.5 shrink-0" />
+        <span className="text-[7.5px] leading-tight font-medium text-gray-500 text-center px-0.5">
+          {isTa ? 'படம் கிடைக்கவில்லை' : 'Image unavailable'}
         </span>
       </div>
     );
   }
 
   return (
-    <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+    <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
       <img
-        src={pred.imageUrl}
-        alt={pred.disease}
+        src={resolvedUrl}
+        alt={pred?.disease || 'Crop leaf'}
         className="w-full h-full object-cover"
         onError={() => setFailed(true)}
       />
@@ -42,9 +43,9 @@ function HistoryThumbnail({ pred, isTa }) {
 
 function ModalLeafImage({ item, isTa }) {
   const [failed, setFailed] = useState(false);
-  const isInvalid = !item?.imageUrl || item.imageUrl.includes('localhost') || item.imageUrl.includes('127.0.0.1');
+  const resolvedUrl = apiService.resolveThumbnailUrl(item);
 
-  if (isInvalid || failed) {
+  if (!resolvedUrl || failed) {
     return (
       <div className="h-48 w-full flex flex-col items-center justify-center bg-gray-100 rounded-lg text-gray-400 p-4 space-y-1 text-center">
         <Leaf className="w-8 h-8 text-gray-400" />
@@ -57,9 +58,9 @@ function ModalLeafImage({ item, isTa }) {
 
   return (
     <img
-      src={item.imageUrl}
-      alt="Leaf"
-      className="h-48 w-full object-contain mx-auto"
+      src={resolvedUrl}
+      alt={item?.disease || "Leaf"}
+      className="h-48 w-full object-contain mx-auto rounded-lg"
       onError={() => setFailed(true)}
     />
   );
@@ -75,6 +76,7 @@ export default function PredictionHistory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [confidenceFilter, setConfidenceFilter] = useState('All');
   const [activeModalItem, setActiveModalItem] = useState(null);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const isTa = language === 'ta';
@@ -114,6 +116,30 @@ export default function PredictionHistory() {
 
     setFilteredPredictions(result);
   }, [selectedCropFilter, confidenceFilter, searchQuery, predictions]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteCandidate) return;
+    const targetId = deleteCandidate.id;
+
+    // Delete strictly by exact ID
+    const updated = predictions.filter(
+      prediction => prediction.id !== targetId
+    );
+
+    // Persist updated array to localStorage
+    localStorage.setItem('smartfarm_predictions', JSON.stringify(updated));
+
+    // Also call apiService.deletePrediction for consistent local storage sync
+    try {
+      await apiService.deletePrediction(targetId);
+    } catch (e) {
+      console.warn("apiService delete error:", e);
+    }
+
+    // Update React state
+    setPredictions(updated);
+    setDeleteCandidate(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -184,10 +210,24 @@ export default function PredictionHistory() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-xs text-gray-500">Loading prediction log...</div>
+        ) : predictions.length === 0 ? (
+          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+            <Leaf className="w-10 h-10 text-gray-300 mx-auto" />
+            <p className="text-sm font-semibold text-gray-700">
+              {t('noHistoryYet') || (isTa ? 'கணிப்பு வரலாறு இல்லை.' : 'No prediction history yet.')}
+            </p>
+            <p className="text-xs text-gray-400">
+              {isTa
+                ? 'நோய் கண்டறிதல் பக்கத்தில் இலை படத்தை பதிவேற்றி பகுப்பாய்வு செய்யவும்.'
+                : 'Diagnose crops on the Crop Disease Detection page to record predictions here.'}
+            </p>
+          </div>
         ) : filteredPredictions.length === 0 ? (
           <div className="p-12 text-center text-xs text-gray-400 space-y-2">
             <AlertCircle className="w-8 h-8 text-gray-300 mx-auto" />
-            <p>No matching crop predictions found in database.</p>
+            <p className="text-sm font-semibold text-gray-600">
+              {isTa ? 'பொருந்தக்கூடிய பயிர் கணிப்புகள் எதுவும் கிடைக்கவில்லை.' : 'No matching crop predictions found.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -252,7 +292,7 @@ export default function PredictionHistory() {
                     </td>
 
                     {/* Actions */}
-                    <td className="py-2.5 px-4 text-right space-x-2">
+                    <td className="py-2.5 px-4 text-right space-x-2 whitespace-nowrap">
                       <button
                         onClick={() => setActiveModalItem(pred)}
                         className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
@@ -265,6 +305,14 @@ export default function PredictionHistory() {
                         className="px-2.5 py-1 bg-agri-600 hover:bg-agri-700 text-white rounded-lg font-semibold transition-colors shadow-2xs"
                       >
                         {t('viewReport')}
+                      </button>
+                      <button
+                        onClick={() => setDeleteCandidate(pred)}
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-semibold transition-colors shadow-2xs"
+                        title={isTa ? 'நீக்கு' : 'Delete'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 inline mr-1" />
+                        {t('deleteAction') || (isTa ? 'நீக்கு' : 'Delete')}
                       </button>
                     </td>
                   </tr>
@@ -346,6 +394,56 @@ export default function PredictionHistory() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {t('deleteConfirmTitle') || (isTa ? 'கணிப்பை நீக்கவா?' : 'Delete Prediction?')}
+                </h3>
+              </div>
+              <button
+                onClick={() => setDeleteCandidate(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-gray-600 leading-relaxed font-medium">
+                {t('deleteConfirmMsg') || (isTa ? 'இந்த கணிப்பு பதிவை நீக்க விரும்புகிறீர்களா?' : 'Are you sure you want to delete this prediction record?')}
+              </p>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+                <span className="font-mono font-bold text-gray-900">{deleteCandidate.id}</span>
+                <span className="font-semibold text-gray-700">{deleteCandidate.crop} — {deleteCandidate.disease}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setDeleteCandidate(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors"
+              >
+                {t('cancel') || (isTa ? 'ரத்து செய்' : 'Cancel')}
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t('confirmDelete') || (isTa ? 'நீக்கு' : 'Delete')}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

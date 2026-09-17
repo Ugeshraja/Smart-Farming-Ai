@@ -71,7 +71,7 @@ export function resolveBackendMediaUrl(url) {
 
 /**
  * Validates whether an image URL is a usable, non-broken URL.
- * Rejects localhost, 127.0.0.1, 0.0.0.0, /tmp/, file://, /static/, and /api/backend/static/.
+ * Rejects localhost, 127.0.0.1, 0.0.0.0, internal IPs, /tmp/, file://, /static/, and /api/backend/static/.
  * Accepts valid HTTPS/HTTP (non-local) and data:image/ URLs.
  */
 export function isValidImageUrl(url) {
@@ -79,8 +79,14 @@ export function isValidImageUrl(url) {
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return false;
 
-  // Reject loopback and localhost
-  if (trimmed.includes('localhost') || trimmed.includes('127.0.0.1') || trimmed.includes('0.0.0.0')) {
+  // Reject loopback, localhost, and local IPs
+  if (
+    trimmed.includes('localhost') ||
+    trimmed.includes('127.0.0.1') ||
+    trimmed.includes('0.0.0.0') ||
+    trimmed.includes('10.') ||
+    trimmed.includes('192.168.')
+  ) {
     return false;
   }
 
@@ -89,8 +95,13 @@ export function isValidImageUrl(url) {
     return false;
   }
 
-  // Reject relative static prediction paths (cannot be served by Vercel serverless functions)
-  if (trimmed.startsWith('/static/') || trimmed.startsWith('/api/backend/static/') || trimmed.includes('/static/predictions/')) {
+  // Reject relative static prediction paths (ephemeral server paths that cannot be served by Vercel functions)
+  if (
+    trimmed.startsWith('/static/') ||
+    trimmed.startsWith('static/') ||
+    trimmed.startsWith('/api/backend/static/') ||
+    trimmed.includes('/static/predictions/')
+  ) {
     return false;
   }
 
@@ -107,9 +118,82 @@ export function isValidImageUrl(url) {
   return false;
 }
 
+/**
+ * Resolves a crop leaf thumbnail URL from a prediction record
+ * adhering to the strict priority order:
+ * 1. Persistent cloud image URL
+ * 2. Existing original image URL
+ * 3. Existing thumbnail URL
+ * 4. Existing stored uploaded image/preview
+ *
+ * Rejects broken/temporary paths (localhost, 127.0.0.1, 0.0.0.0, file://, /tmp/, temporary server paths).
+ */
+export function resolveThumbnailUrl(pred) {
+  if (!pred) return null;
+
+  // 1. Persistent cloud image URL
+  const persistentCandidates = [
+    pred.persistent_image_url,
+    pred.persistentImageUrl,
+    pred.cloud_image_url,
+    pred.cloudImageUrl,
+    pred.rawBackend?.persistent_image_url
+  ];
+  for (const url of persistentCandidates) {
+    if (isValidImageUrl(url)) return url;
+  }
+
+  // 2. Existing original image URL
+  const originalCandidates = [
+    pred.original_image?.image_url,
+    pred.original_image?.url,
+    pred.originalImage?.image_url,
+    pred.originalImage?.url,
+    pred.originalImage,
+    pred.image_url,
+    pred.imageUrl,
+    pred.rawBackend?.original_image?.image_url,
+    pred.rawBackend?.image_url
+  ];
+  for (const url of originalCandidates) {
+    if (isValidImageUrl(url)) return url;
+  }
+
+  // 3. Existing thumbnail URL
+  const thumbnailCandidates = [
+    pred.thumbnail_url,
+    pred.thumbnailUrl,
+    pred.thumb_url,
+    pred.thumbUrl,
+    pred.leaf_crop?.image_url,
+    pred.leaf_crop?.url,
+    pred.rawBackend?.thumbnail_url
+  ];
+  for (const url of thumbnailCandidates) {
+    if (isValidImageUrl(url)) return url;
+  }
+
+  // 4. Existing stored uploaded image/preview
+  const previewCandidates = [
+    pred.preview_url,
+    pred.previewUrl,
+    pred.imagePreviewUrl,
+    pred.preview,
+    pred.upload_preview,
+    pred.uploadPreview,
+    pred.rawBackend?.imagePreviewUrl
+  ];
+  for (const url of previewCandidates) {
+    if (isValidImageUrl(url)) return url;
+  }
+
+  return null;
+}
+
 export const apiService = {
   resolveBackendMediaUrl,
   isValidImageUrl,
+  resolveThumbnailUrl,
 
   // 1. Agriculture Library Endpoints
   async getLibraryCategories() {
@@ -641,16 +725,88 @@ export const apiService = {
   // 9. Predictions & Reports
   async getPredictions(params = {}) {
     try {
-      const response = await apiClient.get('/predictions', { params });
-      return response.data;
-    } catch (error) {
-      return mockPredictions;
+      const stored = localStorage.getItem('smartfarm_predictions');
+      if (stored !== null) {
+        // Distinguish: key exists (even if empty array []) -> do NOT restore mock data
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("Error reading stored predictions:", e);
     }
+    // Key does not exist in localStorage -> use existing mock predictions
+    return mockPredictions;
   },
 
   async getPredictionById(id) {
+    if (!id) return mockPredictions[0];
+    try {
+      const stored = localStorage.getItem('smartfarm_predictions');
+      if (stored !== null) {
+        const list = JSON.parse(stored);
+        if (Array.isArray(list)) {
+          const found = list.find(p => p.id === id);
+          if (found) return found;
+        }
+      }
+    } catch (e) {}
+
     const found = mockPredictions.find(p => p.id === id);
     return found || mockPredictions[0];
+  },
+
+  async savePrediction(prediction) {
+    if (!prediction || !prediction.id) return { success: false };
+
+    try {
+      let current = [];
+      const stored = localStorage.getItem('smartfarm_predictions');
+      if (stored !== null) {
+        current = JSON.parse(stored);
+        if (!Array.isArray(current)) current = [];
+      } else {
+        current = [...mockPredictions];
+      }
+
+      // Check if duplicate by exact ID
+      const existingIdx = current.findIndex(p => p.id === prediction.id);
+      if (existingIdx >= 0) {
+        current[existingIdx] = { ...current[existingIdx], ...prediction };
+      } else {
+        current.unshift(prediction);
+      }
+
+      localStorage.setItem('smartfarm_predictions', JSON.stringify(current));
+      return { success: true, count: current.length };
+    } catch (e) {
+      console.warn("Error saving prediction to localStorage:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  async deletePrediction(id) {
+    if (!id) return { success: false };
+
+    try {
+      let current = [];
+      const stored = localStorage.getItem('smartfarm_predictions');
+      if (stored !== null) {
+        current = JSON.parse(stored);
+        if (!Array.isArray(current)) current = [];
+      } else {
+        current = [...mockPredictions];
+      }
+
+      // Delete only the selected localStorage record by its exact ID
+      const updated = current.filter(p => p.id !== id);
+      localStorage.setItem('smartfarm_predictions', JSON.stringify(updated));
+      return { success: true, remaining: updated };
+    } catch (e) {
+      console.warn("Error deleting prediction from localStorage:", e);
+      return { success: false, error: e.message };
+    }
   },
 
   async getSummaryMetrics() {

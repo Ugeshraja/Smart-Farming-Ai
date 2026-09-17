@@ -89,7 +89,10 @@ export default function DiseaseDetection() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (prediction && prediction.id) {
+      await apiService.savePrediction(prediction);
+    }
     setToastMessage(language === 'ta' ? 'கணிப்பு சேமிக்கப்பட்டது!' : 'Prediction saved to history successfully!');
     setTimeout(() => setToastMessage(''), 3000);
   };

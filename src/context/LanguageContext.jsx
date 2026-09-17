@@ -213,6 +213,12 @@ export const translations = {
     viewDetails: "View Details",
     advisoryLabel: "Advisory",
     diseaseDetected: "Disease Detected",
+    deleteAction: "Delete",
+    deleteConfirmTitle: "Delete Prediction?",
+    deleteConfirmMsg: "Are you sure you want to delete this prediction record?",
+    cancel: "Cancel",
+    confirmDelete: "Delete",
+    noHistoryYet: "No prediction history yet.",
 
     // Settings
     notifications: "Notification Preferences",
@@ -428,6 +434,12 @@ export const translations = {
     viewDetails: "விவரம் பார்க்க",
     advisoryLabel: "பரிந்துரை",
     diseaseDetected: "நோய் கண்டறியப்பட்டது",
+    deleteAction: "நீக்கு",
+    deleteConfirmTitle: "கணிப்பை நீக்கவா?",
+    deleteConfirmMsg: "இந்த கணிப்பு பதிவை நீக்க விரும்புகிறீர்களா?",
+    cancel: "ரத்து செய்",
+    confirmDelete: "நீக்கு",
+    noHistoryYet: "கணிப்பு வரலாறு இல்லை.",
 
     // Settings
     notifications: "அறிவிப்பு விருப்பங்கள்",

@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   HelpCircle,
   WifiOff,
-  Leaf
+  Leaf,
+  Clock
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService, resolveBackendMediaUrl, isValidImageUrl } from '../services/apiService';
@@ -274,25 +275,63 @@ export default function DiseaseDetection() {
         </div>
       )}
 
-      {/* 3. Backend Connection Error Display */}
-      {prediction && !isProcessing && prediction.status === 'connection_error' && (
-        <div className="bg-white p-8 rounded-2xl border-2 border-red-300 shadow-sm space-y-5 animate-fadeIn text-center">
-          <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-200">
-            <WifiOff className="w-8 h-8" />
-          </div>
-          <div className="space-y-1.5">
-            <h3 className="text-xl font-extrabold text-red-800 tracking-wide uppercase">
-              {language === 'ta' ? 'சர்வர் இணைப்புப் பிழை' : 'BACKEND CONNECTION ERROR'}
-            </h3>
-            <p className="text-sm font-medium text-gray-700 max-w-md mx-auto">
-              {prediction.message || 'Could not connect to the SmartFarm AI backend server. Please verify the backend is running.'}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* 3. AI Service Temporarily Busy (HTTP 429 / GPU Quota Limit) Display */}
+      {(() => {
+        const is429QuotaError = prediction && !isProcessing && (
+          prediction.status === 'quota_exceeded' ||
+          (prediction.status === 'connection_error' && typeof prediction.message === 'string' && (
+            prediction.message.includes('429') ||
+            prediction.message.toLowerCase().includes('quota') ||
+            prediction.message.toLowerCase().includes('rate limit') ||
+            prediction.message.toLowerCase().includes('too many requests')
+          ))
+        );
+
+        if (is429QuotaError) {
+          return (
+            <div className="bg-white p-8 rounded-2xl border-2 border-amber-300 shadow-sm space-y-4 animate-fadeIn text-center max-w-xl mx-auto">
+              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+                <Clock className="w-8 h-8 text-amber-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-extrabold text-amber-800 tracking-wide uppercase">
+                  {language === 'ta'
+                    ? (prediction.title_ta || t('aiServiceBusyTitle'))
+                    : (prediction.title || t('aiServiceBusyTitle'))}
+                </h3>
+                <p className="text-sm font-medium text-gray-700 max-w-md mx-auto leading-relaxed">
+                  {language === 'ta'
+                    ? (prediction.message_ta || t('aiServiceBusyMsg'))
+                    : (prediction.message || t('aiServiceBusyMsg'))}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        if (prediction && !isProcessing && prediction.status === 'connection_error') {
+          return (
+            <div className="bg-white p-8 rounded-2xl border-2 border-red-300 shadow-sm space-y-5 animate-fadeIn text-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-200">
+                <WifiOff className="w-8 h-8" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-xl font-extrabold text-red-800 tracking-wide uppercase">
+                  {language === 'ta' ? 'சர்வர் இணைப்புப் பிழை' : 'BACKEND CONNECTION ERROR'}
+                </h3>
+                <p className="text-sm font-medium text-gray-700 max-w-md mx-auto">
+                  {prediction.message || 'Could not connect to the SmartFarm AI backend server. Please verify the backend is running.'}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* 4. Valid Disease Result Display (ONLY when prediction is valid and has disease) */}
-      {prediction && !isProcessing && prediction.status !== 'invalid_image' && prediction.status !== 'uncertain_prediction' && prediction.status !== 'connection_error' && prediction.disease && (
+      {prediction && !isProcessing && prediction.status !== 'invalid_image' && prediction.status !== 'uncertain_prediction' && prediction.status !== 'connection_error' && prediction.status !== 'quota_exceeded' && prediction.disease && (
         <div className="space-y-6 animate-fadeIn">
 
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-md space-y-6">

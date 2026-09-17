@@ -179,6 +179,8 @@ export const translations = {
     directResnetBadge: "Direct ResNet-50",
     directAnalysisFooter: "Direct leaf classification and analysis",
     segmentedImageUnavailable: "Segmented leaf image unavailable",
+    aiServiceBusyTitle: "AI Service Temporarily Busy",
+    aiServiceBusyMsg: "The GPU inference service has reached its current usage limit. Please try again after the quota resets.",
 
     // Chatbot & Voice
     chatTitle: "AI Farmer Assistant",
@@ -392,6 +394,8 @@ export const translations = {
     directResnetBadge: "நேரடி ResNet-50",
     directAnalysisFooter: "நேரடி இலை வகைப்பாடு மற்றும் பகுப்பாய்வு",
     segmentedImageUnavailable: "பிரித்தெடுக்கப்பட்ட இலை படம் கிடைக்கவில்லை",
+    aiServiceBusyTitle: "AI சேவை தற்காலிகமாக பிஸியாக உள்ளது",
+    aiServiceBusyMsg: "GPU பயன்பாட்டு வரம்பு தற்போது எட்டப்பட்டுள்ளது. Quota reset ஆன பிறகு மீண்டும் முயற்சிக்கவும்.",
 
     // Chatbot & Voice
     chatTitle: "AI விவசாய உதவியாளர்",

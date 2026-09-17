@@ -432,6 +432,30 @@ export const apiService = {
         };
       }
 
+      // Handle HTTP 429 Too Many Requests / GPU inference quota limit
+      if (
+        status === 429 ||
+        resData?.status === 'prediction_quota_exceeded' ||
+        (typeof error?.message === 'string' && (error.message.includes('429') || error.message.toLowerCase().includes('too many requests'))) ||
+        (typeof resData?.message === 'string' && (resData.message.toLowerCase().includes('quota') || resData.message.toLowerCase().includes('rate limit')))
+      ) {
+        return {
+          id: `PRED-QUOTA-${Date.now()}`,
+          success: false,
+          status: 'quota_exceeded',
+          valid_image: true,
+          title: "AI Service Temporarily Busy",
+          title_ta: "AI சேவை தற்காலிகமாக பிஸியாக உள்ளது",
+          message: "The GPU inference service has reached its current usage limit. Please try again after the quota resets.",
+          message_ta: "GPU பயன்பாட்டு வரம்பு தற்போது எட்டப்பட்டுள்ளது. Quota reset ஆன பிறகு மீண்டும் முயற்சிக்கவும்.",
+          crop: formData?.get ? (formData.get('crop') || 'Crop') : 'Crop',
+          imageUrl: formData?.get ? (formData.get('imagePreviewUrl') || '') : '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
       // True network/transport or server crash error: report connection error honestly without inventing fake diseases
       return {
         id: `ERR-${Date.now()}`,

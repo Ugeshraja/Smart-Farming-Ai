@@ -72,12 +72,6 @@ export default function Login() {
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail('ugeshraja@example.com');
-    setPassword('password123');
-    setErrorMessage('');
-  };
-
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       
@@ -190,19 +184,6 @@ export default function Login() {
                     <ArrowRight className="w-4 h-4 ml-1.5" />
                   </>
                 )}
-              </button>
-            </div>
-
-            {/* Demo Quick Login Hint */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                className="text-[11px] text-gray-500 hover:text-agri-700 underline font-medium"
-              >
-                {language === 'ta' 
-                  ? 'விவசாயி மாதிரி கணக்கு விவரங்களை நிரப்பவும்' 
-                  : 'Click here to autofill demo farmer account'}
               </button>
             </div>
 

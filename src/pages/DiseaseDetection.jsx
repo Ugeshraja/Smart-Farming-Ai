@@ -30,7 +30,6 @@ export default function DiseaseDetection() {
   const [prediction, setPrediction] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [origImageError, setOrigImageError] = useState(false);
-  const [segImageError, setSegImageError] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -41,7 +40,6 @@ export default function DiseaseDetection() {
         setPreviewImage(reader.result);
         setPrediction(null);
         setOrigImageError(false);
-        setSegImageError(false);
       };
       reader.readAsDataURL(file);
     }
@@ -53,7 +51,6 @@ export default function DiseaseDetection() {
     setIsProcessing(true);
     setPrediction(null);
     setOrigImageError(false);
-    setSegImageError(false);
     setProcessingStep(1); // Detecting leaf...
 
     const formData = new FormData();
@@ -372,10 +369,8 @@ export default function DiseaseDetection() {
               </div>
             )}
 
-            {/* Visual Leaf Analysis: Original Uploaded Photo & Crop-Aware Architecture Display */}
+            {/* Visual Leaf Analysis: Original Uploaded Photo */}
             {(() => {
-              const isBrinjal = prediction.crop === 'Brinjal' || selectedCrop === 'Brinjal';
-
               // Priority 1: Persistent cloud image URL returned by the backend
               const persistentBackendUrl = [
                 prediction.persistent_image_url,
@@ -389,33 +384,22 @@ export default function DiseaseDetection() {
               // Priority 2: Existing React uploaded-image preview state (previewImage)
               const resolvedOriginalImage = persistentBackendUrl || (isValidImageUrl(previewImage) ? previewImage : null) || (isValidImageUrl(prediction.imageUrl) ? prediction.imageUrl : null);
 
-              // Tomato and Potato SAM segmentation check
-              const rawSegUrl = prediction.segmentation?.image_url;
-              const hasRealSamSegmentation = !isBrinjal &&
-                Boolean(prediction.segmentation?.used !== false) &&
-                Boolean(rawSegUrl) &&
-                isValidImageUrl(rawSegUrl) &&
-                rawSegUrl !== prediction.imageUrl &&
-                rawSegUrl !== persistentBackendUrl;
-
               return (
                 <div>
                   <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center space-x-1.5">
                     <Layers className="w-4 h-4 text-agri-600" />
                     <span>
-                      {isBrinjal
-                        ? (language === 'ta' ? 'இலை காட்சி ஆய்வு மற்றும் நேரடி வகைப்பாடு' : 'Leaf Visual Analysis & Direct Classification')
-                        : (language === 'ta' ? 'இலை காட்சி ஆய்வு மற்றும் பிரித்தெடுத்தல்' : 'Leaf Visual Analysis & Segmentation')}
+                      {language === 'ta' ? 'இலை காட்சி ஆய்வு மற்றும் பிரித்தெடுத்தல்' : 'Leaf Visual Analysis & Segmentation'}
                     </span>
                   </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* 1. Original Leaf Photo */}
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center space-y-2">
+                  <div className="w-full">
+                    {/* Original Photo Card */}
+                    <div className="bg-gray-50 p-4 sm:p-5 rounded-xl border border-gray-200 text-center space-y-2.5 max-w-2xl mx-auto">
                       <span className="text-xs font-semibold text-gray-600 block">
                         {t('originalLeafPhoto')}
                       </span>
-                      <div className="h-60 flex items-center justify-center bg-white rounded-lg overflow-hidden border border-gray-200">
+                      <div className="h-64 sm:h-72 flex items-center justify-center bg-white rounded-lg overflow-hidden border border-gray-200 p-2">
                         {origImageError || !resolvedOriginalImage ? (
                           <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center space-y-2">
                             <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
@@ -429,7 +413,7 @@ export default function DiseaseDetection() {
                           <img
                             src={resolvedOriginalImage}
                             alt="Original Leaf"
-                            className="h-full object-contain"
+                            className="h-full w-full object-contain"
                             onError={() => setOrigImageError(true)}
                           />
                         )}
@@ -438,75 +422,6 @@ export default function DiseaseDetection() {
                         {language === 'ta' ? 'விவசாயி பதிவேற்றிய அசல் இலை புகைப்படம்' : 'Full image uploaded by farmer'}
                       </div>
                     </div>
-
-                    {/* 2. Second Leaf Visual: Brinjal Direct ResNet-50 Informational Card or Tomato/Potato SAM Segmentation */}
-                    {isBrinjal ? (
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-xs font-semibold text-gray-600">
-                            {language === 'ta' ? 'ஆய்வு செய்யப்பட்ட இலை' : 'Analyzed Leaf Region'}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            {t('directResnetBadge')}
-                          </span>
-                        </div>
-                        <div className="h-60 flex flex-col items-center justify-center bg-white rounded-lg overflow-hidden border border-emerald-200/80 p-5 text-center space-y-3">
-                          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
-                            <Layers className="w-6 h-6 text-emerald-600" />
-                          </div>
-                          <div className="space-y-1">
-                            <h5 className="text-sm font-bold text-gray-900">
-                              {t('directLeafClassification')}
-                            </h5>
-                            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/90 text-emerald-800 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>{t('resnetActive')}</span>
-                            </div>
-                          </div>
-                          <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
-                            {t('brinjalPipelineNote')}
-                          </p>
-                        </div>
-                        <div className="text-[11px] text-gray-500 font-medium">
-                          {t('directAnalysisFooter')}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-xs font-semibold text-gray-600">
-                            {language === 'ta' ? 'பிரித்தெடுக்கப்பட்ட இலை' : 'Segmented Leaf Region'}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            {language === 'ta' ? 'செயலில்' : 'Active'}
-                          </span>
-                        </div>
-                        <div className="h-60 flex items-center justify-center bg-white rounded-lg overflow-hidden border border-gray-200">
-                          {hasRealSamSegmentation && !segImageError ? (
-                            <img
-                              src={rawSegUrl}
-                              alt="Segmented Leaf"
-                              className="h-full object-contain"
-                              onError={() => setSegImageError(true)}
-                            />
-                          ) : (
-                            <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center space-y-2">
-                              <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-                                <Leaf className="w-6 h-6 text-gray-400" />
-                              </div>
-                              <span className="text-xs font-semibold text-gray-600">
-                                {language === 'ta' ? 'பிரித்தெடுக்கப்பட்ட இலை படம் கிடைக்கவில்லை' : 'Image unavailable'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-gray-500 font-medium">
-                          {prediction.segmentation?.score
-                            ? `${language === 'ta' ? 'பிரித்தெடுத்தல் தரம்' : 'Segmentation Confidence'}: ${(prediction.segmentation.score * 100).toFixed(1)}%`
-                            : (language === 'ta' ? 'துல்லிய இலை எல்லை பிரித்தெடுக்கப்பட்டது' : 'Precision leaf boundary isolated')}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               );

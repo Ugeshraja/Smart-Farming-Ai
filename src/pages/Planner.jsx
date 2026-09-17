@@ -24,6 +24,8 @@ import {
   Wind,
   Info,
   RotateCcw,
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
   HelpCircle,
   TrendingUp,
@@ -33,7 +35,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useWeather } from '../context/WeatherContext';
 import { apiService } from '../services/apiService';
 import { mockCropPlanningConfigs } from '../services/mockData';
-import { speakText, stopSpeaking } from '../services/speechService';
+import { speechService, stopSpeaking } from '../services/speechService';
 
 // Helper Date Utilities
 function parseIsoDate(isoStr) {
@@ -183,7 +185,7 @@ export default function Planner() {
   // 4. LLM Agronomic Advisory State
   const [aiAdvisory, setAiAdvisory] = useState(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingStatus, setSpeakingStatus] = useState('idle');
 
   // Quick Month Presets (6 upcoming months)
   const quickMonths = useMemo(() => {
@@ -299,11 +301,11 @@ export default function Planner() {
     }
   };
 
-  // Text-To-Speech using reusable Browser SpeechSynthesis (Web Speech API)
+  // Text-To-Speech using canonical speechService
   const handleToggleAudio = () => {
-    if (isSpeaking) {
-      stopSpeaking();
-      setIsSpeaking(false);
+    if (speakingStatus === 'playing' || speakingStatus === 'loading') {
+      speechService.stop();
+      setSpeakingStatus('idle');
       return;
     }
 
@@ -313,11 +315,16 @@ export default function Planner() {
 
     if (!textToSpeak || !textToSpeak.trim()) return;
 
-    speakText(textToSpeak, isTa ? 'ta' : 'en', {
-      onStart: () => setIsSpeaking(true),
-      onEnd: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-      onWarn: (msg) => console.warn(msg)
+    speechService.stop();
+    setSpeakingStatus('loading');
+
+    speechService.speak(textToSpeak, isTa ? 'ta' : 'en', {
+      onStart: () => setSpeakingStatus('playing'),
+      onEnd: () => setSpeakingStatus('idle'),
+      onError: () => {
+        setSpeakingStatus('error');
+        setTimeout(() => setSpeakingStatus('idle'), 3000);
+      }
     });
   };
 
@@ -330,7 +337,7 @@ export default function Planner() {
 
   useEffect(() => {
     stopSpeaking();
-    setIsSpeaking(false);
+    setSpeakingStatus('idle');
   }, [language]);
 
   // Filter activities
@@ -1029,21 +1036,36 @@ export default function Planner() {
               id="planner-listen-audio-btn"
               onClick={handleToggleAudio}
               className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-all shadow-2xs ${
-                isSpeaking
+                speakingStatus === 'playing'
                   ? 'bg-red-100 hover:bg-red-200 text-red-700 border border-red-200'
+                  : speakingStatus === 'loading'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                  : speakingStatus === 'error'
+                  ? 'bg-red-50 text-red-700 border border-red-200'
                   : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
               }`}
             >
-              {isSpeaking ? (
-                <VolumeX className="w-3.5 h-3.5 text-red-600" />
+              {speakingStatus === 'loading' ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                  <span>{isTa ? 'ஆடியோ உருவாக்கப்படுகிறது...' : 'Generating audio...'}</span>
+                </>
+              ) : speakingStatus === 'playing' ? (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-red-600" />
+                  <span>{t('stopAudio')}</span>
+                </>
+              ) : speakingStatus === 'error' ? (
+                <>
+                  <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                  <span>{isTa ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Unable to play audio. Please try again.'}</span>
+                </>
               ) : (
-                <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t('listenAudio')}</span>
+                </>
               )}
-              <span>
-                {isSpeaking
-                  ? t('stopAudio')
-                  : t('listenAudio')}
-              </span>
             </button>
 
             <button

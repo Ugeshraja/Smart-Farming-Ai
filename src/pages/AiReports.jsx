@@ -8,11 +8,15 @@ import {
   RefreshCw,
   FileBarChart,
   ScanSearch,
-  Sparkles
+  Sparkles,
+  Volume2,
+  VolumeX,
+  AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
+import { speechService, stopSpeaking } from '../services/speechService';
 
 export default function AiReports() {
   const { t, language } = useLanguage();
@@ -24,8 +28,43 @@ export default function AiReports() {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [speakingStatus, setSpeakingStatus] = useState('idle');
 
   const isTa = language === 'ta';
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  useEffect(() => {
+    stopSpeaking();
+    setSpeakingStatus('idle');
+  }, [language]);
+
+  const handleToggleSpeak = () => {
+    if (speakingStatus === 'playing' || speakingStatus === 'loading') {
+      speechService.stop();
+      setSpeakingStatus('idle');
+      return;
+    }
+
+    const advisoryText = isTa ? prediction?.advisory?.ta : prediction?.advisory?.en;
+    if (!advisoryText || typeof advisoryText !== 'string' || !advisoryText.trim()) return;
+
+    speechService.stop();
+    setSpeakingStatus('loading');
+
+    speechService.speak(advisoryText, isTa ? 'ta' : 'en', {
+      onStart: () => setSpeakingStatus('playing'),
+      onEnd: () => setSpeakingStatus('idle'),
+      onError: () => {
+        setSpeakingStatus('error');
+        setTimeout(() => setSpeakingStatus('idle'), 3000);
+      }
+    });
+  };
 
   useEffect(() => {
     setImageError(false);
@@ -396,9 +435,49 @@ export default function AiReports() {
 
         {/* 5. Agricultural Advisory */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
-            {isTa ? '5. மேலாண்மை ஆலோசனை' : '5. Agricultural Advisory'}
-          </h3>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="text-sm font-bold text-gray-900 uppercase">
+              {isTa ? '5. மேலாண்மை ஆலோசனை' : '5. Agricultural Advisory'}
+            </h3>
+            {(prediction.advisory?.en || prediction.advisory?.ta) && (
+              <button
+                type="button"
+                onClick={handleToggleSpeak}
+                className={`no-print inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                  speakingStatus === 'playing'
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                    : speakingStatus === 'loading'
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                    : speakingStatus === 'error'
+                    ? 'bg-red-50 text-red-700 border border-red-200'
+                    : 'bg-white hover:bg-agri-50 text-agri-800 border border-agri-200'
+                }`}
+                title={speakingStatus === 'playing' ? (isTa ? 'நிறுத்து' : 'Stop') : (isTa ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')}
+              >
+                {speakingStatus === 'loading' ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                    <span>{isTa ? 'ஆடியோ உருவாக்கப்படுகிறது...' : 'Generating audio...'}</span>
+                  </>
+                ) : speakingStatus === 'playing' ? (
+                  <>
+                    <VolumeX className="w-3.5 h-3.5 text-red-600" />
+                    <span>{isTa ? 'நிறுத்து' : 'Stop'}</span>
+                  </>
+                ) : speakingStatus === 'error' ? (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                    <span>{isTa ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Unable to play audio. Please try again.'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 text-agri-600" />
+                    <span>{isTa ? 'கேள்' : 'Listen'}</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <div className="bg-agri-50 border border-agri-200 p-4 rounded-xl space-y-2 text-xs text-agri-900 font-medium leading-relaxed">
             <p>{isTa ? prediction.advisory?.ta : prediction.advisory?.en}</p>
           </div>

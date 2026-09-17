@@ -622,24 +622,24 @@ export const apiService = {
     return response.data;
   },
 
-  // 6b. Hybrid TTS Synthesis (Backend Local Indic TTS & Sarvam Bulbul v3 with caching)
-  async synthesizeSpeech(text, language = 'en', preferredProvider = 'auto') {
+  // 6b. Google TTS Synthesis via backend serverless endpoint (/voice/tts)
+  async synthesizeSpeech(text, language = 'en') {
     try {
+      const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';
       const response = await apiClient.post('/voice/tts', {
         text,
-        language,
-        preferred_provider: preferredProvider
+        language: normLang,
       }, {
-        timeout: 35000
+        timeout: 30000
       });
       return response.data;
     } catch (error) {
       console.warn('[apiService] synthesizeSpeech error:', error?.message);
+      const status = error?.response?.status;
       return {
         success: false,
-        fallback_to_browser: true,
-        text_only: false,
-        reason: error?.response?.data?.reason || 'network_error'
+        status,
+        reason: status === 429 ? 'rate_limited' : (error?.response?.data?.reason || error?.response?.data?.error || 'network_error')
       };
     }
   },

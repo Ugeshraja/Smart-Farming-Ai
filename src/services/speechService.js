@@ -87,6 +87,9 @@ class SpeechService {
 
     if (this.currentAudio) {
       try {
+        this.currentAudio.onplay = null;
+        this.currentAudio.onended = null;
+        this.currentAudio.onerror = null;
         this.currentAudio.pause();
         this.currentAudio.currentTime = 0;
         this.currentAudio.src = '';
@@ -103,7 +106,7 @@ class SpeechService {
     if (this.currentCallbacks?.onEnd) {
       const cb = this.currentCallbacks.onEnd;
       this.currentCallbacks = null;
-      cb();
+      try { cb(); } catch (e) {}
     } else {
       this.currentCallbacks = null;
     }
@@ -209,8 +212,11 @@ class SpeechService {
           this.isPlaying = false;
           this.isPaused = false;
           this.currentAudio = null;
-          if (callbacks.onError) callbacks.onError(e);
-          else if (callbacks.onEnd) callbacks.onEnd();
+          if (callbacks.onError) {
+            callbacks.onError(new Error('Unable to play audio. Please try again.'));
+          } else if (callbacks.onEnd) {
+            callbacks.onEnd();
+          }
         }
       };
 
@@ -220,8 +226,11 @@ class SpeechService {
         this.isPlaying = false;
         this.isPaused = false;
         this.currentAudio = null;
-        if (callbacks.onError) callbacks.onError(err);
-        else if (callbacks.onEnd) callbacks.onEnd();
+        if (callbacks.onError) {
+          callbacks.onError(new Error('Unable to play audio. Please try again.'));
+        } else if (callbacks.onEnd) {
+          callbacks.onEnd();
+        }
       });
     };
 
@@ -231,22 +240,22 @@ class SpeechService {
   /**
    * Main TTS Entry Point:
    * 1. Clean input text
-   * 2. Send text & language to backend Google TTS endpoint (/api/voice/tts)
+   * 2. Send text & language to backend Google TTS endpoint (/api/backend/api/voice/tts)
    * 3. Play generated MP3 audio chunks sequentially via HTML5 Audio()
-   * 4. Fails silently on network/gTTS errors without affecting AI text
+   * 4. Fails safely on network/gTTS errors without affecting AI text
    */
-  async speakText(text, language = 'en', options = {}) {
-    const { onStart, onEnd, onError } = options;
+  async speak(text, language = 'en', options = {}) {
+    const { onStart, onEnd, onError, onLoading } = options;
 
     // Reset previous audio
     this.stop();
 
-    if (!text || !text.trim()) {
+    if (!text || typeof text !== 'string' || !text.trim()) {
       if (onEnd) onEnd();
       return { success: false, reason: 'empty_text' };
     }
 
-    const normLang = String(language || 'en').toLowerCase().startsWith('ta') ? 'ta' : 'en';
+    const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';
     const cleanedText = this.cleanTextForSpeech(text, normLang);
 
     if (!cleanedText) {
@@ -254,7 +263,14 @@ class SpeechService {
       return { success: false, reason: 'empty_cleaned_text' };
     }
 
+    if (onLoading) {
+      try { onLoading(); } catch (e) {}
+    }
+
     const currentSessionId = ++this.playbackSessionId;
+    const friendlyError = normLang === 'ta'
+      ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
+      : 'Unable to play audio. Please try again.';
 
     try {
       const res = await apiService.synthesizeSpeech(cleanedText, normLang);
@@ -271,26 +287,29 @@ class SpeechService {
         this.playSequentialQueue([{ chunk_index: 0, audio_url: res.audio_url }], currentSessionId, { onStart, onEnd, onError });
         return { success: true, chunks: 1 };
       } else {
-        // Silent failure: log technical info only to dev console
         console.warn('[SpeechService] gTTS synthesis returned no audio:', res?.reason);
-        if (onError) onError(new Error(res?.reason || 'gtts_unavailable'));
+        if (onError) onError(new Error(friendlyError));
         return { success: false, reason: res?.reason || 'no_audio' };
       }
     } catch (err) {
-      // Fail silently: log only to console, never break user UI or text
       console.warn('[SpeechService] gTTS network/service error:', err?.message || err);
       if (currentSessionId === this.playbackSessionId) {
         this.isPlaying = false;
         this.isPaused = false;
-        if (onError) onError(err);
+        if (onError) onError(new Error(friendlyError));
       }
       return { success: false, reason: 'network_error' };
     }
   }
+
+  speakText(text, language = 'en', options = {}) {
+    return this.speak(text, language, options);
+  }
 }
 
 export const speechService = new SpeechService();
-export const speakText = (text, language, options) => speechService.speakText(text, language, options);
+export const speak = (text, language, options) => speechService.speak(text, language, options);
+export const speakText = (text, language, options) => speechService.speak(text, language, options);
 export const stopSpeaking = () => speechService.stop();
 export const pauseSpeaking = () => speechService.pause();
 export const resumeSpeaking = () => speechService.resume();

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/apiService';
-import { speakText, stopSpeaking } from '../services/speechService';
+import { speechService, stopSpeaking } from '../services/speechService';
 
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.txt'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -33,7 +33,7 @@ export default function FarmerAssistant() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [speakingMsgId, setSpeakingMsgId] = useState(null);
+  const [speakingState, setSpeakingState] = useState({ id: null, status: 'idle' });
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -46,22 +46,28 @@ export default function FarmerAssistant() {
 
   useEffect(() => {
     stopSpeaking();
-    setSpeakingMsgId(null);
+    setSpeakingState({ id: null, status: 'idle' });
   }, [language]);
 
   const handleToggleSpeak = (msgId, text) => {
-    if (speakingMsgId === msgId) {
-      stopSpeaking();
-      setSpeakingMsgId(null);
+    if (speakingState.id === msgId && (speakingState.status === 'playing' || speakingState.status === 'loading')) {
+      speechService.stop();
+      setSpeakingState({ id: null, status: 'idle' });
       return;
     }
 
-    stopSpeaking();
-    speakText(text, language, {
-      onStart: () => setSpeakingMsgId(msgId),
-      onEnd: () => setSpeakingMsgId(null),
-      onError: () => setSpeakingMsgId(null),
-      onWarn: (msg) => console.warn(msg)
+    speechService.stop();
+    setSpeakingState({ id: msgId, status: 'loading' });
+
+    speechService.speak(text, language, {
+      onStart: () => setSpeakingState({ id: msgId, status: 'playing' }),
+      onEnd: () => setSpeakingState({ id: null, status: 'idle' }),
+      onError: () => {
+        setSpeakingState({ id: msgId, status: 'error' });
+        setTimeout(() => {
+          setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
+        }, 3000);
+      }
     });
   };
 
@@ -299,16 +305,34 @@ export default function FarmerAssistant() {
                       type="button"
                       onClick={() => handleToggleSpeak(msg.id, msg.text)}
                       className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-2xs ${
-                        speakingMsgId === msg.id
+                        speakingState.id === msg.id && speakingState.status === 'playing'
                           ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                          : speakingState.id === msg.id && speakingState.status === 'loading'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          : speakingState.id === msg.id && speakingState.status === 'error'
+                          ? 'bg-red-50 text-red-700 border border-red-200'
                           : 'bg-white hover:bg-agri-50 text-agri-800 border border-agri-200'
                       }`}
-                      title={speakingMsgId === msg.id ? (language === 'ta' ? 'நிறுத்து' : 'Stop') : (language === 'ta' ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')}
+                      title={
+                        speakingState.id === msg.id && speakingState.status === 'playing'
+                          ? (language === 'ta' ? 'நிறுத்து' : 'Stop')
+                          : (language === 'ta' ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')
+                      }
                     >
-                      {speakingMsgId === msg.id ? (
+                      {speakingState.id === msg.id && speakingState.status === 'loading' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                          <span>{language === 'ta' ? 'ஆடியோ உருவாக்கப்படுகிறது...' : 'Generating audio...'}</span>
+                        </>
+                      ) : speakingState.id === msg.id && speakingState.status === 'playing' ? (
                         <>
                           <VolumeX className="w-3.5 h-3.5 text-red-600" />
                           <span>{language === 'ta' ? 'நிறுத்து' : 'Stop'}</span>
+                        </>
+                      ) : speakingState.id === msg.id && speakingState.status === 'error' ? (
+                        <>
+                          <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                          <span>{language === 'ta' ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Unable to play audio. Please try again.'}</span>
                         </>
                       ) : (
                         <>

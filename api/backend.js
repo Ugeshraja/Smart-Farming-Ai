@@ -1,6 +1,7 @@
 import { handleCropPrediction } from './hfGradioPredict.js';
 import { handleGeminiChat } from './geminiChat.js';
 import { handleWeatherRequest } from './weatherHandler.js';
+import { handleVoiceRequest } from './voiceHandler.js';
 
 export const config = {
   api: {
@@ -53,6 +54,19 @@ export default async function handler(req, res) {
   if (isWeather) {
     const subPath = cleanPath.replace(/^api\/weather\/?/, '').replace(/^weather\/?/, '');
     return handleWeatherRequest(req, res, subPath);
+  }
+
+  // 4. Route Voice TTS and Status requests to serverless Google TTS handler
+  const isVoice =
+    cleanPath === 'api/voice/tts' ||
+    cleanPath === 'voice/tts' ||
+    cleanPath === 'api/voice/synthesize' ||
+    cleanPath === 'voice/synthesize' ||
+    cleanPath === 'api/voice/status' ||
+    cleanPath === 'voice/status';
+
+  if (isVoice) {
+    return handleVoiceRequest(req, res, rawBody, cleanPath);
   }
 
   // Preserve existing Lightning proxy fallback for non-prediction endpoints

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/apiService';
-import { speakText, stopSpeaking, pauseSpeaking, resumeSpeaking } from '../services/speechService';
+import { speechService, stopSpeaking, pauseSpeaking, resumeSpeaking } from '../services/speechService';
 
 export default function VoiceAssistant() {
   const { t, language, setLanguage } = useLanguage();
@@ -178,7 +178,7 @@ export default function VoiceAssistant() {
   const triggerSpeak = (text) => {
     if (!text) return;
     stopAnyAudio();
-    speakText(text, language, {
+    speechService.speak(text, language, {
       onStart: () => {
         setVoiceState('speaking');
       },

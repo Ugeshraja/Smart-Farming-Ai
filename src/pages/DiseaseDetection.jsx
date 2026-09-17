@@ -14,10 +14,14 @@ import {
   HelpCircle,
   WifiOff,
   Leaf,
-  Clock
+  Clock,
+  Volume2,
+  VolumeX,
+  AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService, resolveBackendMediaUrl, isValidImageUrl } from '../services/apiService';
+import { speechService, stopSpeaking } from '../services/speechService';
 
 export default function DiseaseDetection() {
   const { t, language } = useLanguage();
@@ -31,6 +35,46 @@ export default function DiseaseDetection() {
   const [prediction, setPrediction] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [origImageError, setOrigImageError] = useState(false);
+  const [speakingStatus, setSpeakingStatus] = useState('idle');
+
+  React.useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    stopSpeaking();
+    setSpeakingStatus('idle');
+  }, [language]);
+
+  const handleToggleSpeak = () => {
+    if (speakingStatus === 'playing' || speakingStatus === 'loading') {
+      speechService.stop();
+      setSpeakingStatus('idle');
+      return;
+    }
+
+    const advisoryText = typeof prediction?.advisory === 'string'
+      ? prediction.advisory
+      : (language === 'ta'
+          ? (prediction?.advisory?.ta || prediction?.advisory?.text || '')
+          : (prediction?.advisory?.en || prediction?.advisory?.text || ''));
+
+    if (!advisoryText || typeof advisoryText !== 'string' || !advisoryText.trim()) return;
+
+    speechService.stop();
+    setSpeakingStatus('loading');
+
+    speechService.speak(advisoryText, language === 'ta' ? 'ta' : 'en', {
+      onStart: () => setSpeakingStatus('playing'),
+      onEnd: () => setSpeakingStatus('idle'),
+      onError: () => {
+        setSpeakingStatus('error');
+        setTimeout(() => setSpeakingStatus('idle'), 3000);
+      }
+    });
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -646,11 +690,49 @@ export default function DiseaseDetection() {
 
             {/* AI Agronomic Advisory (Gemini) */}
             {prediction.advisory && (
-              <div className="bg-agri-50/70 p-5 rounded-xl border border-agri-200 space-y-2">
-                <h4 className="text-xs font-bold text-agri-900 uppercase tracking-wider flex items-center space-x-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-agri-600" />
-                  <span>{language === 'ta' ? 'AI விவசாய ஆலோசனை' : 'AI Agronomic Advisory'}</span>
-                </h4>
+              <div className="bg-agri-50/70 p-5 rounded-xl border border-agri-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-agri-900 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-agri-600" />
+                    <span>{language === 'ta' ? 'AI விவசாய ஆலோசனை' : 'AI Agronomic Advisory'}</span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleToggleSpeak}
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                      speakingStatus === 'playing'
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                        : speakingStatus === 'loading'
+                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                        : speakingStatus === 'error'
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'bg-white hover:bg-agri-50 text-agri-800 border border-agri-200'
+                    }`}
+                    title={speakingStatus === 'playing' ? (language === 'ta' ? 'நிறுத்து' : 'Stop') : (language === 'ta' ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')}
+                  >
+                    {speakingStatus === 'loading' ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                        <span>{language === 'ta' ? 'ஆடியோ உருவாக்கப்படுகிறது...' : 'Generating audio...'}</span>
+                      </>
+                    ) : speakingStatus === 'playing' ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5 text-red-600" />
+                        <span>{language === 'ta' ? 'நிறுத்து' : 'Stop'}</span>
+                      </>
+                    ) : speakingStatus === 'error' ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                        <span>{language === 'ta' ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Unable to play audio. Please try again.'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-agri-600" />
+                        <span>{language === 'ta' ? 'கேள்' : 'Listen'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <div className="text-xs sm:text-sm text-gray-800 whitespace-pre-line leading-relaxed font-sans">
                   {typeof prediction.advisory === 'string'
                     ? prediction.advisory

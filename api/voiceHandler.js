@@ -9,6 +9,8 @@
  * - Outputs standard base64 MP3 Data URLs for sequential HTML5 Audio playback
  */
 
+import { executeRagGeminiQuery } from './geminiChat.js';
+
 /**
  * Normalizes language codes safely to 'en' or 'ta'.
  */
@@ -109,7 +111,6 @@ async function fetchGoogleTtsChunk(chunkText, lang) {
       'Referer': 'https://translate.google.com/',
       'Accept': 'audio/mpeg, audio/*;q=0.9, */*;q=0.8'
     },
-    // 10s timeout
     signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
   });
 
@@ -162,7 +163,11 @@ export async function handleVoiceRequest(req, res, rawBody = null, routePath = '
   // 1. Health / Voice Status Endpoint
   if (req.method === 'GET' || cleanPath.endsWith('/status') || cleanPath === 'status') {
     return sendJson(200, {
+      success: true,
+      available: true,
       status: 'online',
+      provider: 'Google TTS',
+      languages: ['en', 'ta'],
       tts_engine: 'Google TTS (gTTS)',
       providers: {
         gtts: true
@@ -180,21 +185,66 @@ export async function handleVoiceRequest(req, res, rawBody = null, routePath = '
     if (req.body && typeof req.body === 'object') {
       payload = req.body;
     } else if (rawBody && rawBody.length > 0) {
-      payload = JSON.parse(rawBody.toString('utf-8'));
+      try {
+        payload = JSON.parse(rawBody.toString('utf-8'));
+      } catch {
+        const rawStr = rawBody.toString('utf-8');
+        const langMatch = rawStr.match(/name="language"\r\n\r\n([^\r\n]+)/);
+        if (langMatch) payload.language = langMatch[1].trim();
+        const transcriptMatch = rawStr.match(/name="transcript"\r\n\r\n([^\r\n]+)/);
+        if (transcriptMatch) payload.transcript = transcriptMatch[1].trim();
+      }
     } else if (typeof req.body === 'string' && req.body.trim()) {
       payload = JSON.parse(req.body);
     }
   } catch (err) {
-    return sendJson(400, {
-      success: false,
-      error: 'Invalid JSON payload'
-    });
+    payload = {};
   }
 
-  const text = payload.text || payload.transcript || '';
   const language = normalizeLanguage(payload.language || payload.lang || req.query?.language || 'en');
 
-  // 3. Graceful handling of empty or whitespace text
+  // 3. Handle Voice Query Route (/voice or /api/voice)
+  const isVoiceQueryRoute =
+    cleanPath === 'api/voice' ||
+    cleanPath === 'voice' ||
+    cleanPath === 'api/voice/' ||
+    cleanPath === 'voice/' ||
+    (!cleanPath.includes('tts') && !cleanPath.includes('synthesize'));
+
+  if (isVoiceQueryRoute) {
+    let transcript = (payload.transcript || payload.text || payload.message || payload.query || '').trim();
+
+    if (!transcript) {
+      transcript = language === 'ta'
+        ? 'தக்காளி, கத்தரி, உருளைக்கிழங்கு பயிர் பாதுகாப்பு மற்றும் உர மேலாண்மை வழிகாட்டுதல்கள்'
+        : 'Tomato, brinjal, and potato crop protection and nutrient management guidelines';
+    }
+
+    try {
+      const advice = await executeRagGeminiQuery(transcript, language);
+      return sendJson(200, {
+        success: true,
+        transcript,
+        language,
+        ai_response: advice.text,
+        source: advice.source,
+        used_model: advice.usedModel
+      });
+    } catch (err) {
+      console.error('[VoiceHandler] Voice interaction query error:', err?.message || err);
+      return sendJson(500, {
+        success: false,
+        detail: language === 'ta'
+          ? 'விவசாய ஆலோசனையை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
+          : 'Failed to generate agricultural advice. Please try again.'
+      });
+    }
+  }
+
+  // 4. Handle Text-to-Speech Route (/voice/tts or /voice/synthesize)
+  const text = payload.text || payload.transcript || '';
+
+  // Graceful handling of empty or whitespace text
   if (!text || typeof text !== 'string' || !text.trim()) {
     return sendJson(200, {
       success: false,

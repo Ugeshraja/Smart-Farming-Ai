@@ -56,14 +56,14 @@ export default async function handler(req, res) {
     return handleWeatherRequest(req, res, subPath);
   }
 
-  // 4. Route Voice TTS and Status requests to serverless Google TTS handler
+  // 4. Route Voice Assistant, TTS, and Status requests to serverless handler
   const isVoice =
-    cleanPath === 'api/voice/tts' ||
-    cleanPath === 'voice/tts' ||
-    cleanPath === 'api/voice/synthesize' ||
-    cleanPath === 'voice/synthesize' ||
-    cleanPath === 'api/voice/status' ||
-    cleanPath === 'voice/status';
+    cleanPath === 'api/voice' ||
+    cleanPath === 'voice' ||
+    cleanPath === 'api/voice/' ||
+    cleanPath === 'voice/' ||
+    cleanPath.startsWith('api/voice/') ||
+    cleanPath.startsWith('voice/');
 
   if (isVoice) {
     return handleVoiceRequest(req, res, rawBody, cleanPath);

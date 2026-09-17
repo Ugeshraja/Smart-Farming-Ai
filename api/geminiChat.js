@@ -97,6 +97,136 @@ function retrieveRagContext(query = '', language = 'en') {
   return { contextText, primarySource };
 }
 
+export async function executeRagGeminiQuery(message, language = 'en') {
+  const normLang = language === 'ta' ? 'ta' : 'en';
+  const apiKey = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY;
+  const { contextText, primarySource } = retrieveRagContext(message, normLang);
+
+  // If API key is not configured, gracefully provide verified RAG knowledge
+  if (!apiKey) {
+    console.warn('[Gemini Chat] GEMINI_API_KEY is not set. Engaging verified Agricultural Knowledge Base fallback.');
+    const fallbackText = normLang === 'ta'
+      ? (contextText || "வணக்கம். நேரடி AI மொழி மாதிரி சேவை தற்காலிகமாக இணைக்கப்படவில்லை. உள்ளூர் வேளாண் விரிவாக்க அலுவலர் அல்லது TNAU ஆலோசனையைப் பெறவும்.")
+      : (contextText || "Note: Direct AI model inference is temporarily unconfigured. Please consult local agricultural extension officers or ICAR/TNAU advisories for precise recommendations.");
+
+    return {
+      text: fallbackText,
+      source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
+      usedModel: 'Knowledge Base Fallback',
+    };
+  }
+
+  // Build system instruction & prompt
+  const langName = normLang === 'ta' ? 'Tamil (தமிழ்)' : 'English';
+  const systemInstruction = contextText
+    ? `You are the SmartFarm AI Agricultural Assistant, an expert decision support advisor for Indian and global farming.
+Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
+Grounding Directive: Ground your answer primarily in the provided Verified Agricultural Knowledge Base context.
+Structuring Directive:
+1. Identification & Cause (அறிகுறிகள் & காரணங்கள்)
+2. Recommended Management & Remedies (மேலாண்மை முறைகள் & தீர்வுகள்)
+3. Preventive & Cultural Practices (வருமுன் காக்கும் மேலாண்மை & பராமரிப்பு)
+Safety Note: Mention that exact dosages and application may vary based on crop variety, growth stage, soil conditions, and local agricultural extension guidance.
+Tone: Respectful, reassuring, practical, and farmer-first.`
+    : `You are the SmartFarm AI Agricultural Assistant, a comprehensive general agricultural expert assisting farmers with all crops, soil science, irrigation, fertilizers, weather impacts, and agronomy.
+Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
+Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-first.`;
+
+  const userPrompt = contextText
+    ? `VERIFIED AGRICULTURAL KNOWLEDGE BASE CONTEXT:\n----------------------------------------\n${contextText}\n----------------------------------------\n\nFARMER QUESTION: ${message}\n\nPlease provide your verified agricultural advice in ${langName}.`
+    : `FARMER QUESTION: ${message}\n\nPlease provide your expert agricultural advice in ${langName}.`;
+
+  // Candidate models matching backend/routes/chat.py
+  const configuredModel = (process.env.LLM_MODEL || 'gemini-3.8-flash').trim();
+  const candidateModels = [
+    configuredModel,
+    'gemini-3.6-flash',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+  ];
+  const uniqueModels = [...new Set(candidateModels)];
+
+  let aiText = null;
+  let usedModel = uniqueModels[0];
+  let lastError = null;
+
+  for (const model of uniqueModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemInstruction }],
+          },
+          contents: [
+            {
+              parts: [{ text: userPrompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1500,
+          },
+        }),
+        signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const candidate = data?.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        if (text) {
+          aiText = text.trim();
+          usedModel = model;
+          break;
+        }
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        lastError = errData?.error?.message || `HTTP ${response.status}`;
+        continue;
+      }
+    } catch (err) {
+      lastError = err?.message || err;
+      continue;
+    }
+  }
+
+  if (!aiText) {
+    console.warn('[Gemini Chat] API calls failed on candidate models:', lastError);
+    if (contextText) {
+      return {
+        text: normLang === 'ta'
+          ? `குறிப்பு: நேரடி AI சேவை தற்காலிகமாக இணைக்கப்படவில்லை. வேளாண் தரவுத்தள பரிந்துரைகள்:\n\n${contextText}`
+          : `Note: Direct AI model inference is temporarily unavailable. Verified Knowledge Base recommendations:\n\n${contextText}`,
+        source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
+        usedModel: 'Knowledge Base Fallback',
+      };
+    }
+
+    return {
+      text: normLang === 'ta'
+        ? 'மன்னிக்கவும், AI விவசாய ஆலோசனை சேவையை தற்போது இணைக்க முடியவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+        : 'Agricultural advisory service is temporarily unavailable. Please try again in a few moments.',
+      source: 'System Notice',
+      usedModel: 'Fallback',
+    };
+  }
+
+  const sourceLabel = contextText
+    ? `Verified RAG • ${primarySource} • ${usedModel}`
+    : `SmartFarm AI Advisor • ${usedModel}`;
+
+  return {
+    text: aiText,
+    source: sourceLabel,
+    usedModel,
+  };
+}
+
 export async function handleGeminiChat(req, res, rawBody) {
   const cleanPath = (req.query?.path || '').toString().replace(/^\/+/, '');
 
@@ -106,7 +236,7 @@ export async function handleGeminiChat(req, res, rawBody) {
     return res.status(200).json({
       status: 'online',
       gemini_sdk_available: true,
-      api_key_configured: bool(key),
+      api_key_configured: Boolean(key),
       configured_model: process.env.LLM_MODEL || 'gemini-3.8-flash',
       rag_knowledge_base_size: AGRICULTURAL_KNOWLEDGE_BASE.length,
     });
@@ -141,136 +271,13 @@ export async function handleGeminiChat(req, res, rawBody) {
       });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY;
-    const { contextText, primarySource } = retrieveRagContext(message, language);
-
-    // If API key is not configured, gracefully provide verified RAG knowledge
-    if (!apiKey) {
-      console.warn('[Gemini Chat] GEMINI_API_KEY is not set. Engaging verified Agricultural Knowledge Base fallback.');
-      const fallbackText = language === 'ta'
-        ? (contextText || "வணக்கம். நேரடி AI மொழி மாதிரி சேவை தற்காலிகமாக இணைக்கப்படவில்லை. உள்ளூர் வேளாண் விரிவாக்க அலுவலர் அல்லது TNAU ஆலோசனையைப் பெறவும்.")
-        : (contextText || "Note: Direct AI model inference is temporarily unconfigured. Please consult local agricultural extension officers or ICAR/TNAU advisories for precise recommendations.");
-
-      return res.status(200).json({
-        id: Date.now(),
-        sender: 'ai',
-        text: fallbackText,
-        source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      });
-    }
-
-    // Build system instruction & prompt
-    const langName = language === 'ta' ? 'Tamil (தமிழ்)' : 'English';
-    const systemInstruction = contextText
-      ? `You are the SmartFarm AI Agricultural Assistant, an expert decision support advisor for Indian and global farming.
-Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
-Grounding Directive: Ground your answer primarily in the provided Verified Agricultural Knowledge Base context.
-Structuring Directive:
-1. Identification & Cause (அறிகுறிகள் & காரணங்கள்)
-2. Recommended Management & Remedies (மேலாண்மை முறைகள் & தீர்வுகள்)
-3. Preventive & Cultural Practices (வருமுன் காக்கும் மேலாண்மை & பராமரிப்பு)
-Safety Note: Mention that exact dosages and application may vary based on crop variety, growth stage, soil conditions, and local agricultural extension guidance.
-Tone: Respectful, reassuring, practical, and farmer-first.`
-      : `You are the SmartFarm AI Agricultural Assistant, a comprehensive general agricultural expert assisting farmers with all crops, soil science, irrigation, fertilizers, weather impacts, and agronomy.
-Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
-Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-first.`;
-
-    const userPrompt = contextText
-      ? `VERIFIED AGRICULTURAL KNOWLEDGE BASE CONTEXT:\n----------------------------------------\n${contextText}\n----------------------------------------\n\nFARMER QUESTION: ${message}\n\nPlease provide your verified agricultural advice in ${langName}.`
-      : `FARMER QUESTION: ${message}\n\nPlease provide your expert agricultural advice in ${langName}.`;
-
-    // Candidate models matching backend/routes/chat.py
-    const configuredModel = (process.env.LLM_MODEL || 'gemini-3.8-flash').trim();
-    const candidateModels = [
-      configuredModel,
-      'gemini-3.6-flash',
-      'gemini-flash-latest',
-      'gemini-flash-lite-latest',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-    ];
-    // Filter unique
-    const uniqueModels = [...new Set(candidateModels)];
-
-    let aiText = null;
-    let usedModel = uniqueModels[0];
-    let lastError = null;
-
-    for (const model of uniqueModels) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }],
-            },
-            contents: [
-              {
-                parts: [{ text: userPrompt }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 1500,
-            },
-          }),
-          signal: AbortSignal.timeout(25000),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const candidate = data?.candidates?.[0];
-          const text = candidate?.content?.parts?.[0]?.text;
-          if (text) {
-            aiText = text.trim();
-            usedModel = model;
-            break;
-          }
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          lastError = errData?.error?.message || `HTTP ${response.status}`;
-          // If 404 or 429, try next candidate model
-          continue;
-        }
-      } catch (err) {
-        lastError = err?.message || err;
-        continue;
-      }
-    }
-
-    if (!aiText) {
-      console.warn('[Gemini Chat] API calls failed on all candidate models:', lastError);
-      if (contextText) {
-        return res.status(200).json({
-          id: Date.now(),
-          sender: 'ai',
-          text: language === 'ta'
-            ? `குறிப்பு: நேரடி AI சேவை தற்காலிகமாக இணைக்கப்படவில்லை. வேளாண் தரவுத்தள பரிந்துரைகள்:\n\n${contextText}`
-            : `Note: Direct AI model inference is temporarily unavailable. Verified Knowledge Base recommendations:\n\n${contextText}`,
-          source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        });
-      }
-
-      return res.status(503).json({
-        success: false,
-        status: 'gemini_unavailable',
-        message: 'AI service is temporarily unavailable. Please try again.',
-      });
-    }
-
-    const sourceLabel = contextText
-      ? `Verified RAG • ${primarySource} • ${usedModel}`
-      : `SmartFarm AI Advisor • ${usedModel}`;
+    const advice = await executeRagGeminiQuery(message, language);
 
     return res.status(200).json({
       id: Date.now(),
       sender: 'ai',
-      text: aiText,
-      source: sourceLabel,
+      text: advice.text,
+      source: advice.source,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     });
   } catch (error) {

@@ -13,7 +13,23 @@
       "destination": "/api/backend?path=:path*"
     },
     {
-      "source": "/((?!api/backend).*)",
+      "source": "/api/voice/:path*",
+      "destination": "/api/backend?path=api/voice/:path*"
+    },
+    {
+      "source": "/api/voice",
+      "destination": "/api/backend?path=api/voice"
+    },
+    {
+      "source": "/voice/:path*",
+      "destination": "/api/backend?path=voice/:path*"
+    },
+    {
+      "source": "/voice",
+      "destination": "/api/backend?path=voice"
+    },
+    {
+      "source": "/((?!api/backend|api/voice|voice).*)",
       "destination": "/index.html"
     }
   ]

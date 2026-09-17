@@ -28,8 +28,10 @@ export default function VoiceAssistant() {
   const [errorMessage, setErrorMessage] = useState('');
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // References for MediaRecorder and timer
+  // References for MediaRecorder, SpeechRecognition, and timer
   const mediaRecorderRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
+  const liveTranscriptRef = useRef('');
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
   const timerIntervalRef = useRef(null);
@@ -58,6 +60,12 @@ export default function VoiceAssistant() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {}
+      speechRecognitionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         mediaRecorderRef.current.stop();
@@ -71,7 +79,7 @@ export default function VoiceAssistant() {
     }
   };
 
-  // Start real microphone recording using MediaRecorder (STT Unchanged)
+  // Start microphone recording using browser SpeechRecognition + MediaRecorder fallback
   const startRecording = async () => {
     stopAnyAudio();
     setErrorMessage('');
@@ -88,6 +96,38 @@ export default function VoiceAssistant() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      // Start browser Speech Recognition if supported
+      liveTranscriptRef.current = '';
+      const SpeechRec = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+      if (SpeechRec) {
+        try {
+          const recognition = new SpeechRec();
+          recognition.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
+          recognition.interimResults = true;
+          recognition.continuous = true;
+
+          recognition.onresult = (event) => {
+            let currentTranscript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              currentTranscript += event.results[i][0].transcript;
+            }
+            if (currentTranscript.trim()) {
+              liveTranscriptRef.current = currentTranscript.trim();
+              setTranscript(currentTranscript.trim());
+            }
+          };
+
+          recognition.onerror = (e) => {
+            console.warn('Browser SpeechRecognition warning:', e?.error);
+          };
+
+          recognition.start();
+          speechRecognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('Could not initialize SpeechRecognition:', e);
+        }
+      }
 
       let mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported('audio/webm')) {
@@ -121,7 +161,8 @@ export default function VoiceAssistant() {
           streamRef.current = null;
         }
 
-        if (audioBlob.size < 100) {
+        const capturedText = liveTranscriptRef.current.trim();
+        if (audioBlob.size < 100 && !capturedText) {
           setVoiceState('idle');
           setErrorMessage(
             language === 'ta'
@@ -131,8 +172,8 @@ export default function VoiceAssistant() {
           return;
         }
 
-        // Process audio via existing STT endpoint
-        await processRecordedAudio(audioBlob);
+        // Process audio via existing STT / Voice endpoint
+        await processRecordedAudio(audioBlob, capturedText);
       };
 
       recorder.start(250); // collect data in 250ms chunks
@@ -168,6 +209,12 @@ export default function VoiceAssistant() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {}
+      speechRecognitionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       setVoiceState('processing');
       mediaRecorderRef.current.stop();
@@ -194,20 +241,25 @@ export default function VoiceAssistant() {
   };
 
   // Process the recorded audio blob through POST /api/voice
-  const processRecordedAudio = async (audioBlob) => {
+  const processRecordedAudio = async (audioBlob, capturedText = '') => {
     setVoiceState('processing');
-    setTranscript('');
+    if (capturedText) {
+      setTranscript(capturedText);
+    } else {
+      setTranscript('');
+    }
     setAiResponse('');
     setSource('');
 
     try {
-      const data = await apiService.processVoiceInput(audioBlob, language);
+      const payload = capturedText ? { transcript: capturedText } : audioBlob;
+      const data = await apiService.processVoiceInput(payload, language);
 
       if (!data || !data.success) {
         throw new Error(data?.detail || 'Voice interaction failed.');
       }
 
-      setTranscript(data.transcript || '');
+      setTranscript(data.transcript || capturedText || '');
       setAiResponse(data.ai_response || '');
       setSource(data.source || '');
 

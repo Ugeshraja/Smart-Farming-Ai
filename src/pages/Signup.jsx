@@ -85,20 +85,35 @@ export default function Signup() {
         }
       };
 
-      await signup(payload);
+      const res = await signup(payload);
       if (preferredLang !== language) {
         setLanguage(preferredLang);
       }
-      setSuccessMessage(
-        language === 'ta' 
-          ? 'கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டது! முகப்பிற்குச் செல்கிறது...' 
-          : 'Account created successfully! Redirecting to dashboard...'
-      );
-      setTimeout(() => {
-        navigate('/dashboard', { replace: true });
-      }, 1000);
+
+      if (res?.session) {
+        setSuccessMessage(
+          language === 'ta' 
+            ? 'கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டது! முகப்பிற்குச் செல்கிறது...' 
+            : 'Account created successfully! Redirecting to dashboard...'
+        );
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1000);
+      } else {
+        setSuccessMessage(
+          language === 'ta'
+            ? 'கணக்கு உருவாக்கப்பட்டது! உங்கள் மின்னஞ்சல் முகவரியை சரிபார்த்து உறுதிப்படுத்தவும்.'
+            : 'Account created! If email confirmation is required, please check your inbox.'
+        );
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 3000);
+      }
     } catch (err) {
-      const msg = err.message || (language === 'ta' ? 'பதிவு செய்வதில் பிழை ஏற்பட்டது.' : 'Registration failed.');
+      let msg = err?.message || (language === 'ta' ? 'பதிவு செய்வதில் பிழை ஏற்பட்டது.' : 'Registration failed.');
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
+        msg = language === 'ta' ? 'இந்த மின்னஞ்சல் முகவரியில் ஏற்கனவே ஒரு கணக்கு உள்ளது.' : 'An account with this email address already exists.';
+      }
       setErrorMessage(msg);
     } finally {
       setLoading(false);

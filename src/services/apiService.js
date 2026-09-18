@@ -18,6 +18,7 @@ import {
 import { fetchOpenWeatherData, geocodeLocation } from './weatherService';
 import { VERIFIED_GOVERNMENT_SCHEMES, evaluateSchemeEligibility as evalRules } from './schemesData';
 import { evaluateFieldSuitability } from './fieldEvaluator';
+import { supabase } from '../lib/supabaseClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
 
@@ -29,12 +30,26 @@ const apiClient = axios.create({
   timeout: 8000,
 });
 
-// Auto-attach JWT auth token if stored and handle FormData Content-Type
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('smartfarm_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Auto-attach authentic Supabase session access token to authenticated requests
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const sessionToken = data?.session?.access_token;
+    if (sessionToken) {
+      config.headers.Authorization = `Bearer ${sessionToken}`;
+    } else {
+      const token = localStorage.getItem('smartfarm_token');
+      if (token && !token.startsWith('demo_token')) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch {
+    const token = localStorage.getItem('smartfarm_token');
+    if (token && !token.startsWith('demo_token')) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
+
   // When sending FormData, delete Content-Type so browser sets multipart/form-data with boundary
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
@@ -42,6 +57,7 @@ apiClient.interceptors.request.use((config) => {
       delete config.headers.common['Content-Type'];
     }
   }
+  return config;
 }, (error) => Promise.reject(error));
 
 /**
@@ -55,7 +71,9 @@ export function getUserStorageKey(baseKey, userId) {
       if (stored) {
         const u = JSON.parse(stored);
         const resolvedId = u.user_id || u.id;
-        if (resolvedId) return `${baseKey}_${resolvedId}`;
+        if (resolvedId && !resolvedId.startsWith('00000000-0000-4000-a000')) {
+          return `${baseKey}_${resolvedId}`;
+        }
       }
     } catch {}
     return baseKey;
@@ -754,16 +772,29 @@ export const apiService = {
     return mockRecentSensorActivity;
   },
 
-  // Helper to obtain the active authenticated user ID
+  // Helper to obtain the active authenticated user ID (canonical Supabase UID)
   getCurrentUserId() {
     try {
       const stored = localStorage.getItem('smartfarm_user');
       if (stored) {
         const u = JSON.parse(stored);
-        return u.user_id || u.id || null;
+        const resolvedId = u.user_id || u.id;
+        if (resolvedId && !resolvedId.startsWith('00000000-0000-4000-a000')) {
+          return resolvedId;
+        }
       }
     } catch {}
     return null;
+  },
+
+  async getSessionUserId() {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.id) {
+        return data.session.user.id;
+      }
+    } catch {}
+    return this.getCurrentUserId();
   },
 
   // 9. Predictions & Reports

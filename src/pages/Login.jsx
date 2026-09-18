@@ -62,10 +62,12 @@ export default function Login() {
       await login(email, password);
       navigate(targetDestination, { replace: true });
     } catch (err) {
-      // User-friendly error message, never technical traceback
-      const msg = language === 'ta' 
-        ? 'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.' 
-        : 'Invalid email or password.';
+      let msg = err?.message || (language === 'ta' ? 'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.' : 'Invalid email or password.');
+      if (msg.includes('Invalid login credentials')) {
+        msg = language === 'ta' ? 'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.' : 'Invalid email or password.';
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        msg = language === 'ta' ? 'உங்கள் மின்னஞ்சல் முகவரியை உறுதிப்படுத்தவும்.' : 'Please verify your email address before logging in.';
+      }
       setErrorMessage(msg);
     } finally {
       setLoading(false);

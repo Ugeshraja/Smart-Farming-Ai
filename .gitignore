@@ -27,3 +27,5 @@ backend/tests/sample_files/*_real.jpg
 backend/tests/sample_files/*_real.png
 
 .env.production
+.env.development
+modal_app.py

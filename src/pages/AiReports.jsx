@@ -261,50 +261,40 @@ export default function AiReports() {
   }, [prediction?.id, prediction?.imageUrl]);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadReport() {
       setLoading(true);
 
-      // 1. Read the same prediction history source: localStorage key "smartfarm_predictions"
-      const stored = localStorage.getItem('smartfarm_predictions');
-
-      // 2. If localStorage key exists:
-      if (stored !== null) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            // If key exists and contains [] -> treat as having zero reports (do NOT restore mock data)
-            if (parsed.length === 0) {
-              setPrediction(null);
-              setLoading(false);
-              return;
-            }
-            // If records exist and reportId requested
-            if (reportId) {
-              const match = parsed.find(p => p.id === reportId);
-              setPrediction(match || null);
-            } else {
-              setPrediction(parsed[0] || null);
-            }
-            setLoading(false);
-            return;
+      try {
+        if (reportId) {
+          const item = await apiService.getPredictionById(reportId);
+          if (isMounted) {
+            setPrediction(item || null);
           }
-        } catch (e) {
-          console.warn("Error reading stored predictions:", e);
+        } else {
+          // If no specific report requested, fetch user's isolated prediction history
+          const list = await apiService.getPredictions({ userId: user?.user_id });
+          if (isMounted) {
+            setPrediction(list && list.length > 0 ? list[0] : null);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading report:", err);
+        if (isMounted) {
+          setPrediction(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
-
-      // 3. If localStorage key does not exist: preserve application's existing behavior
-      if (reportId) {
-        const item = await apiService.getPredictionById(reportId);
-        setPrediction(item || null);
-      } else {
-        const list = await apiService.getPredictions();
-        setPrediction(list && list.length > 0 ? list[0] : null);
-      }
-      setLoading(false);
     }
     loadReport();
-  }, [reportId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reportId, user?.user_id]);
 
   const handlePrint = () => {
     window.print();
@@ -361,37 +351,47 @@ export default function AiReports() {
       </div>
 
       {!prediction ? (
-        /* Empty State Card when Zero Prediction Records Exist */
+        /* Empty State Card when Zero Prediction Records Exist or Report Access Denied */
         <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-8 sm:p-12 text-center space-y-8">
           {/* Centered Icon & Heading */}
           <div className="max-w-md mx-auto space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-agri-50 border border-agri-200 flex items-center justify-center text-agri-600 mx-auto shadow-2xs">
-              <FileBarChart className="w-8 h-8" />
+            <div className={`w-16 h-16 rounded-2xl ${reportId ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-agri-50 border-agri-200 text-agri-600'} border flex items-center justify-center mx-auto shadow-2xs`}>
+              {reportId ? <AlertCircle className="w-8 h-8" /> : <FileBarChart className="w-8 h-8" />}
             </div>
             <h3 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
-              {isTa ? 'AI அறிக்கைகள் எதுவும் இல்லை' : 'No AI reports available yet'}
+              {reportId 
+                ? (isTa ? 'அறிக்கை கிடைக்கவில்லை அல்லது அணுகல் மறுக்கப்பட்டது' : 'Report Not Found or Access Denied')
+                : (isTa ? 'AI அறிக்கைகள் எதுவும் இல்லை' : 'No AI reports available yet')}
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-              {isTa
-                ? 'சேமிக்கப்பட்ட பயிர் நோய் கணிப்புகளிலிருந்து AI அறிக்கைகள் உருவாக்கப்படுகின்றன. விரிவான AI அறிக்கையை உருவாக்க ஒரு பயிரை ஆய்வு செய்யவும்.'
-                : 'AI reports are generated from your saved crop disease predictions. Analyze a crop to generate a detailed AI-powered report.'}
+              {reportId
+                ? (isTa
+                    ? 'கோரப்பட்ட அறிக்கை உங்கள் கணக்கில் இல்லை அல்லது நீக்கப்பட்டிருக்கலாம்.'
+                    : 'The requested report was not found in your account or access is restricted.')
+                : (isTa
+                    ? 'சேமிக்கப்பட்ட பயிர் நோய் கணிப்புகளிலிருந்து AI அறிக்கைகள் உருவாக்கப்படுகின்றன. விரிவான AI அறிக்கையை உருவாக்க ஒரு பயிரை ஆய்வு செய்யவும்.'
+                    : 'AI reports are generated from your saved crop disease predictions. Analyze a crop to generate a detailed AI-powered report.')}
             </p>
           </div>
 
-          {/* Primary Action Button */}
-          <div className="space-y-2">
+          {/* Action Buttons */}
+          <div className="space-y-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {reportId && (
+              <button
+                onClick={() => navigate('/ai-reports')}
+                className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer"
+              >
+                <FileBarChart className="w-4 h-4" />
+                <span>{isTa ? 'எனது அறிக்கைகளைக் காண்க' : 'View My Reports'}</span>
+              </button>
+            )}
             <button
               onClick={() => navigate('/crop-disease')}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all hover:scale-102 cursor-pointer"
+              className="inline-flex items-center space-x-2 px-6 py-2.5 bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all hover:scale-102 cursor-pointer"
             >
               <ScanSearch className="w-4 h-4" />
               <span>{isTa ? 'புதிய பயிரை ஆய்வு செய்யவும்' : 'Analyze New Crop'}</span>
             </button>
-            <p className="text-[11px] text-gray-400 font-medium">
-              {isTa
-                ? 'ஆய்வுக்குப் பிறகு உங்கள் அறிக்கைகள் இங்கே தோன்றும்.'
-                : 'Your reports will appear here after analysis.'}
-            </p>
           </div>
 
           {/* Divider */}

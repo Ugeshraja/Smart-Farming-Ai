@@ -9,6 +9,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
 
 function HistoryThumbnail({ pred, isTa }) {
@@ -68,6 +69,7 @@ function ModalLeafImage({ item, isTa }) {
 
 export default function PredictionHistory() {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [predictions, setPredictions] = useState([]);
@@ -84,13 +86,14 @@ export default function PredictionHistory() {
   useEffect(() => {
     async function fetchHistory() {
       setLoading(true);
-      const data = await apiService.getPredictions();
-      setPredictions(data);
-      setFilteredPredictions(data);
+      const data = await apiService.getPredictions({ userId: user?.user_id || user?.id });
+      const safeData = Array.isArray(data) ? data : [];
+      setPredictions(safeData);
+      setFilteredPredictions(safeData);
       setLoading(false);
     }
     fetchHistory();
-  }, []);
+  }, [user?.user_id, user?.id]);
 
   useEffect(() => {
     let result = [...predictions];
@@ -108,9 +111,9 @@ export default function PredictionHistory() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(p =>
-        p.disease.toLowerCase().includes(q) ||
-        p.crop.toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q)
+        (p.disease && p.disease.toLowerCase().includes(q)) ||
+        (p.crop && p.crop.toLowerCase().includes(q)) ||
+        (p.id && p.id.toLowerCase().includes(q))
       );
     }
 
@@ -121,22 +124,17 @@ export default function PredictionHistory() {
     if (!deleteCandidate) return;
     const targetId = deleteCandidate.id;
 
-    // Delete strictly by exact ID
-    const updated = predictions.filter(
-      prediction => prediction.id !== targetId
-    );
-
-    // Persist updated array to localStorage
-    localStorage.setItem('smartfarm_predictions', JSON.stringify(updated));
-
-    // Also call apiService.deletePrediction for consistent local storage sync
+    // Call apiService to delete in database and user-scoped storage
     try {
       await apiService.deletePrediction(targetId);
     } catch (e) {
       console.warn("apiService delete error:", e);
     }
 
-    // Update React state
+    // Update React state strictly for this user
+    const updated = predictions.filter(
+      prediction => prediction.id !== targetId
+    );
     setPredictions(updated);
     setDeleteCandidate(null);
   };

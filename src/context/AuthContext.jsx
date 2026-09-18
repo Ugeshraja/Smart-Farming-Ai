@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiService } from '../services/apiService';
+import { apiService, getUserStorageKey } from '../services/apiService';
 import { evaluateFieldSuitability } from '../services/fieldEvaluator';
 
 const AuthContext = createContext();
@@ -7,7 +7,8 @@ const AuthContext = createContext();
 // Pre-seeded demo account for fallback/offline testing
 const DEMO_ACCOUNTS = [
   {
-    user_id: "USR-UGESH-001",
+    id: "00000000-0000-0000-0000-000000000001",
+    user_id: "00000000-0000-0000-0000-000000000001",
     name: "UGESHRAJA S",
     email: "ugeshraja@example.com",
     password: "password123",
@@ -65,66 +66,43 @@ export const AuthProvider = ({ children }) => {
     return null;
   });
 
-  const DEFAULT_FIELD_PROFILE = {
-    crop_type: "Brinjal",
-    soil_type: "Loamy",
-    soil_ph: 6.4,
-    water_capacity: "72%",
-    field_size: 2.0,
-    field_size_unit: "Acre",
-    npk_nitrogen: 80,
-    npk_phosphorus: 40,
-    npk_potassium: 40,
-    sowing_date: "2026-06-15",
-    irrigation_method: "Drip",
-    field_location: "Tamil Nadu",
-    season: "Kharif"
-  };
-
   const [fieldProfile, setFieldProfile] = useState(() => {
     try {
-      const stored = localStorage.getItem('smartfarm_field_profile');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        delete parsed.assessment;
-        delete parsed.field;
-        return parsed;
-      }
       const storedUser = localStorage.getItem('smartfarm_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        if (parsed.field_profile) {
-          const prof = { ...parsed.field_profile };
-          delete prof.assessment;
-          delete prof.field;
-          return prof;
+        const uid = parsed.user_id || parsed.id;
+        if (uid) {
+          const userKey = getUserStorageKey('smartfarm_field_profile', uid);
+          const cached = localStorage.getItem(userKey);
+          if (cached) {
+            const prof = JSON.parse(cached);
+            delete prof.assessment;
+            delete prof.field;
+            return prof;
+          }
         }
       }
     } catch {}
-    return DEFAULT_FIELD_PROFILE;
+    return null;
   });
 
   const [fieldAssessment, setFieldAssessment] = useState(() => {
-    // Crucial: ALWAYS calculate assessment from current fieldProfile on load!
-    // Never reuse an old assessment that may have mismatched values.
     try {
-      const stored = localStorage.getItem('smartfarm_field_profile');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        delete parsed.assessment;
-        delete parsed.field;
-        const freshAssessment = evaluateFieldSuitability(parsed);
-        try {
-          localStorage.setItem('smartfarm_field_assessment', JSON.stringify(freshAssessment));
-        } catch {}
-        return freshAssessment;
+      const storedUser = localStorage.getItem('smartfarm_user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        const uid = parsed.user_id || parsed.id;
+        if (uid) {
+          const assessKey = getUserStorageKey('smartfarm_field_assessment', uid);
+          const cached = localStorage.getItem(assessKey);
+          if (cached) {
+            return JSON.parse(cached);
+          }
+        }
       }
     } catch {}
-    const initAssessment = evaluateFieldSuitability(DEFAULT_FIELD_PROFILE);
-    try {
-      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(initAssessment));
-    } catch {}
-    return initAssessment;
+    return null;
   });
 
   const [loading, setLoading] = useState(false);
@@ -135,8 +113,10 @@ export const AuthProvider = ({ children }) => {
 
   const normalizeUserData = (userData) => {
     if (!userData) return null;
+    const canonicalId = userData.user_id || userData.id || `USR-${Math.floor(1000 + Math.random() * 9000)}`;
     return {
-      user_id: userData.user_id || `USR-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: canonicalId,
+      user_id: canonicalId,
       name: userData.name || "Farmer",
       email: (userData.email || "").toLowerCase().trim(),
       phone: userData.phone || "+91 98765 43210",
@@ -147,14 +127,14 @@ export const AuthProvider = ({ children }) => {
         farm_area: "3.5 Acres",
         primary_crops: ["Tomato", "Potato", "Brinjal"]
       },
-      field_profile: userData.field_profile || fieldProfile,
+      field_profile: userData.field_profile || null,
       primaryCrops: userData.farm_details?.primary_crops || userData.primaryCrops || ["Tomato", "Potato", "Brinjal"],
       preferred_language: userData.preferred_language || "ta",
       created_date: userData.created_date || new Date().toISOString()
     };
   };
 
-  // Sync token to API client
+  // Sync token to localStorage
   useEffect(() => {
     if (token) {
       localStorage.setItem('smartfarm_token', token);
@@ -172,6 +152,57 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
+  // Refresh field profile and assessment from authoritative backend or user-scoped cache
+  const refreshFieldProfile = async (targetUser) => {
+    const currentUser = targetUser || user;
+    const uid = currentUser?.user_id || currentUser?.id;
+    if (!uid) {
+      setFieldProfile(null);
+      setFieldAssessment(null);
+      return;
+    }
+
+    try {
+      const data = await apiService.getFieldProfile();
+      if (data) {
+        const profile = data.field || data;
+        const cleanProfile = { ...profile };
+        delete cleanProfile.assessment;
+        delete cleanProfile.field;
+        const assessment = data.assessment || evaluateFieldSuitability(cleanProfile);
+
+        setFieldProfile(cleanProfile);
+        setFieldAssessment(assessment);
+        try {
+          localStorage.setItem(getUserStorageKey('smartfarm_field_profile', uid), JSON.stringify(cleanProfile));
+          localStorage.setItem(getUserStorageKey('smartfarm_field_assessment', uid), JSON.stringify(assessment));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn("Error refreshing field profile:", e);
+      if (fieldProfile) {
+        const cleanProfile = { ...fieldProfile };
+        delete cleanProfile.assessment;
+        delete cleanProfile.field;
+        const assessment = evaluateFieldSuitability(cleanProfile);
+        setFieldAssessment(assessment);
+        try {
+          localStorage.setItem(getUserStorageKey('smartfarm_field_assessment', uid), JSON.stringify(assessment));
+        } catch {}
+      }
+    }
+  };
+
+  // Trigger field profile refresh whenever user changes (switch account)
+  useEffect(() => {
+    if (user && user.user_id && token) {
+      refreshFieldProfile(user);
+    } else {
+      setFieldProfile(null);
+      setFieldAssessment(null);
+    }
+  }, [user?.user_id, token]);
+
   // Login handler
   const login = async (email, password) => {
     setLoading(true);
@@ -187,6 +218,7 @@ export const AuthProvider = ({ children }) => {
         setUser(normalized);
         localStorage.setItem('smartfarm_token', data.access_token);
         localStorage.setItem('smartfarm_user', JSON.stringify(normalized));
+        await refreshFieldProfile(normalized);
         return normalized;
       }
     } catch (err) {
@@ -202,6 +234,7 @@ export const AuthProvider = ({ children }) => {
         setUser(normalized);
         localStorage.setItem('smartfarm_token', simulatedToken);
         localStorage.setItem('smartfarm_user', JSON.stringify(normalized));
+        await refreshFieldProfile(normalized);
         return normalized;
       }
 
@@ -228,6 +261,7 @@ export const AuthProvider = ({ children }) => {
         setUser(normalized);
         localStorage.setItem('smartfarm_token', data.access_token);
         localStorage.setItem('smartfarm_user', JSON.stringify(normalized));
+        await refreshFieldProfile(normalized);
         return normalized;
       }
     } catch (err) {
@@ -240,8 +274,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error(msg);
       }
 
-      const newUserId = `USR-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newUserId = `00000000-0000-4000-a000-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
       const newFarmer = {
+        id: newUserId,
         user_id: newUserId,
         name: formData.name.trim(),
         email: cleanEmail,
@@ -268,13 +303,14 @@ export const AuthProvider = ({ children }) => {
       setUser(normalized);
       localStorage.setItem('smartfarm_token', simulatedToken);
       localStorage.setItem('smartfarm_user', JSON.stringify(normalized));
+      await refreshFieldProfile(normalized);
       return normalized;
     } finally {
       setLoading(false);
     }
   };
 
-  // Logout handler
+  // Logout handler - Clears all user tokens and in-memory user-specific state
   const logout = async () => {
     try {
       await apiService.logout();
@@ -286,6 +322,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('smartfarm_user');
       setToken(null);
       setUser(null);
+      // 2. Clear in-memory state so User A's data NEVER survives into User B
+      setFieldProfile(null);
+      setFieldAssessment(null);
       setAuthError(null);
     }
   };
@@ -294,7 +333,6 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (updateData) => {
     setLoading(true);
     try {
-      // Try backend
       const updated = await apiService.updateProfile(updateData);
       const normalized = normalizeUserData(updated);
       setUser(normalized);
@@ -320,46 +358,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Refresh field profile and assessment from authoritative backend or local state
-  const refreshFieldProfile = async () => {
-    try {
-      const data = await apiService.getFieldProfile();
-      if (data) {
-        const profile = data.field || data;
-        const cleanProfile = { ...profile };
-        delete cleanProfile.assessment;
-        delete cleanProfile.field;
-        const assessment = data.assessment || evaluateFieldSuitability(cleanProfile);
-
-        setFieldProfile(cleanProfile);
-        setFieldAssessment(assessment);
-        try {
-          localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
-          localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-        } catch {}
-      }
-    } catch (e) {
-      console.warn("Error refreshing field profile:", e);
-      if (fieldProfile) {
-        const cleanProfile = { ...fieldProfile };
-        delete cleanProfile.assessment;
-        delete cleanProfile.field;
-        const assessment = evaluateFieldSuitability(cleanProfile);
-        setFieldAssessment(assessment);
-        try {
-          localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-        } catch {}
-      }
-    }
-  };
-
-  useEffect(() => {
-    refreshFieldProfile();
-  }, [token]);
-
   // Update field profile handler
   const updateFieldProfile = async (fieldData) => {
     setLoading(true);
+    const uid = user?.user_id || user?.id;
+
     try {
       const updated = await apiService.updateFieldProfile(fieldData);
       const profile = updated.field || updated;
@@ -370,10 +373,12 @@ export const AuthProvider = ({ children }) => {
 
       setFieldProfile(cleanProfile);
       setFieldAssessment(assessment);
-      try {
-        localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
-        localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-      } catch {}
+      if (uid) {
+        try {
+          localStorage.setItem(getUserStorageKey('smartfarm_field_profile', uid), JSON.stringify(cleanProfile));
+          localStorage.setItem(getUserStorageKey('smartfarm_field_assessment', uid), JSON.stringify(assessment));
+        } catch {}
+      }
 
       setUser(prev => {
         if (!prev) return prev;
@@ -386,17 +391,19 @@ export const AuthProvider = ({ children }) => {
       return { field: cleanProfile, assessment };
     } catch (err) {
       console.warn("updateFieldProfile error:", err);
-      const cleanProfile = { ...fieldProfile, ...fieldData };
+      const cleanProfile = { ...(fieldProfile || {}), ...fieldData };
       delete cleanProfile.assessment;
       delete cleanProfile.field;
       const assessment = evaluateFieldSuitability(cleanProfile);
 
       setFieldProfile(cleanProfile);
       setFieldAssessment(assessment);
-      try {
-        localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
-        localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-      } catch {}
+      if (uid) {
+        try {
+          localStorage.setItem(getUserStorageKey('smartfarm_field_profile', uid), JSON.stringify(cleanProfile));
+          localStorage.setItem(getUserStorageKey('smartfarm_field_assessment', uid), JSON.stringify(assessment));
+        } catch {}
+      }
 
       setUser(prev => {
         if (!prev) return prev;

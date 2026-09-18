@@ -42,8 +42,26 @@ apiClient.interceptors.request.use((config) => {
       delete config.headers.common['Content-Type'];
     }
   }
-  return config;
 }, (error) => Promise.reject(error));
+
+/**
+ * Produces a user-specific storage key ensuring complete local cache isolation.
+ * If userId is not passed, attempts to resolve from current authenticated session.
+ */
+export function getUserStorageKey(baseKey, userId) {
+  if (!userId) {
+    try {
+      const stored = localStorage.getItem('smartfarm_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        const resolvedId = u.user_id || u.id;
+        if (resolvedId) return `${baseKey}_${resolvedId}`;
+      }
+    } catch {}
+    return baseKey;
+  }
+  return `${baseKey}_${userId}`;
+}
 
 /**
  * Resolves relative static media paths (e.g. /static/predictions/...)
@@ -736,94 +754,189 @@ export const apiService = {
     return mockRecentSensorActivity;
   },
 
+  // Helper to obtain the active authenticated user ID
+  getCurrentUserId() {
+    try {
+      const stored = localStorage.getItem('smartfarm_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        return u.user_id || u.id || null;
+      }
+    } catch {}
+    return null;
+  },
+
   // 9. Predictions & Reports
   async getPredictions(params = {}) {
+    const userId = params?.userId || this.getCurrentUserId();
+    const storageKey = getUserStorageKey('smartfarm_predictions', userId);
+
+    // 1. Try Backend API first
     try {
-      const stored = localStorage.getItem('smartfarm_predictions');
-      if (stored !== null) {
-        // Distinguish: key exists (even if empty array []) -> do NOT restore mock data
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
+      const response = await apiClient.get('/predictions', { params });
+      if (response.data && Array.isArray(response.data)) {
+        if (userId) {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(response.data));
+          } catch {}
+        }
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend getPredictions failed, checking offline cache:", e?.message);
+    }
+
+    // 2. Offline / Local Storage fallback for this specific user
+    try {
+      if (userId) {
+        const stored = localStorage.getItem(storageKey);
+        if (stored !== null) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
         }
       }
     } catch (e) {
       console.warn("Error reading stored predictions:", e);
     }
-    // Key does not exist in localStorage -> use existing mock predictions
-    return mockPredictions;
+
+    // For authenticated users, an empty history is legitimately empty: NEVER return mock data
+    return [];
   },
 
   async getPredictionById(id) {
+    if (!id) return null;
+    const userId = this.getCurrentUserId();
+    const storageKey = getUserStorageKey('smartfarm_predictions', userId);
+
+    // 1. Try backend API prediction endpoint
     try {
-      const stored = localStorage.getItem('smartfarm_predictions');
-      if (stored !== null) {
-        const list = JSON.parse(stored);
-        if (Array.isArray(list)) {
-          if (list.length === 0) return null;
-          if (id) {
+      const response = await apiClient.get(`/predictions/${id}`);
+      if (response.data) {
+        return response.data;
+      }
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        return null;
+      }
+      console.warn("Backend getPredictionById failed, checking user cache:", e?.message);
+    }
+
+    // Also check report endpoint if needed
+    try {
+      const response = await apiClient.get(`/reports/${id}`);
+      if (response.data) {
+        return response.data;
+      }
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        return null;
+      }
+    }
+
+    // 2. Offline fallback strictly from this user's cache
+    if (userId) {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored !== null) {
+          const list = JSON.parse(stored);
+          if (Array.isArray(list)) {
             const found = list.find(p => p.id === id);
             return found || null;
           }
-          return list[0] || null;
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
-    if (!id) return mockPredictions[0];
-    const found = mockPredictions.find(p => p.id === id);
-    return found || null;
+    return null;
   },
 
   async savePrediction(prediction) {
     if (!prediction || !prediction.id) return { success: false };
+    const userId = this.getCurrentUserId();
+    const storageKey = getUserStorageKey('smartfarm_predictions', userId);
 
+    // 1. Try saving to backend API
+    try {
+      const response = await apiClient.post('/predictions', prediction);
+      if (response.data && response.data.success) {
+        if (userId) {
+          this._updateUserPredictionCache(storageKey, response.data.prediction || prediction);
+        }
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend savePrediction failed, saving to offline cache:", e?.message);
+    }
+
+    // 2. Offline fallback
+    if (userId) {
+      this._updateUserPredictionCache(storageKey, prediction);
+      return { success: true, count: 1 };
+    }
+    return { success: false, error: "Unauthenticated" };
+  },
+
+  _updateUserPredictionCache(storageKey, prediction) {
     try {
       let current = [];
-      const stored = localStorage.getItem('smartfarm_predictions');
+      const stored = localStorage.getItem(storageKey);
       if (stored !== null) {
-        current = JSON.parse(stored);
-        if (!Array.isArray(current)) current = [];
-      } else {
-        current = [...mockPredictions];
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) current = parsed;
       }
-
-      // Check if duplicate by exact ID
       const existingIdx = current.findIndex(p => p.id === prediction.id);
       if (existingIdx >= 0) {
         current[existingIdx] = { ...current[existingIdx], ...prediction };
       } else {
         current.unshift(prediction);
       }
-
-      localStorage.setItem('smartfarm_predictions', JSON.stringify(current));
-      return { success: true, count: current.length };
+      localStorage.setItem(storageKey, JSON.stringify(current));
     } catch (e) {
-      console.warn("Error saving prediction to localStorage:", e);
-      return { success: false, error: e.message };
+      console.warn("Cache update error:", e);
     }
   },
 
   async deletePrediction(id) {
     if (!id) return { success: false };
+    const userId = this.getCurrentUserId();
+    const storageKey = getUserStorageKey('smartfarm_predictions', userId);
 
+    // 1. Try backend API
+    try {
+      const response = await apiClient.delete(`/predictions/${id}`);
+      if (response.data && response.data.success) {
+        if (userId) {
+          this._removeUserPredictionFromCache(storageKey, id);
+        }
+        return response.data;
+      }
+    } catch (e) {
+      console.warn("Backend deletePrediction failed, updating offline cache:", e?.message);
+    }
+
+    // 2. Offline fallback
+    if (userId) {
+      const remaining = this._removeUserPredictionFromCache(storageKey, id);
+      return { success: true, remaining };
+    }
+    return { success: false };
+  },
+
+  _removeUserPredictionFromCache(storageKey, id) {
     try {
       let current = [];
-      const stored = localStorage.getItem('smartfarm_predictions');
+      const stored = localStorage.getItem(storageKey);
       if (stored !== null) {
-        current = JSON.parse(stored);
-        if (!Array.isArray(current)) current = [];
-      } else {
-        current = [...mockPredictions];
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) current = parsed;
       }
-
-      // Delete only the selected localStorage record by its exact ID
       const updated = current.filter(p => p.id !== id);
-      localStorage.setItem('smartfarm_predictions', JSON.stringify(updated));
-      return { success: true, remaining: updated };
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
     } catch (e) {
-      console.warn("Error deleting prediction from localStorage:", e);
-      return { success: false, error: e.message };
+      return [];
     }
   },
 
@@ -882,6 +995,10 @@ export const apiService = {
 
   // 11. My Field Profile Endpoints
   async getFieldProfile() {
+    const userId = this.getCurrentUserId();
+    const profileKey = getUserStorageKey('smartfarm_field_profile', userId);
+    const assessmentKey = getUserStorageKey('smartfarm_field_assessment', userId);
+
     let profile = null;
     let assessment = null;
 
@@ -895,26 +1012,26 @@ export const apiService = {
         }
       }
     } catch (e) {
-      console.warn("Backend getFieldProfile failed, using local storage fallback:", e?.message);
+      console.warn("Backend getFieldProfile failed, using user-scoped storage fallback:", e?.message);
     }
 
-    // 2. Local Storage Fallback if backend failed
-    if (!profile) {
+    // 2. User-Scoped Local Storage Fallback if backend failed
+    if (!profile && userId) {
       try {
-        const stored = localStorage.getItem('smartfarm_field_profile');
+        const stored = localStorage.getItem(profileKey);
         if (stored) {
           profile = JSON.parse(stored);
         }
       } catch { }
     }
 
-    // 3. Default demo profile if no saved profile exists
+    // 3. Clean defaults for new user with no saved profile yet
     if (!profile) {
       profile = {
-        crop_type: "Brinjal",
+        crop_type: "Tomato",
         soil_type: "Loamy",
-        soil_ph: 6.4,
-        water_capacity: "72%",
+        soil_ph: 6.5,
+        water_capacity: "70%",
         field_size: 2.0,
         field_size_unit: "Acre",
         npk_nitrogen: 80,
@@ -932,15 +1049,16 @@ export const apiService = {
     delete cleanProfile.assessment;
     delete cleanProfile.field;
 
-    // 5. Always calculate the assessment from THAT EXACT profile!
-    // Never reuse a stale assessment that could mismatch current field parameters.
-    assessment = evaluateFieldSuitability(cleanProfile);
+    // 5. Always calculate the assessment from THAT EXACT profile
+    assessment = assessment || evaluateFieldSuitability(cleanProfile);
 
-    // Save synchronized state to localStorage
-    try {
-      localStorage.setItem('smartfarm_field_profile', JSON.stringify(cleanProfile));
-      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(assessment));
-    } catch { }
+    // Save synchronized user-scoped state to localStorage
+    if (userId) {
+      try {
+        localStorage.setItem(profileKey, JSON.stringify(cleanProfile));
+        localStorage.setItem(assessmentKey, JSON.stringify(assessment));
+      } catch { }
+    }
 
     return {
       ...cleanProfile,
@@ -950,7 +1068,10 @@ export const apiService = {
   },
 
   async updateFieldProfile(profileData) {
-    // 1. Clean and normalize the profile
+    const userId = this.getCurrentUserId();
+    const profileKey = getUserStorageKey('smartfarm_field_profile', userId);
+    const assessmentKey = getUserStorageKey('smartfarm_field_assessment', userId);
+
     const current = await this.getFieldProfile();
     const currentField = current.field || current;
 
@@ -969,7 +1090,7 @@ export const apiService = {
       ...currentField,
       ...profileData,
       soil_ph: profileData.soil_ph !== undefined ? (Number.isFinite(parseFloat(profileData.soil_ph)) ? parseFloat(profileData.soil_ph) : currentField.soil_ph) : currentField.soil_ph,
-      water_capacity: normWater ?? "72%",
+      water_capacity: normWater ?? "70%",
       field_size: profileData.field_size !== undefined ? (Number.isFinite(parseFloat(profileData.field_size)) ? parseFloat(profileData.field_size) : currentField.field_size) : currentField.field_size,
       npk_nitrogen: profileData.npk_nitrogen !== undefined ? (Number.isFinite(parseInt(profileData.npk_nitrogen, 10)) ? parseInt(profileData.npk_nitrogen, 10) : currentField.npk_nitrogen) : currentField.npk_nitrogen,
       npk_phosphorus: profileData.npk_phosphorus !== undefined ? (Number.isFinite(parseInt(profileData.npk_phosphorus, 10)) ? parseInt(profileData.npk_phosphorus, 10) : currentField.npk_phosphorus) : currentField.npk_phosphorus,
@@ -978,16 +1099,16 @@ export const apiService = {
     delete updated.assessment;
     delete updated.field;
 
-    // 2. Immediately calculate suitability from the updated canonical profile
     const calculatedAssessment = evaluateFieldSuitability(updated);
 
-    // 3. Persist canonical state immediately to localStorage
-    try {
-      localStorage.setItem('smartfarm_field_profile', JSON.stringify(updated));
-      localStorage.setItem('smartfarm_field_assessment', JSON.stringify(calculatedAssessment));
-    } catch { }
+    // Save to user-scoped cache immediately
+    if (userId) {
+      try {
+        localStorage.setItem(profileKey, JSON.stringify(updated));
+        localStorage.setItem(assessmentKey, JSON.stringify(calculatedAssessment));
+      } catch { }
+    }
 
-    // 4. Try syncing with backend API if reachable
     let finalAssessment = calculatedAssessment;
     try {
       const response = await apiClient.put('/field', updated);
@@ -997,9 +1118,11 @@ export const apiService = {
         delete backendField.field;
         if (response.data.assessment) {
           finalAssessment = response.data.assessment;
-          try {
-            localStorage.setItem('smartfarm_field_assessment', JSON.stringify(finalAssessment));
-          } catch { }
+          if (userId) {
+            try {
+              localStorage.setItem(assessmentKey, JSON.stringify(finalAssessment));
+            } catch { }
+          }
         }
       }
     } catch (e) {

@@ -232,6 +232,8 @@ export const translations = {
     reportItemRag: "RAG-based agricultural guidance",
     reportItemGemini: "Gemini farmer advisory",
     reportItemManagement: "Recommended management practices",
+    preventiveMeasuresHeading: "Preventive Measures",
+    preventiveMeasuresNotAvailable: "Preventive measures are not available for this report.",
 
     // Settings
     notifications: "Notification Preferences",
@@ -466,6 +468,8 @@ export const translations = {
     reportItemRag: "RAG அடிப்படையிலான விவசாய வழிகாட்டுதல்",
     reportItemGemini: "Gemini விவசாயி ஆலோசனை",
     reportItemManagement: "பரிந்துரைக்கப்பட்ட மேலாண்மை நடைமுறைகள்",
+    preventiveMeasuresHeading: "தடுப்பு நடவடிக்கைகள்",
+    preventiveMeasuresNotAvailable: "இந்த அறிக்கைக்கு தடுப்பு நடவடிக்கைகள் கிடைக்கவில்லை.",
 
     // Settings
     notifications: "அறிவிப்பு விருப்பங்கள்",

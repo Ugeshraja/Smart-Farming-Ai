@@ -402,6 +402,18 @@ export const apiService = {
         const newId = `PRED-${Math.floor(1000 + Math.random() * 9000)}`;
         const advisoryText = data.advisory?.text || (typeof data.advisory === 'string' ? data.advisory : '');
 
+        const rawPreventiveMeasures = data.preventive_measures ??
+          data.preventiveMeasures ??
+          data.prevention ??
+          data.prevention_measures ??
+          data.recommendations ??
+          data.advisory?.preventive_measures ??
+          data.advisory?.preventiveMeasures ??
+          data.advisory?.prevention ??
+          data.rag?.preventive_measures ??
+          data.rag?.prevention ??
+          null;
+
         const newPrediction = {
           id: newId,
           crop: crop,
@@ -423,6 +435,7 @@ export const apiService = {
             en: advisoryText,
             ta: advisoryText
           },
+          preventiveMeasures: rawPreventiveMeasures,
           rawBackend: data
         };
 

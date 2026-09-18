@@ -18,6 +18,196 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
 import { speechService, stopSpeaking } from '../services/speechService';
 
+/**
+ * Safely extracts the preventive measures section from structured agricultural advisory or RAG text.
+ * Prevents duplicating the entire advisory or capturing incidental uses of the word 'prevention'.
+ */
+function extractPreventionFromText(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  // Regex looking for Prevention section heading (case-insensitive, multiline, supporting markdown headers/bolding)
+  // Must start at beginning of line and end with colon or end of line (e.g. "Prevention:", "### 6. Preventive Measures")
+  const headingRegex = /(?:^|\n)\s*(?:#{1,6}\s*|\*{1,3})?(?:\d+[\.\)]\s*)?(?:preventive\s+measures?|prevention(?:\s+measures?|\s+practices?)?|preventative\s+measures?|தடுப்பு\s+நடவடிக்கைகள்|தடுப்பு\s+முறைகள்|தடுப்பு\s+வழிமுறைகள்|வருமுன்\s+காக்கும்\s+மேலாண்மை)(?:\s*\([^)]*\))?\s*(?:\*{1,3})?\s*(?::|$)/im;
+
+  const match = text.match(headingRegex);
+  if (!match) return null;
+
+  const startIndex = match.index + match[0].length;
+  const remaining = text.slice(startIndex);
+
+  // Look for next section heading that starts on a new line
+  const nextHeadingRegex = /\n\s*(?:#{1,6}\s*|\*{1,3})?(?:\d+[\.\)]\s*)?(?:monitoring|important\s+note|recommended\s+actions?|symptoms?|favorable\s+conditions?|management|farmer\s+action|chemical\s+control|biological\s+control|cultural\s+practices|கண்காணிப்பு|முக்கிய\s+குறிப்பு|குறிப்பு|மேலாண்மை|பரிந்துரைகள்)(?:\s*\([^)]*\))?\s*(?:\*{1,3})?\s*(?::|$)/im;
+
+  const nextMatch = remaining.match(nextHeadingRegex);
+  const preventionBlock = nextMatch ? remaining.slice(0, nextMatch.index) : remaining;
+
+  return preventionBlock.trim() || null;
+}
+
+/**
+ * Normalizes string, array of strings, or array of objects into clean readable bullet points.
+ */
+function normalizeToBullets(raw, isTa = false) {
+  if (!raw) return [];
+
+  // If array of strings or objects
+  if (Array.isArray(raw)) {
+    return raw
+      .map(item => {
+        if (typeof item === 'string') return item.trim();
+        if (item && typeof item === 'object') {
+          if (isTa && item.ta) return item.ta.trim();
+          if (item.en) return item.en.trim();
+          if (item.text) return item.text.trim();
+          if (item.action) return item.action.trim();
+          if (item.description) return item.description.trim();
+          const firstVal = Object.values(item).find(v => typeof v === 'string');
+          return firstVal ? firstVal.trim() : '';
+        }
+        return String(item).trim();
+      })
+      .map(s => s.replace(/^[\s*•\-\u2022\u25E6\u2043\u2219]+/, '').replace(/^\d+[\.\)]\s*/, '').trim())
+      .filter(s => s.length > 0);
+  }
+
+  // If object with language keys e.g. { en: [...], ta: [...] } or { en: "...", ta: "..." }
+  if (typeof raw === 'object' && raw !== null) {
+    if (isTa && raw.ta) return normalizeToBullets(raw.ta, true);
+    if (raw.en) return normalizeToBullets(raw.en, false);
+    if (raw.text) return normalizeToBullets(raw.text, isTa);
+    const values = Object.values(raw).filter(v => typeof v === 'string' || Array.isArray(v));
+    if (values.length > 0) return normalizeToBullets(values[0], isTa);
+    return [];
+  }
+
+  if (typeof raw !== 'string') return [];
+
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // Check if string has newlines or bullet markers
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  const bullets = [];
+  for (const line of lines) {
+    // Strip leading bullet markers: "-", "*", "•", "1.", "1)", etc.
+    const cleaned = line.replace(/^[\s*•\-\u2022\u25E6\u2043\u2219]+/, '').replace(/^\d+[\.\)]\s*/, '').trim();
+    if (cleaned.length > 0) {
+      bullets.push(cleaned);
+    }
+  }
+
+  // If there was only 1 line without bullet markers, but multiple sentences:
+  if (bullets.length === 1 && (bullets[0].includes('. ') || bullets[0].includes('. \n'))) {
+    const sentences = bullets[0]
+      .split(/(?<=\.)\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    if (sentences.length > 1) {
+      return sentences;
+    }
+  }
+
+  return bullets;
+}
+
+/**
+ * Safely inspects the report object and retrieves existing preventive measures.
+ * Checks all possible structured fields, raw backend responses, and embedded advisory/RAG sections.
+ */
+function getPreventiveMeasures(report, isTa = false) {
+  if (!report || typeof report !== 'object') return [];
+
+  // 1. If Tamil requested, check direct Tamil fields first
+  if (isTa) {
+    const tamilCandidates = [
+      report.preventiveMeasures_ta,
+      report.preventive_measures_ta,
+      report.preventiveMeasures?.ta,
+      report.preventive_measures?.ta,
+      report.rawBackend?.preventive_measures_ta,
+      report.rawBackend?.preventiveMeasures_ta,
+      report.rawBackend?.preventive_measures?.ta,
+      report.rawBackend?.advisory?.preventive_measures_ta
+    ];
+    for (const cand of tamilCandidates) {
+      if (cand !== null && cand !== undefined) {
+        const normalized = normalizeToBullets(cand, true);
+        if (normalized.length > 0) return normalized;
+      }
+    }
+
+    // Try extracting Tamil from advisory text
+    const tamilTexts = [
+      report.advisory?.ta,
+      report.rawBackend?.advisory?.ta
+    ];
+    for (const text of tamilTexts) {
+      if (text && typeof text === 'string') {
+        const extracted = extractPreventionFromText(text);
+        if (extracted) {
+          const normalized = normalizeToBullets(extracted, true);
+          if (normalized.length > 0) return normalized;
+        }
+      }
+    }
+  }
+
+  // 2. Direct structured fields on report
+  const directCandidates = [
+    report.preventiveMeasures,
+    report.preventive_measures,
+    report.prevention,
+    report.prevention_measures,
+    report.recommendations,
+    report.advisory?.preventive_measures,
+    report.advisory?.preventiveMeasures,
+    report.advisory?.prevention,
+    report.rag?.preventive_measures,
+    report.rag?.prevention,
+    // rawBackend candidates
+    report.rawBackend?.preventiveMeasures,
+    report.rawBackend?.preventive_measures,
+    report.rawBackend?.prevention,
+    report.rawBackend?.prevention_measures,
+    report.rawBackend?.recommendations,
+    report.rawBackend?.advisory?.preventive_measures,
+    report.rawBackend?.rag?.preventive_measures
+  ];
+
+  for (const cand of directCandidates) {
+    if (cand !== null && cand !== undefined) {
+      const normalized = normalizeToBullets(cand, isTa);
+      if (normalized.length > 0) return normalized;
+    }
+  }
+
+  // 3. Extract from structured advisory text (Gemini or RAG)
+  const advisoryTexts = [
+    report.advisory?.en,
+    report.advisory?.text,
+    typeof report.advisory === 'string' ? report.advisory : null,
+    report.rawBackend?.advisory?.text,
+    report.rag?.context,
+    report.rawBackend?.rag?.context
+  ];
+
+  for (const text of advisoryTexts) {
+    if (text && typeof text === 'string') {
+      const extracted = extractPreventionFromText(text);
+      if (extracted) {
+        const normalized = normalizeToBullets(extracted, isTa);
+        if (normalized.length > 0) return normalized;
+      }
+    }
+  }
+
+  return [];
+}
+
 export default function AiReports() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -479,7 +669,7 @@ export default function AiReports() {
             )}
           </div>
           <div className="bg-agri-50 border border-agri-200 p-4 rounded-xl space-y-2 text-xs text-agri-900 font-medium leading-relaxed">
-            <p>{isTa ? prediction.advisory?.ta : prediction.advisory?.en}</p>
+            <p>{isTa ? (prediction.advisory?.ta || prediction.advisory?.text || prediction.advisory?.en) : (prediction.advisory?.en || prediction.advisory?.text || prediction.advisory?.ta)}</p>
           </div>
         </div>
 
@@ -488,14 +678,31 @@ export default function AiReports() {
           <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
             {isTa ? '6. தடுப்பு நடவடிக்கைகள்' : '6. Preventive Measures'}
           </h3>
-          <ul className="space-y-2 text-xs text-gray-700">
-            {prediction.preventiveMeasures?.map((m, idx) => (
-              <li key={idx} className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0 mt-0.5" />
-                <span>{m}</span>
-              </li>
-            ))}
-          </ul>
+          {(() => {
+            const preventiveList = getPreventiveMeasures(prediction, isTa);
+            if (preventiveList && preventiveList.length > 0) {
+              return (
+                <ul className="space-y-2 text-xs text-gray-700">
+                  {preventiveList.map((m, idx) => (
+                    <li key={idx} className="flex items-start space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{m}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            }
+            return (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 flex items-center space-x-2.5 text-xs text-gray-500">
+                <AlertCircle className="w-4 h-4 text-gray-400 shrink-0" />
+                <span>
+                  {isTa
+                    ? 'இந்த அறிக்கைக்கு தடுப்பு நடவடிக்கைகள் கிடைக்கவில்லை.'
+                    : (t('preventiveMeasuresNotAvailable') || 'Preventive measures are not available for this report.')}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Footer Signature */}

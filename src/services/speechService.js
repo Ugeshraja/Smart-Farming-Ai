@@ -1,27 +1,21 @@
 /**
- * SmartFarm AI - Google TTS (gTTS) Speech Service
+ * SmartFarm AI - Canonical Speech Service (Browser SpeechSynthesis)
  *
- * Exclusively uses Google TTS (gTTS) generated MP3 audio via backend endpoint (/api/voice/tts).
- * - No browser SpeechSynthesis
- * - No Local Indic TTS
- * - No Sarvam TTS
- * - HTML5 Audio() sequential chunk queue (waits for onended before next chunk)
+ * Implements native browser SpeechSynthesis for Tamil ('ta-IN') and English ('en-IN').
+ * - Zero external API keys or serverless dependencies
+ * - Full controls: Speak, Pause, Resume, Stop, Replay
  * - Safe natural text cleaning (preserves Tamil and English phrasing)
- * - Silent error handling: voice failure never affects or removes AI text
- * - Immediate full stop: halts current audio, clears queue, cancels pending playbacks
+ * - Safe error handling: voice failure never affects or removes AI text
  */
-
-import { apiService } from './apiService';
 
 class SpeechService {
   constructor() {
-    this.currentAudio = null;
-    this.audioQueue = [];
-    this.currentQueueIndex = 0;
-    this.playbackSessionId = 0;
+    this.currentUtterance = null;
     this.isPlaying = false;
     this.isPaused = false;
     this.currentCallbacks = null;
+    this.lastText = '';
+    this.lastLanguage = 'en';
   }
 
   /**
@@ -56,52 +50,22 @@ class SpeechService {
   }
 
   /**
-   * Resolves audio_url from backend into a full browser-accessible URL.
-   */
-  resolveAudioUrl(url) {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-      return url;
-    }
-    // In dev, Vite proxies /static to http://127.0.0.1:8000
-    // In production, resolve against backend origin if VITE_API_BASE_URL is configured
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
-    const backendOrigin = apiBase.startsWith('http')
-      ? apiBase.replace(/\/api\/?$/, '')
-      : (apiBase.startsWith('/') ? apiBase.replace(/\/api\/?$/, '') : '');
-    return backendOrigin ? `${backendOrigin}${cleanPath}` : cleanPath;
-  }
-
-  /**
    * Complete Stop:
-   * - Pauses and resets current Audio object
-   * - Clears audio queue and session
-   * - Prevents subsequent chunks from playing
-   * - Resets speaking state
+   * Cancels browser speechSynthesis, resets state and callbacks.
    */
   stop() {
-    this.playbackSessionId++; // Invalidate active session
     this.isPlaying = false;
     this.isPaused = false;
 
-    if (this.currentAudio) {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
-        this.currentAudio.onplay = null;
-        this.currentAudio.onended = null;
-        this.currentAudio.onerror = null;
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-        this.currentAudio.src = '';
-        this.currentAudio.load();
+        window.speechSynthesis.cancel();
       } catch (e) {
-        // Ignore abort/unload errors
+        console.warn('[SpeechService] Stop error:', e);
       }
-      this.currentAudio = null;
     }
 
-    this.audioQueue = [];
-    this.currentQueueIndex = 0;
+    this.currentUtterance = null;
 
     if (this.currentCallbacks?.onEnd) {
       const cb = this.currentCallbacks.onEnd;
@@ -113,14 +77,14 @@ class SpeechService {
   }
 
   /**
-   * Pause currently playing audio chunk.
+   * Pause currently playing speech.
    */
   pause() {
     if (!this.isPlaying || this.isPaused) return;
 
-    if (this.currentAudio && !this.currentAudio.paused) {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
-        this.currentAudio.pause();
+        window.speechSynthesis.pause();
         this.isPaused = true;
       } catch (e) {
         console.warn('[SpeechService] Pause error:', e);
@@ -129,123 +93,38 @@ class SpeechService {
   }
 
   /**
-   * Resume paused audio chunk.
+   * Resume paused speech.
    */
   resume() {
     if (!this.isPlaying || !this.isPaused) return;
 
-    if (this.currentAudio && this.currentAudio.paused) {
-      this.currentAudio.play().then(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.resume();
         this.isPaused = false;
-      }).catch((err) => {
-        console.warn('[SpeechService] Resume error:', err);
-      });
+      } catch (e) {
+        console.warn('[SpeechService] Resume error:', e);
+      }
     }
   }
 
   /**
-   * Plays sequential audio chunks returned by Google TTS backend.
-   * Chunks play one after another waiting strictly for onended.
+   * Replay last spoken text.
    */
-  playSequentialQueue(chunks, sessionId, callbacks = {}) {
-    if (!chunks || chunks.length === 0) {
-      this.isPlaying = false;
-      this.isPaused = false;
-      if (callbacks.onEnd) callbacks.onEnd();
-      return;
-    }
-
-    this.audioQueue = chunks;
-    this.currentQueueIndex = 0;
-    this.isPlaying = true;
-    this.isPaused = false;
-    this.currentCallbacks = callbacks;
-
-    const playNextChunk = () => {
-      // If user stopped or started a new playback session, abort immediately
-      if (sessionId !== this.playbackSessionId) return;
-
-      if (this.currentQueueIndex >= this.audioQueue.length) {
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.currentAudio = null;
-        if (callbacks.onEnd) callbacks.onEnd();
-        return;
-      }
-
-      const chunk = this.audioQueue[this.currentQueueIndex];
-      const targetUrl = this.resolveAudioUrl(chunk.audio_url);
-
-      if (!targetUrl) {
-        this.currentQueueIndex++;
-        playNextChunk();
-        return;
-      }
-
-      const audio = new Audio(targetUrl);
-      this.currentAudio = audio;
-
-      audio.onplay = () => {
-        if (sessionId !== this.playbackSessionId) {
-          try { audio.pause(); } catch (e) { }
-          return;
-        }
-        if (this.currentQueueIndex === 0 && callbacks.onStart) {
-          callbacks.onStart();
-        }
-      };
-
-      audio.onended = () => {
-        if (sessionId !== this.playbackSessionId) return;
-        this.currentQueueIndex++;
-        playNextChunk();
-      };
-
-      audio.onerror = (e) => {
-        console.warn(`[SpeechService] Audio chunk ${this.currentQueueIndex} playback error:`, e);
-        if (sessionId !== this.playbackSessionId) return;
-        // Attempt next chunk or finish gracefully
-        this.currentQueueIndex++;
-        if (this.currentQueueIndex < this.audioQueue.length) {
-          playNextChunk();
-        } else {
-          this.isPlaying = false;
-          this.isPaused = false;
-          this.currentAudio = null;
-          if (callbacks.onError) {
-            callbacks.onError(new Error('Unable to play audio. Please try again.'));
-          } else if (callbacks.onEnd) {
-            callbacks.onEnd();
-          }
-        }
-      };
-
-      audio.play().catch((err) => {
-        console.warn('[SpeechService] Audio.play() rejected:', err);
-        if (sessionId !== this.playbackSessionId) return;
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.currentAudio = null;
-        if (callbacks.onError) {
-          callbacks.onError(new Error('Unable to play audio. Please try again.'));
-        } else if (callbacks.onEnd) {
-          callbacks.onEnd();
-        }
-      });
-    };
-
-    playNextChunk();
+  replay(options = {}) {
+    if (!this.lastText) return { success: false, reason: 'no_previous_text' };
+    return this.speak(this.lastText, this.lastLanguage, options);
   }
 
   /**
    * Main TTS Entry Point:
    * 1. Clean input text
-   * 2. Send text & language to backend Google TTS endpoint (/api/backend/api/voice/tts)
-   * 3. Play generated MP3 audio chunks sequentially via HTML5 Audio()
-   * 4. Fails safely on network/gTTS errors without affecting AI text
+   * 2. Configure SpeechSynthesisUtterance for 'ta-IN' or 'en-IN'
+   * 3. Attach onstart, onend, onerror handlers
+   * 4. Call window.speechSynthesis.speak(utterance)
    */
-  async speak(text, language = 'en', options = {}) {
-    const { onStart, onEnd, onError, onLoading } = options;
+  speak(text, language = 'en', options = {}) {
+    const { onStart, onEnd, onError } = options;
 
     // Reset previous audio
     this.stop();
@@ -253,6 +132,12 @@ class SpeechService {
     if (!text || typeof text !== 'string' || !text.trim()) {
       if (onEnd) onEnd();
       return { success: false, reason: 'empty_text' };
+    }
+
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.warn('[SpeechService] Browser does not support window.speechSynthesis');
+      if (onError) onError(new Error('Browser speech synthesis is not supported.'));
+      return { success: false, reason: 'unsupported' };
     }
 
     const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';
@@ -263,42 +148,67 @@ class SpeechService {
       return { success: false, reason: 'empty_cleaned_text' };
     }
 
-    if (onLoading) {
-      try { onLoading(); } catch (e) {}
-    }
-
-    const currentSessionId = ++this.playbackSessionId;
-    const friendlyError = normLang === 'ta'
-      ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
-      : 'Unable to play audio. Please try again.';
+    this.lastText = text;
+    this.lastLanguage = normLang;
+    this.currentCallbacks = options;
 
     try {
-      const res = await apiService.synthesizeSpeech(cleanedText, normLang);
+      // Cancel before starting new speech as specified
+      window.speechSynthesis.cancel();
 
-      // Verify session is still valid (user didn't click stop while fetching)
-      if (currentSessionId !== this.playbackSessionId) {
-        return { success: false, reason: 'aborted' };
+      const utterance = new SpeechSynthesisUtterance(cleanedText);
+      utterance.lang = normLang === 'ta' ? 'ta-IN' : 'en-IN';
+      utterance.rate = normLang === 'ta' ? 0.95 : 1.0;
+      utterance.pitch = 1.0;
+
+      // Select matching voice if available
+      const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+      if (voices && voices.length > 0) {
+        const targetPrefix = normLang === 'ta' ? 'ta' : 'en';
+        const matchedVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(targetPrefix));
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+        }
       }
 
-      if (res && res.success && res.audio_chunks && res.audio_chunks.length > 0) {
-        this.playSequentialQueue(res.audio_chunks, currentSessionId, { onStart, onEnd, onError });
-        return { success: true, chunks: res.audio_chunks.length };
-      } else if (res && res.success && res.audio_url) {
-        this.playSequentialQueue([{ chunk_index: 0, audio_url: res.audio_url }], currentSessionId, { onStart, onEnd, onError });
-        return { success: true, chunks: 1 };
-      } else {
-        console.warn('[SpeechService] gTTS synthesis returned no audio:', res?.reason);
-        if (onError) onError(new Error(friendlyError));
-        return { success: false, reason: res?.reason || 'no_audio' };
-      }
-    } catch (err) {
-      console.warn('[SpeechService] gTTS network/service error:', err?.message || err);
-      if (currentSessionId === this.playbackSessionId) {
+      utterance.onstart = () => {
+        this.isPlaying = true;
+        this.isPaused = false;
+        if (onStart) onStart();
+      };
+
+      utterance.onend = () => {
         this.isPlaying = false;
         this.isPaused = false;
-        if (onError) onError(new Error(friendlyError));
-      }
-      return { success: false, reason: 'network_error' };
+        this.currentUtterance = null;
+        if (onEnd) onEnd();
+      };
+
+      utterance.onerror = (e) => {
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.currentUtterance = null;
+        // Don't treat cancel() as a hard error
+        if (e.error !== 'canceled' && e.error !== 'interrupted') {
+          console.warn('[SpeechService] SpeechSynthesis error:', e?.error);
+          if (onError) onError(e);
+        } else if (onEnd) {
+          onEnd();
+        }
+      };
+
+      // Store reference on instance to prevent Chromium garbage collection bug
+      this.currentUtterance = utterance;
+
+      window.speechSynthesis.speak(utterance);
+      return { success: true };
+    } catch (err) {
+      console.warn('[SpeechService] speak error:', err);
+      this.isPlaying = false;
+      this.isPaused = false;
+      this.currentUtterance = null;
+      if (onError) onError(err);
+      return { success: false, reason: 'exception', error: err.message };
     }
   }
 
@@ -313,4 +223,5 @@ export const speakText = (text, language, options) => speechService.speak(text, 
 export const stopSpeaking = () => speechService.stop();
 export const pauseSpeaking = () => speechService.pause();
 export const resumeSpeaking = () => speechService.resume();
+export const replaySpeaking = (options) => speechService.replay(options);
 export default speechService;

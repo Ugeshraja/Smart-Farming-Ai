@@ -28,30 +28,19 @@ class VoiceJsonResponse(BaseModel):
     tts_error: Optional[str] = None
 
 
-@router.post("", response_model=VoiceJsonResponse)
-@router.post("/", response_model=VoiceJsonResponse)
-async def process_voice_interaction(
+class TranscribeResponse(BaseModel):
+    success: bool
+    transcript: str
+    language: str
+
+
+async def _parse_voice_request(
     request: Request,
-    audio: Optional[UploadFile] = File(None),
-    file: Optional[UploadFile] = File(None),
-    language: Optional[str] = Form("en")
+    audio: Optional[UploadFile] = None,
+    file: Optional[UploadFile] = None,
+    language: Optional[str] = "en"
 ):
-    """
-    Real Voice Pipeline:
-    Farmer Audio
-    -> Sarvam Speech-to-Text (saaras:v3)
-    -> Transcribed text
-    -> Existing RAG retrieval (Solanaceae TNAU / ICAR)
-    -> Existing Gemini model
-    -> Verified agricultural response
-    -> Sarvam Text-to-Speech (bulbul:v3)
-    -> Native audio output (Tamil / English)
-
-    Supports both multipart/form-data (audio file upload) and application/json (base64 audio or direct transcript).
-    """
-    start_time = time.time()
     content_type_header = request.headers.get("content-type", "").lower()
-
     audio_bytes: Optional[bytes] = None
     filename = "recording.webm"
     detected_mime = "audio/webm"
@@ -126,10 +115,8 @@ async def process_voice_interaction(
                         detail="Corrupted audio recording payload."
                     )
 
-    # Normalize language code early for localized error messages
     normalized_lang = "ta" if str(lang).lower() in ("ta", "ta-in", "tamil") else "en"
 
-    # 3. Validation: ensure audio or transcript is present
     if not audio_bytes and not direct_transcript:
         empty_err = "பேச்சு எதுவும் கண்டறியப்படவில்லை. மைக்ரோஃபோனில் பேசவும்." if normalized_lang == "ta" else "No speech detected. Please speak into the microphone."
         raise HTTPException(
@@ -137,7 +124,95 @@ async def process_voice_interaction(
             detail=empty_err
         )
 
-    # 4. Transcribe via Sarvam Speech-to-Text if audio is provided
+    return audio_bytes, filename, detected_mime, normalized_lang, direct_transcript
+
+
+@router.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe_audio_endpoint(
+    request: Request,
+    audio: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    language: Optional[str] = Form("en")
+):
+    """
+    Dedicated STT endpoint: receives farmer audio, runs Sarvam saaras:v3,
+    and returns clean transcribed text without invoking a second AI model.
+    """
+    audio_bytes, filename, detected_mime, normalized_lang, direct_transcript = await _parse_voice_request(
+        request, audio, file, language
+    )
+
+    if direct_transcript:
+        return TranscribeResponse(
+            success=True,
+            transcript=direct_transcript.strip(),
+            language=normalized_lang
+        )
+
+    if not audio_bytes or len(audio_bytes) < 100:
+        short_err = "பேச்சு எதுவும் கண்டறியப்படவில்லை. மைக்ரோஃபோனில் பேசவும்." if normalized_lang == "ta" else "No speech detected. Please speak into the microphone."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=short_err
+        )
+
+    try:
+        transcript = voice_service.transcribe_audio(
+            audio_bytes=audio_bytes,
+            filename=filename,
+            content_type=detected_mime,
+            language=normalized_lang
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Voice service authentication failed. Please check backend configuration."
+        )
+    except Exception as e:
+        logger.error(f"[VOICE] Sarvam STT failed: {e}")
+        stt_fail_err = "குரலைப் புரிந்துகொள்ள முடியவில்லை. தயவுசெய்து தெளிவாகப் பேசவும்." if normalized_lang == "ta" else "Could not transcribe audio. Please speak clearly into the microphone."
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=stt_fail_err
+        )
+
+    if not transcript or not transcript.strip():
+        empty_transcript_err = "பேச்சு எதுவும் கண்டறியப்படவில்லை. மைக்ரோஃபோனில் பேசவும்." if normalized_lang == "ta" else "No speech detected. Please speak into the microphone."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=empty_transcript_err
+        )
+
+    return TranscribeResponse(
+        success=True,
+        transcript=transcript.strip(),
+        language=normalized_lang
+    )
+
+
+@router.post("", response_model=VoiceJsonResponse)
+@router.post("/", response_model=VoiceJsonResponse)
+async def process_voice_interaction(
+    request: Request,
+    audio: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    language: Optional[str] = Form("en")
+):
+    """
+    Real Voice Pipeline:
+    Farmer Audio
+    -> Sarvam Speech-to-Text (saaras:v3)
+    -> Transcribed text
+    -> Existing RAG retrieval (TNAU / ICAR)
+    -> Existing Gemini 3.8 Flash model
+    -> Verified agricultural response
+    """
+    start_time = time.time()
+    audio_bytes, filename, detected_mime, normalized_lang, direct_transcript = await _parse_voice_request(
+        request, audio, file, language
+    )
+
+    # Transcribe via Sarvam Speech-to-Text if audio is provided
     transcript = ""
     if audio_bytes:
         format_str = (filename.split(".")[-1] if "." in filename else detected_mime.split("/")[-1] or "webm").lower()

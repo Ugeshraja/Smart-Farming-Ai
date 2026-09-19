@@ -638,6 +638,38 @@ export const apiService = {
     }
   },
 
+  // 5b. Transcribe Audio (Fallback Speech-to-Text via backend)
+  async transcribeAudio(audioBlobOrData, language = 'en') {
+    let response;
+    if (audioBlobOrData instanceof Blob) {
+      const formData = new FormData();
+      const mime = audioBlobOrData.type || 'audio/webm';
+      const ext = mime.includes('mp4') ? 'mp4' : mime.includes('wav') ? 'wav' : mime.includes('ogg') ? 'ogg' : 'webm';
+      formData.append('audio', audioBlobOrData, `voice_recording.${ext}`);
+      formData.append('language', language);
+
+      response = await apiClient.post('/voice/transcribe', formData, {
+        headers: { 'Content-Type': undefined },
+        timeout: 45000,
+      });
+    } else if (audioBlobOrData instanceof FormData) {
+      response = await apiClient.post('/voice/transcribe', audioBlobOrData, {
+        headers: { 'Content-Type': undefined },
+        timeout: 45000,
+      });
+    } else {
+      const payload = typeof audioBlobOrData === 'string'
+        ? { audio: audioBlobOrData, language }
+        : { ...audioBlobOrData, language };
+
+      response = await apiClient.post('/voice/transcribe', payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 45000,
+      });
+    }
+    return response.data;
+  },
+
   // 6. Voice Assistant Process (Real Sarvam STT + Solanaceae RAG + Gemini + Sarvam TTS)
   async processVoiceInput(audioBlobOrData, language = 'en') {
     let response;

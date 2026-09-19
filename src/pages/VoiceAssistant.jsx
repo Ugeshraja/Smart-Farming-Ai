@@ -221,7 +221,7 @@ export default function VoiceAssistant() {
     }
   };
 
-  // Central trigger to speak response using Google TTS
+  // Central trigger to speak response using browser SpeechSynthesis
   const triggerSpeak = (text) => {
     if (!text) return;
     stopAnyAudio();
@@ -240,37 +240,54 @@ export default function VoiceAssistant() {
     });
   };
 
-  // Process the recorded audio blob through POST /api/voice
+  // Process the recorded audio through Speech-to-Text then POST /api/chat (exact same pipeline as AI Farmer Assistant)
   const processRecordedAudio = async (audioBlob, capturedText = '') => {
     setVoiceState('processing');
-    if (capturedText) {
-      setTranscript(capturedText);
-    } else {
-      setTranscript('');
+    setErrorMessage('');
+
+    let queryText = capturedText.trim();
+
+    // If browser STT did not capture text, attempt backend STT fallback
+    if (!queryText && audioBlob && audioBlob.size >= 100) {
+      try {
+        const transcribeRes = await apiService.transcribeAudio(audioBlob, language);
+        if (transcribeRes && transcribeRes.success && transcribeRes.transcript) {
+          queryText = transcribeRes.transcript.trim();
+        }
+      } catch (sttErr) {
+        console.warn('Backend STT fallback failed:', sttErr);
+      }
     }
+
+    if (!queryText) {
+      setVoiceState('idle');
+      setErrorMessage(
+        language === 'ta'
+          ? 'குரலைப் புரிந்துகொள்ள முடியவில்லை. தயவுசெய்து தெளிவாகப் பேசவும்.'
+          : "I couldn't understand your voice. Please try again."
+      );
+      return;
+    }
+
+    setTranscript(queryText);
     setAiResponse('');
     setSource('');
 
     try {
-      const payload = capturedText ? { transcript: capturedText } : audioBlob;
-      const data = await apiService.processVoiceInput(payload, language);
+      // Send question to the exact same /api/chat endpoint used by AI Farmer Assistant
+      const response = await apiService.sendChatMessage(queryText, language);
 
-      if (!data || !data.success) {
-        throw new Error(data?.detail || 'Voice interaction failed.');
+      if (!response || !response.text) {
+        throw new Error('No response from AI service');
       }
 
-      setTranscript(data.transcript || capturedText || '');
-      setAiResponse(data.ai_response || '');
-      setSource(data.source || '');
+      setAiResponse(response.text);
+      setSource(response.source || '');
 
-      // Speak response using Google TTS
-      if (data.ai_response) {
-        triggerSpeak(data.ai_response);
-      } else {
-        setVoiceState('idle');
-      }
+      // Speak response using browser SpeechSynthesis
+      triggerSpeak(response.text);
     } catch (err) {
-      console.error('Voice Assistant error:', err);
+      console.error('Voice Assistant /api/chat error:', err);
       const serverDetail = err?.response?.data?.detail;
       const status = err?.response?.status;
 
@@ -279,7 +296,7 @@ export default function VoiceAssistant() {
         msg =
           language === 'ta'
             ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
-            : 'Could not reach server. Please check your connection.';
+            : 'Unable to connect to the AI service. Please try again.';
       } else if (serverDetail) {
         msg = serverDetail;
       } else if (status === 401) {
@@ -287,11 +304,6 @@ export default function VoiceAssistant() {
           language === 'ta'
             ? 'AI சேவை அங்கீகரிப்பு தோல்வியடைந்தது. பின்தள அமைப்புகளைச் சரிபார்க்கவும்.'
             : 'AI service authentication failed. Please check the backend configuration.';
-      } else if (status === 502) {
-        msg =
-          language === 'ta'
-            ? 'குரலைப் புரிந்துகொள்ள முடியவில்லை. தயவுசெய்து தெளிவாகப் பேசவும்.'
-            : 'Could not transcribe audio. Please speak clearly into the microphone.';
       } else if (status === 503) {
         msg =
           language === 'ta'
@@ -301,7 +313,7 @@ export default function VoiceAssistant() {
         msg =
           language === 'ta'
             ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
-            : 'Could not reach server. Please check your connection.';
+            : 'Unable to connect to the AI service. Please try again.';
       }
 
       setErrorMessage(msg);
@@ -321,28 +333,28 @@ export default function VoiceAssistant() {
     }
   };
 
-  // Handle direct click on a sample prompt to ask and speak response
+  // Handle direct click on a sample prompt to ask and speak response via POST /api/chat
   const handleSamplePromptClick = async (promptText) => {
     stopAnyAudio();
     setVoiceState('processing');
+    setErrorMessage('');
     setTranscript(promptText);
     setAiResponse('');
     setSource('');
 
     try {
-      const data = await apiService.processVoiceInput({ transcript: promptText }, language);
-      if (!data || !data.success) {
-        throw new Error(data?.detail || 'Voice interaction failed.');
-      }
-      setTranscript(data.transcript || promptText);
-      setAiResponse(data.ai_response || '');
-      setSource(data.source || '');
+      // Send sample prompt directly to the same /api/chat endpoint
+      const response = await apiService.sendChatMessage(promptText, language);
 
-      if (data.ai_response) {
-        triggerSpeak(data.ai_response);
-      } else {
-        setVoiceState('idle');
+      if (!response || !response.text) {
+        throw new Error('No response from AI service');
       }
+
+      setTranscript(promptText);
+      setAiResponse(response.text);
+      setSource(response.source || '');
+
+      triggerSpeak(response.text);
     } catch (err) {
       console.error('Voice Assistant prompt error:', err);
       const serverDetail = err?.response?.data?.detail;
@@ -352,7 +364,7 @@ export default function VoiceAssistant() {
         msg =
           language === 'ta'
             ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
-            : 'Could not reach server. Please check your connection.';
+            : 'Unable to connect to the AI service. Please try again.';
       } else if (serverDetail) {
         msg = serverDetail;
       } else if (status === 401) {
@@ -369,7 +381,7 @@ export default function VoiceAssistant() {
         msg =
           language === 'ta'
             ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
-            : 'Could not reach server. Please check your connection.';
+            : 'Unable to connect to the AI service. Please try again.';
       }
       setErrorMessage(msg);
       setVoiceState('idle');
@@ -666,7 +678,7 @@ export default function VoiceAssistant() {
                     className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shadow-2xs cursor-pointer"
                   >
                     <Volume2 className="w-4 h-4" />
-                    <span>{language === 'ta' ? 'பதிலை வாசி (Speak)' : 'Speak'}</span>
+                    <span>{language === 'ta' ? 'பதிலை வாசி (Speak / Replay)' : 'Speak / Replay'}</span>
                   </button>
                 )}
 

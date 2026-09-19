@@ -119,17 +119,17 @@ export async function executeRagGeminiQuery(message, language = 'en', history = 
     }
   }
 
-  // If API key is not configured, gracefully provide verified RAG knowledge
+  // If API key is not configured, report technical notice honestly
   if (!apiKey) {
-    console.warn('[Gemini Chat] GEMINI_API_KEY is not set. Engaging verified Agricultural Knowledge Base fallback.');
-    const fallbackText = normLang === 'ta'
-      ? (contextText || "வணக்கம். நேரடி AI மொழி மாதிரி சேவை தற்காலிகமாக இணைக்கப்படவில்லை. உள்ளூர் வேளாண் விரிவாக்க அலுவலர் அல்லது TNAU ஆலோசனையைப் பெறவும்.")
-      : (contextText || "Note: Direct AI model inference is temporarily unconfigured. Please consult local agricultural extension officers or ICAR/TNAU advisories for precise recommendations.");
+    console.warn('[Gemini Chat] GEMINI_API_KEY is not set.');
+    const errorMsg = normLang === 'ta'
+      ? 'AI சேவை தற்காலிகமாக கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+      : 'AI service is temporarily unavailable. Please try again.';
 
     return {
-      text: fallbackText,
-      source: contextText ? `Verified Knowledge Base • ${primarySource}` : 'SmartFarm AI Advisor',
-      usedModel: 'Knowledge Base Fallback',
+      text: errorMsg,
+      source: 'System Notice',
+      usedModel: 'system-notice',
     };
   }
 

@@ -257,7 +257,7 @@ Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-firs
   // Accurate source label
   const sourceLabel = contextText
     ? `Verified Knowledge Base • ${primarySource}`
-    : 'SmartFarm AI Advisor';
+    : `SmartFarm AI Advisor • ${usedModel}`;
 
   return {
     text: aiText,

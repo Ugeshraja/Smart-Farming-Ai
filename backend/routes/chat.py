@@ -291,27 +291,31 @@ async def execute_rag_gemini_pipeline(
         )
 
     # 5. CALL GEMINI API VIA GOOGLE GENAI SDK
-    candidate_models = [
-        "gemini-3.5-flash-lite",
+    primary_model = (settings.LLM_MODEL or "gemini-3.8-flash").strip()
+    fallback_models = [
         "gemini-3.6-flash",
+        "gemini-3.5-flash-lite",
         "gemini-flash-latest",
-        "gemini-flash-lite-latest",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash"
     ]
-    configured_model = (settings.LLM_MODEL or "").strip()
-    if configured_model and configured_model not in candidate_models:
-        candidate_models.insert(0, configured_model)
+    candidate_models = [primary_model] + [m for m in fallback_models if m != primary_model]
 
     client = genai.Client(api_key=api_key)
     ai_text = None
     used_model = candidate_models[0]
     last_error = None
 
-    for model_name in candidate_models:
+    logger.info(f"Primary Gemini model: {primary_model}")
+
+    for idx, model_name in enumerate(candidate_models):
         try:
-            logger.info(f"Dispatching query to Gemini model: {model_name}")
+            if idx == 0:
+                logger.info(f"Attempting primary Gemini model: {model_name}")
+            else:
+                logger.info(f"Attempting fallback Gemini model: {model_name}")
+
             chat = client.chats.create(
                 model=model_name,
                 config=types.GenerateContentConfig(
@@ -325,12 +329,21 @@ async def execute_rag_gemini_pipeline(
             if response and response.text:
                 ai_text = response.text.strip()
                 used_model = model_name
-                logger.info(f"Gemini response generated successfully using {model_name}")
+                if idx == 0:
+                    logger.info(f"Primary model response: SUCCESS ({model_name})")
+                else:
+                    logger.info(f"Fallback model used: {model_name}")
                 break
         except genai_errors.ClientError as ce:
             last_error = ce
             err_str = str(ce)
-            logger.error(f"Gemini ClientError on model {model_name}: {err_str[:250]}")
+            safe_err = re.sub(r'key=[^&\s]+', 'key=[REDACTED]', err_str)
+            safe_err = re.sub(r'AIza[0-9A-Za-z-_]{35}', '[REDACTED]', safe_err)
+
+            if idx == 0:
+                logger.warning(f"Primary model failed: {safe_err[:250]}")
+            else:
+                logger.warning(f"Fallback model {model_name} failed: {safe_err[:250]}")
 
             if "API key not valid" in err_str or "API_KEY_INVALID" in err_str:
                 raise HTTPException(
@@ -345,7 +358,14 @@ async def execute_rag_gemini_pipeline(
             continue
         except (genai_errors.ServerError, Exception) as e:
             last_error = e
-            logger.error(f"Error communicating with Gemini ({model_name}): {e}")
+            err_str = str(e)
+            safe_err = re.sub(r'key=[^&\s]+', 'key=[REDACTED]', err_str)
+            safe_err = re.sub(r'AIza[0-9A-Za-z-_]{35}', '[REDACTED]', safe_err)
+
+            if idx == 0:
+                logger.warning(f"Primary model failed: {safe_err[:250]}")
+            else:
+                logger.warning(f"Fallback model {model_name} failed: {safe_err[:250]}")
             time.sleep(0.5)
             continue
 
@@ -386,7 +406,7 @@ async def execute_rag_gemini_pipeline(
     if rag_context and primary_source:
         source_label = f"Verified Knowledge Base • {primary_source}"
     else:
-        source_label = "SmartFarm AI Advisor"
+        source_label = f"SmartFarm AI Advisor • {used_model}"
 
     return {
         "text": ai_text,

@@ -9,6 +9,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/chat",
+      "destination": "/api/backend?path=api/chat"
+    },
+    {
+      "source": "/api/chat/:path*",
+      "destination": "/api/backend?path=api/chat/:path*"
+    },
+    {
       "source": "/api/backend/:path*",
       "destination": "/api/backend?path=:path*"
     },
@@ -29,7 +37,7 @@
       "destination": "/api/backend?path=voice"
     },
     {
-      "source": "/((?!api/backend|api/voice|voice).*)",
+      "source": "/((?!api/backend|api/voice|voice|api/chat).*)",
       "destination": "/index.html"
     }
   ]

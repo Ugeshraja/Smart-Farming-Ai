@@ -295,10 +295,8 @@ async def execute_rag_gemini_pipeline(
     fallback_models = [
         "gemini-3.6-flash",
         "gemini-3.5-flash-lite",
-        "gemini-flash-latest",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
+        "gemini-3.5-flash",
+        "gemini-flash-lite-latest"
     ]
     candidate_models = [primary_model] + [m for m in fallback_models if m != primary_model]
 
@@ -371,36 +369,19 @@ async def execute_rag_gemini_pipeline(
 
     if not ai_text:
         logger.warning(f"Gemini API failure on candidate models: {last_error}")
-        if rag_context:
-            logger.info("Engaging verified Agricultural Knowledge Base (RAG) fallback response.")
-            if language == "ta":
-                fallback_text = (
-                    "குறிப்பு: நேரடி AI மொழி மாதிரி சேவை தற்காலிகமாக கிடைக்கவில்லை. "
-                    "வேளாண் தரவுத்தளத்திலிருந்து சரிபார்க்கப்பட்ட பரிந்துரைகள் கீழே வழங்கப்பட்டுள்ளன:\n\n"
-                    f"{rag_context}\n\n"
-                    "பரிந்துரை: துல்லியமான உர அளவு மற்றும் மருந்து பயன்பாட்டிற்கு உள்ளூர் வேளாண்மை விரிவாக்க அலுவலர் அல்லது TNAU வழிகாட்டுதலை ஆலோசிக்கவும்."
-                )
-            else:
-                fallback_text = (
-                    "Note: Direct AI model inference is temporarily unavailable. "
-                    "The following verified agronomic guidance was retrieved from the agricultural knowledge base (RAG):\n\n"
-                    f"{rag_context}\n\n"
-                    "Recommendation: For exact chemical dosages and application schedules, please consult your local agricultural extension officer or ICAR/TNAU advisories."
-                )
-            source_label = f"Verified Knowledge Base • {primary_source}"
-            return {
-                "text": fallback_text,
-                "source": source_label,
-                "primary_source": primary_source,
-                "used_model": "rag-knowledge-base",
-                "has_rag_context": True,
-                "rag_context": rag_context
-            }
-
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service is temporarily unavailable. Please try again."
+        technical_err = (
+            "AI சேவையுடன் தற்போது இணைக்க முடியவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+            if language == "ta"
+            else "Unable to connect to the AI service. Please try again later."
         )
+        return {
+            "text": technical_err,
+            "source": "System Notice",
+            "primary_source": None,
+            "used_model": "technical-error",
+            "has_rag_context": False,
+            "rag_context": ""
+        }
 
     # Label accurately: "Verified Knowledge Base" only when RAG context was used
     if rag_context and primary_source:

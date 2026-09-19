@@ -35,18 +35,7 @@ export default async function handler(req, res) {
     return handleCropPrediction(req, res, rawBody);
   }
 
-  // 2. Route AI Farmer Assistant requests to serverless Gemini API
-  const isChat =
-    cleanPath === 'api/chat' ||
-    cleanPath === 'chat' ||
-    cleanPath === 'api/chat/status' ||
-    cleanPath === 'chat/status';
-
-  if (isChat) {
-    return handleGeminiChat(req, res, rawBody);
-  }
-
-  // 3. Route Weather requests to serverless OpenWeather handler
+  // 2. Route Weather requests to serverless OpenWeather handler
   const isWeather =
     cleanPath.startsWith('api/weather') ||
     cleanPath.startsWith('weather');
@@ -56,7 +45,7 @@ export default async function handler(req, res) {
     return handleWeatherRequest(req, res, subPath);
   }
 
-  // 4. Route Voice Assistant, TTS, and Status requests to serverless handler
+  // 3. Route Voice Assistant TTS and Status requests to serverless handler
   const isVoice =
     cleanPath === 'api/voice' ||
     cleanPath === 'voice' ||
@@ -69,11 +58,11 @@ export default async function handler(req, res) {
     return handleVoiceRequest(req, res, rawBody, cleanPath);
   }
 
-  // Preserve existing Lightning proxy fallback for non-prediction endpoints
-  const backendUrl = process.env.LIGHTNING_BACKEND_URL;
-  const lightningApiKey = process.env.LIGHTNING_API_KEY;
+  // 4. Forward all other requests (including /api/chat) directly to production FastAPI backend
+  const backendUrl = process.env.FASTAPI_BACKEND_URL || process.env.BACKEND_URL || process.env.LIGHTNING_BACKEND_URL;
+  const lightningApiKey = process.env.FASTAPI_API_KEY || process.env.BACKEND_API_KEY || process.env.LIGHTNING_API_KEY;
 
-  if (!backendUrl || !lightningApiKey) {
+  if (!backendUrl) {
     return res.status(500).json({
       error: 'Backend proxy is not configured',
     });
@@ -84,8 +73,17 @@ export default async function handler(req, res) {
 
   const query = queryString.toString();
   const base = backendUrl.replace(/\/+$/, '');
+
+  // Normalize path so /api/chat or chat routes correctly to ${base}/api/chat
+  let forwardPath = cleanPath;
+  if (!forwardPath.startsWith('api/') && !base.endsWith('/api')) {
+    forwardPath = `api/${forwardPath}`;
+  } else if (forwardPath.startsWith('api/') && base.endsWith('/api')) {
+    forwardPath = forwardPath.replace(/^api\//, '');
+  }
+
   const targetUrl =
-    (cleanPath ? `${base}/${cleanPath}` : base) +
+    (forwardPath ? `${base}/${forwardPath}` : base) +
     (query ? `?${query}` : '');
 
   try {

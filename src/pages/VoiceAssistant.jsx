@@ -28,12 +28,10 @@ export default function VoiceAssistant() {
   const [errorMessage, setErrorMessage] = useState('');
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // References for MediaRecorder, SpeechRecognition, and timer
-  const mediaRecorderRef = useRef(null);
+  // References for SpeechRecognition, listening guard, and timer
   const speechRecognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
   const liveTranscriptRef = useRef('');
-  const audioChunksRef = useRef([]);
-  const streamRef = useRef(null);
   const timerIntervalRef = useRef(null);
 
   // Cleanup on unmount
@@ -44,8 +42,9 @@ export default function VoiceAssistant() {
     };
   }, []);
 
-  // When language changes, stop audio playback and clear errors
+  // When language changes, stop audio playback, active recognition, and clear errors
   useEffect(() => {
+    stopAnyRecording();
     stopAnyAudio();
     setErrorMessage('');
   }, [language]);
@@ -55,169 +54,175 @@ export default function VoiceAssistant() {
     setVoiceState('idle');
   };
 
-  const stopAnyRecording = () => {
+  const stopTimer = () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+  };
+
+  const stopAnyRecording = () => {
+    stopTimer();
+    isListeningRef.current = false;
     if (speechRecognitionRef.current) {
       try {
-        speechRecognitionRef.current.stop();
+        speechRecognitionRef.current.abort ? speechRecognitionRef.current.abort() : speechRecognitionRef.current.stop();
       } catch (e) {}
       speechRecognitionRef.current = null;
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (e) {
-        // Ignore stop error
-      }
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
   };
 
-  // Start microphone recording using browser SpeechRecognition + MediaRecorder fallback
-  const startRecording = async () => {
+  // Start microphone recording using native browser SpeechRecognition (without getUserMedia contention)
+  const startRecording = () => {
     stopAnyAudio();
     setErrorMessage('');
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // Prevent double-start (InvalidStateError)
+    if (isListeningRef.current) {
+      stopAnyRecording();
+      setVoiceState('idle');
+      return;
+    }
+
+    const SpeechRec = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRec) {
       setErrorMessage(
         language === 'ta'
-          ? 'உங்கள் உலாவி குரல் பதிவை ஆதரிக்கவில்லை. நவீன உலாவியைப் பயன்படுத்தவும்.'
-          : 'Your browser does not support audio recording. Please use Chrome, Edge, or Firefox.'
+          ? 'உங்கள் உலாவியில் குரல் உள்ளீடு வசதி ஆதரிக்கப்படவில்லை. நவீன உலாவியைப் பயன்படுத்தவும்.'
+          : 'Speech recognition is not supported in this browser. Please use Google Chrome.'
       );
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const recognition = new SpeechRec();
+      // Configure language before start
+      recognition.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = true;
 
-      // Start browser Speech Recognition if supported
       liveTranscriptRef.current = '';
-      const SpeechRec = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-      if (SpeechRec) {
-        try {
-          const recognition = new SpeechRec();
-          recognition.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
-          recognition.interimResults = true;
-          recognition.continuous = true;
 
-          recognition.onresult = (event) => {
-            let currentTranscript = '';
-            for (let i = 0; i < event.results.length; i++) {
-              currentTranscript += event.results[i][0].transcript;
+      recognition.onstart = () => {
+        isListeningRef.current = true;
+        setVoiceState('recording');
+        setRecordingSeconds(0);
+
+        stopTimer();
+        timerIntervalRef.current = setInterval(() => {
+          setRecordingSeconds((prev) => {
+            if (prev >= 25) {
+              stopRecording();
+              return prev;
             }
-            if (currentTranscript.trim()) {
-              liveTranscriptRef.current = currentTranscript.trim();
-              setTranscript(currentTranscript.trim());
-            }
-          };
+            return prev + 1;
+          });
+        }, 1000);
+      };
 
-          recognition.onerror = (e) => {
-            console.warn('Browser SpeechRecognition warning:', e?.error);
-          };
-
-          recognition.start();
-          speechRecognitionRef.current = recognition;
-        } catch (e) {
-          console.warn('Could not initialize SpeechRecognition:', e);
+      recognition.onresult = (event) => {
+        let currentTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
         }
-      }
-
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-          mimeType = 'audio/ogg';
-        } else {
-          mimeType = '';
+        if (currentTranscript.trim()) {
+          liveTranscriptRef.current = currentTranscript.trim();
+          setTranscript(currentTranscript.trim());
         }
-      }
 
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+        // If final result emitted by speech engine, automatically process it
+        const isFinal = event.results[0] && event.results[0].isFinal;
+        if (isFinal && currentTranscript.trim()) {
+          stopTimer();
+          isListeningRef.current = false;
+          try {
+            recognition.stop();
+          } catch (e) {}
+          processQuestion(currentTranscript.trim());
         }
       };
 
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: recorder.mimeType || 'audio/webm'
-        });
+      recognition.onerror = (event) => {
+        console.warn('SpeechRecognition error:', event?.error);
+        isListeningRef.current = false;
+        stopTimer();
 
-        // Release hardware mic tracks
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
-
-        const capturedText = liveTranscriptRef.current.trim();
-        if (audioBlob.size < 100 && !capturedText) {
-          setVoiceState('idle');
+        const err = event?.error;
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
           setErrorMessage(
             language === 'ta'
-              ? 'பேச்சு எதுவும் கண்டறியப்படவில்லை. மைக்ரோஃபோனில் பேசவும்.'
-              : 'No speech detected. Please speak into the microphone.'
+              ? 'மைக்ரோஃபோன் அனுமதி தேவை.'
+              : 'Microphone permission is required.'
           );
-          return;
+          setVoiceState('idle');
+        } else if (err === 'no-speech') {
+          setErrorMessage(
+            language === 'ta'
+              ? 'குரல் கேட்கவில்லை. தயவுசெய்து மீண்டும் பேசவும்.'
+              : 'No speech detected. Please speak again.'
+          );
+          setVoiceState('idle');
+        } else if (err === 'network') {
+          setErrorMessage(
+            language === 'ta'
+              ? 'குரல் அறிதல் சேவையில் இணைப்பு சிக்கல் ஏற்பட்டது.'
+              : 'Network error occurred during speech recognition.'
+          );
+          setVoiceState('idle');
+        } else if (err === 'audio-capture') {
+          setErrorMessage(
+            language === 'ta'
+              ? 'மைக்ரோஃபோன் சாதனம் கிடைக்கவில்லை அல்லது பயன்பாட்டில் உள்ளது.'
+              : 'Microphone is unavailable or in use by another application.'
+          );
+          setVoiceState('idle');
+        } else if (err !== 'aborted') {
+          setErrorMessage(
+            language === 'ta'
+              ? 'குரல் உள்ளீட்டில் பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.'
+              : 'Speech recognition error. Please try again.'
+          );
+          setVoiceState('idle');
         }
-
-        // Process audio via existing STT / Voice endpoint
-        await processRecordedAudio(audioBlob, capturedText);
       };
 
-      recorder.start(250); // collect data in 250ms chunks
-      setVoiceState('recording');
-      setRecordingSeconds(0);
+      recognition.onend = () => {
+        isListeningRef.current = false;
+        stopTimer();
+        // If recording finished without auto-final trigger, check captured text
+        if (liveTranscriptRef.current.trim()) {
+          processQuestion(liveTranscriptRef.current.trim());
+        } else {
+          setVoiceState((prev) => (prev === 'recording' ? 'idle' : prev));
+        }
+      };
 
-      timerIntervalRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => {
-          if (prev >= 25) {
-            stopRecording();
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    } catch (err) {
-      console.error('Microphone access error:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setErrorMessage(t('micPermissionDenied'));
-      } else {
-        setErrorMessage(
-          language === 'ta'
-            ? 'மைக்ரோஃபோனை அணுக முடியவில்லை. சாதன அமைப்புகளைச் சரிபார்க்கவும்.'
-            : `Could not access microphone: ${err.message || 'Unknown device error'}`
-        );
-      }
+      speechRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error('Failed to start speech recognition:', e);
+      isListeningRef.current = false;
+      stopTimer();
       setVoiceState('idle');
+      if (e.name === 'InvalidStateError') {
+        // Recognition was already active; safely reset
+        return;
+      }
+      setErrorMessage(
+        language === 'ta'
+          ? 'மைக்ரோஃபோனைத் தொடங்க முடியவில்லை. பக்கத்தை புதுப்பித்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Could not start microphone. Please refresh and try again.'
+      );
     }
   };
 
   const stopRecording = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
+    stopTimer();
+    isListeningRef.current = false;
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.stop();
       } catch (e) {}
-      speechRecognitionRef.current = null;
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      setVoiceState('processing');
-      mediaRecorderRef.current.stop();
     }
   };
 
@@ -233,62 +238,37 @@ export default function VoiceAssistant() {
         setVoiceState('idle');
       },
       onError: (err) => {
-        // Fail silently for voice: text remains completely visible and unaffected
         setVoiceState('idle');
         console.warn('Voice playback failed silently:', err);
       }
     });
   };
 
-  // Process the recorded audio through Speech-to-Text then POST /api/chat (exact same pipeline as AI Farmer Assistant)
-  const processRecordedAudio = async (audioBlob, capturedText = '') => {
-    setVoiceState('processing');
-    setErrorMessage('');
-
-    let queryText = capturedText.trim();
-
-    // If browser STT did not capture text, attempt backend STT fallback
-    if (!queryText && audioBlob && audioBlob.size >= 100) {
-      try {
-        const transcribeRes = await apiService.transcribeAudio(audioBlob, language);
-        if (transcribeRes && transcribeRes.success && transcribeRes.transcript) {
-          queryText = transcribeRes.transcript.trim();
-        }
-      } catch (sttErr) {
-        console.warn('Backend STT fallback failed:', sttErr);
-      }
-    }
-
-    if (!queryText) {
+  // Process question via POST /api/chat (exact same pipeline as AI Farmer Assistant)
+  const processQuestion = async (queryText) => {
+    if (!queryText || !queryText.trim()) {
       setVoiceState('idle');
       setErrorMessage(
         language === 'ta'
-          ? 'குரலைப் புரிந்துகொள்ள முடியவில்லை. தயவுசெய்து தெளிவாகப் பேசவும்.'
-          : "I couldn't understand your voice. Please try again."
+          ? 'குரல் கேட்கவில்லை. தயவுசெய்து மீண்டும் பேசவும்.'
+          : 'No speech detected. Please speak again.'
       );
       return;
     }
 
-    setTranscript(queryText);
+    const cleanQuery = queryText.trim();
+    setVoiceState('processing');
+    setErrorMessage('');
+    setTranscript(cleanQuery);
     setAiResponse('');
     setSource('');
 
     try {
       // Send question to the exact same /api/chat endpoint used by AI Farmer Assistant
-      const response = await apiService.sendChatMessage(queryText, language);
+      const response = await apiService.sendChatMessage(cleanQuery, language);
 
       if (!response || !response.text) {
         throw new Error('No response from AI service');
-      }
-
-      // If backend was unreachable and returned System Notice, treat as technical connection error
-      if (response.source === 'System Notice') {
-        const connError = language === 'ta'
-          ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-          : 'Unable to connect to the AI service. Please try again.';
-        setErrorMessage(connError);
-        setVoiceState('idle');
-        return;
       }
 
       setAiResponse(response.text);
@@ -305,8 +285,8 @@ export default function VoiceAssistant() {
       if (!err.response) {
         msg =
           language === 'ta'
-            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-            : 'Unable to connect to the AI service. Please try again.';
+            ? 'AI சேவையுடன் தற்போது இணைக்க முடியவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+            : 'Unable to connect to the AI service. Please try again later.';
       } else if (serverDetail) {
         msg = serverDetail;
       } else if (status === 401) {
@@ -314,16 +294,11 @@ export default function VoiceAssistant() {
           language === 'ta'
             ? 'AI சேவை அங்கீகரிப்பு தோல்வியடைந்தது. பின்தள அமைப்புகளைச் சரிபார்க்கவும்.'
             : 'AI service authentication failed. Please check the backend configuration.';
-      } else if (status === 503) {
-        msg =
-          language === 'ta'
-            ? 'விவசாய ஆலோசனையை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
-            : 'Failed to generate agricultural advice. Please try again.';
       } else {
         msg =
           language === 'ta'
-            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-            : 'Unable to connect to the AI service. Please try again.';
+            ? 'AI சேவையுடன் தற்போது இணைக்க முடியவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+            : 'Unable to connect to the AI service. Please try again later.';
       }
 
       setErrorMessage(msg);
@@ -346,65 +321,7 @@ export default function VoiceAssistant() {
   // Handle direct click on a sample prompt to ask and speak response via POST /api/chat
   const handleSamplePromptClick = async (promptText) => {
     stopAnyAudio();
-    setVoiceState('processing');
-    setErrorMessage('');
-    setTranscript(promptText);
-    setAiResponse('');
-    setSource('');
-
-    try {
-      // Send sample prompt directly to the same /api/chat endpoint
-      const response = await apiService.sendChatMessage(promptText, language);
-
-      if (!response || !response.text) {
-        throw new Error('No response from AI service');
-      }
-
-      if (response.source === 'System Notice') {
-        const connError = language === 'ta'
-          ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-          : 'Unable to connect to the AI service. Please try again.';
-        setErrorMessage(connError);
-        setVoiceState('idle');
-        return;
-      }
-
-      setTranscript(promptText);
-      setAiResponse(response.text);
-      setSource(response.source || '');
-
-      triggerSpeak(response.text);
-    } catch (err) {
-      console.error('Voice Assistant prompt error:', err);
-      const serverDetail = err?.response?.data?.detail;
-      const status = err?.response?.status;
-      let msg = '';
-      if (!err.response) {
-        msg =
-          language === 'ta'
-            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-            : 'Unable to connect to the AI service. Please try again.';
-      } else if (serverDetail) {
-        msg = serverDetail;
-      } else if (status === 401) {
-        msg =
-          language === 'ta'
-            ? 'AI சேவை அங்கீகரிப்பு தோல்வியடைந்தது. பின்தள அமைப்புகளைச் சரிபார்க்கவும்.'
-            : 'AI service authentication failed. Please check the backend configuration.';
-      } else if (status === 503) {
-        msg =
-          language === 'ta'
-            ? 'விவசாய ஆலோசனையை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
-            : 'Failed to generate agricultural advice. Please try again.';
-      } else {
-        msg =
-          language === 'ta'
-            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
-            : 'Unable to connect to the AI service. Please try again.';
-      }
-      setErrorMessage(msg);
-      setVoiceState('idle');
-    }
+    processQuestion(promptText);
   };
 
   // Prompt suggestions for farmer

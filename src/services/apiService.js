@@ -606,9 +606,9 @@ export const apiService = {
   },
 
   // 5. Chat with RAG-LLM Farmer Assistant
-  async sendChatMessage(message, language = 'en') {
+  async sendChatMessage(message, language = 'en', history = []) {
     try {
-      const response = await apiClient.post('/chat', { message, language }, { timeout: 60000 });
+      const response = await apiClient.post('/chat', { message, language, history }, { timeout: 60000 });
       return response.data;
     } catch (error) {
       console.error("AI Assistant backend error:", error?.response?.data || error?.message || error);

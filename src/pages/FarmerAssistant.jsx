@@ -34,41 +34,158 @@ export default function FarmerAssistant() {
   const [fileError, setFileError] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [speakingState, setSpeakingState] = useState({ id: null, status: 'idle' });
+  const [isListening, setIsListening] = useState(false);
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  // Stop speech synthesis when unmounting or changing language
+  // Stop speech synthesis & recognition when unmounting or changing language
   useEffect(() => {
     return () => {
-      stopSpeaking();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
     };
   }, []);
 
   useEffect(() => {
-    stopSpeaking();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setSpeakingState({ id: null, status: 'idle' });
   }, [language]);
 
+  // Clean text of markdown formatting for natural browser speech
+  const cleanTextForSpeech = (text, lang) => {
+    if (!text) return '';
+    let cleaned = text
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/^#+\s*/gm, '')
+      .replace(/^\s*[-*•]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      .replace(/[`>]/g, '')
+      .replace(/\n+/g, '. ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (lang === 'ta') {
+      cleaned = cleaned.replace(/%/g, ' சதவீதம் ');
+    } else {
+      cleaned = cleaned.replace(/%/g, ' percent ');
+    }
+    return cleaned;
+  };
+
+  // Browser SpeechSynthesis Text-to-Speech (ta-IN for Tamil, en-IN for English)
   const handleToggleSpeak = (msgId, text) => {
-    if (speakingState.id === msgId && (speakingState.status === 'playing' || speakingState.status === 'loading')) {
-      speechService.stop();
+    if (!('speechSynthesis' in window)) {
+      alert(language === 'ta' ? 'உங்கள் உலாவியில் குரல் வாசிப்பு வசதி இல்லை.' : 'Speech synthesis is not supported in this browser.');
+      return;
+    }
+
+    if (speakingState.id === msgId && speakingState.status === 'playing') {
+      window.speechSynthesis.cancel();
       setSpeakingState({ id: null, status: 'idle' });
       return;
     }
 
-    speechService.stop();
-    setSpeakingState({ id: msgId, status: 'loading' });
+    window.speechSynthesis.cancel();
+    const cleaned = cleanTextForSpeech(text, language);
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    const targetLang = language === 'ta' ? 'ta-IN' : 'en-IN';
+    utterance.lang = targetLang;
+    utterance.rate = language === 'ta' ? 0.95 : 1.0;
 
-    speechService.speak(text, language, {
-      onStart: () => setSpeakingState({ id: msgId, status: 'playing' }),
-      onEnd: () => setSpeakingState({ id: null, status: 'idle' }),
-      onError: () => {
-        setSpeakingState({ id: msgId, status: 'error' });
-        setTimeout(() => {
-          setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
-        }, 3000);
+    const voices = window.speechSynthesis.getVoices();
+    const matchedVoice = voices.find(
+      v => v.lang === targetLang || v.lang.replace('_', '-').startsWith(targetLang) || v.lang.startsWith(language)
+    );
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+    }
+
+    utterance.onstart = () => {
+      setSpeakingState({ id: msgId, status: 'playing' });
+    };
+    utterance.onend = () => {
+      setSpeakingState({ id: null, status: 'idle' });
+    };
+    utterance.onerror = () => {
+      setSpeakingState({ id: msgId, status: 'error' });
+      setTimeout(() => {
+        setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
+      }, 3000);
+    };
+
+    setSpeakingState({ id: msgId, status: 'playing' });
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Voice Input Speech-to-Text via Web Speech API
+  const toggleVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert(
+        language === 'ta'
+          ? 'உங்கள் உலாவியில் குரல் உள்ளீடு வசதி ஆதரிக்கப்படவில்லை. தயவுசெய்து தட்டச்சு செய்யவும்.'
+          : 'Speech recognition is not supported in this browser. Please type your question.'
+      );
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
       }
-    });
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript && transcript.trim()) {
+          setInput(transcript);
+          handleSend(transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = (err) => {
+        console.warn('Voice input error:', err);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error('Failed to start speech recognition:', e);
+      setIsListening(false);
+    }
   };
 
   // Initialize welcoming message based on selected language
@@ -78,8 +195,8 @@ export default function FarmerAssistant() {
         id: 1,
         sender: 'ai',
         text: language === 'ta'
-          ? 'வணக்கம்! நான் உங்கள் SmartFarm AI வேளாண் உதவியாளர். பயிர்கள், நோய்கள், பூச்சிகள், நீர்ப்பாசனம், மண், உரங்கள், வானிலை மற்றும் வேளாண் முறைகள் குறித்து என்னிடம் கேட்கலாம்.'
-          : 'Hello! I am your SmartFarm AI Agricultural Assistant. Ask me about crops, diseases, pests, irrigation, soil, fertilizers, weather, and farming practices.',
+          ? 'வணக்கம்! நான் உங்கள் SmartFarm AI வேளாண் உதவியாளர். பயிர்கள் (நெல், தக்காளி, கரும்பு, மிளகாய், வாழை, கத்தரி, உருளை போன்றவை), நோய்கள், பூச்சிகள், நீர்ப்பாசனம், மண் வளம், உரங்கள், வானிலை மற்றும் வேளாண் முறைகள் குறித்து எந்தக் கேள்வியையும் கேட்கலாம்.'
+          : 'Hello! I am your SmartFarm AI Agricultural Assistant. Ask me ANY question about crops (rice, wheat, tomato, sugarcane, chilli, banana, brinjal, potato, etc.), diseases, pests, irrigation, soil fertility, fertilizers, weather, and sustainable farming practices.',
         source: 'SmartFarm AI Advisor',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
@@ -107,7 +224,6 @@ export default function FarmerAssistant() {
     setFileError('');
     const files = e.target.files;
     if (!files || files.length === 0) {
-      // User cancelled file picker -> preserve state, no fake attachment
       return;
     }
 
@@ -181,7 +297,14 @@ export default function FarmerAssistant() {
           ? `[இணைக்கப்பட்ட கோப்பு: ${fileToSend.name}]`
           : `[Attached file: ${fileToSend.name}]`
       );
-      const response = await apiService.sendChatMessage(queryForBackend, language, fileToSend);
+
+      // Pass recent conversation turns to support follow-up questions
+      const history = messages.slice(-6).map(m => ({
+        sender: m.sender,
+        text: m.text
+      }));
+
+      const response = await apiService.sendChatMessage(queryForBackend, language, history);
       setMessages(prev => [...prev, response]);
     } catch (err) {
       console.error("Chat error:", err);
@@ -193,19 +316,22 @@ export default function FarmerAssistant() {
   // Sample prompt questions tailored for English and Tamil (General Farming)
   const sampleQuestionsEn = [
     "What fertilizer should I use for rice?",
-    "Why are my crop leaves turning yellow?",
-    "How can I improve soil fertility?",
-    "How often should I irrigate my crop?",
+    "How often should I water tomato plants?",
+    "What causes yellow leaves in chilli?",
+    "How can I control aphids?",
     "What should I do during heavy rainfall?",
-    "How can I control common crop pests?"
+    "How can I improve soil fertility?",
+    "When is the best time to plant maize?",
+    "Explain drip irrigation."
   ];
 
   const sampleQuestionsTa = [
     "நெல் பயிருக்கு எந்த உரம் பயன்படுத்தலாம்?",
-    "பயிர்களின் இலைகள் மஞ்சளாக மாறுவதற்கு என்ன காரணம்?",
-    "மண்ணின் வளத்தை எவ்வாறு அதிகரிக்கலாம்?",
-    "பயிர்களுக்கு எவ்வளவு அடிக்கடி நீர்ப்பாசனம் செய்ய வேண்டும்?",
-    "அதிக மழை பெய்யும் போது பயிர்களை எவ்வாறு பாதுகாப்பது?"
+    "தக்காளி செடிக்கு எப்போது தண்ணீர் ஊற்ற வேண்டும்?",
+    "மிளகாயில் இலைகள் மஞ்சளாக மாறுவதற்கு காரணம் என்ன?",
+    "அசுவினி பூச்சிகளை எவ்வாறு கட்டுப்படுத்துவது?",
+    "அதிக மழை பெய்யும் போது பயிர்களை எவ்வாறு பாதுகாப்பது?",
+    "மண்ணின் வளத்தை எவ்வாறு அதிகரிக்கலாம்?"
   ];
 
   const activeSampleQuestions = language === 'ta' ? sampleQuestionsTa : sampleQuestionsEn;
@@ -307,8 +433,6 @@ export default function FarmerAssistant() {
                       className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-2xs ${
                         speakingState.id === msg.id && speakingState.status === 'playing'
                           ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
-                          : speakingState.id === msg.id && speakingState.status === 'loading'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
                           : speakingState.id === msg.id && speakingState.status === 'error'
                           ? 'bg-red-50 text-red-700 border border-red-200'
                           : 'bg-white hover:bg-agri-50 text-agri-800 border border-agri-200'
@@ -319,12 +443,7 @@ export default function FarmerAssistant() {
                           : (language === 'ta' ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')
                       }
                     >
-                      {speakingState.id === msg.id && speakingState.status === 'loading' ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
-                          <span>{language === 'ta' ? 'ஆடியோ உருவாக்கப்படுகிறது...' : 'Generating audio...'}</span>
-                        </>
-                      ) : speakingState.id === msg.id && speakingState.status === 'playing' ? (
+                      {speakingState.id === msg.id && speakingState.status === 'playing' ? (
                         <>
                           <VolumeX className="w-3.5 h-3.5 text-red-600" />
                           <span>{language === 'ta' ? 'நிறுத்து' : 'Stop'}</span>
@@ -332,7 +451,7 @@ export default function FarmerAssistant() {
                       ) : speakingState.id === msg.id && speakingState.status === 'error' ? (
                         <>
                           <AlertCircle className="w-3.5 h-3.5 text-red-600" />
-                          <span>{language === 'ta' ? 'ஆடியோவை இயக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Unable to play audio. Please try again.'}</span>
+                          <span>{language === 'ta' ? 'பிழை' : 'Error'}</span>
                         </>
                       ) : (
                         <>
@@ -440,15 +559,23 @@ export default function FarmerAssistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={language === 'ta' ? 'விவசாயக் கேள்விகளைக் கேளுங்கள்...' : 'Ask your farming question...'}
+            placeholder={language === 'ta' ? 'விவசாயக் கேள்விகளைக் கேளுங்கள் (எந்தப் பயிரும்)...' : 'Ask any farming question (any crop, pest, fertilizer)...'}
             className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-agri-500 focus:bg-white transition-all"
           />
 
           <button
             type="button"
-            onClick={() => alert(language === 'ta' ? 'குரல் உள்ளீடு ஆன் செய்யப்பட்டுள்ளது.' : 'Voice input active.')}
-            className="p-2 text-gray-500 hover:text-agri-600 hover:bg-agri-50 rounded-xl transition-colors cursor-pointer"
-            title="Voice Input"
+            onClick={toggleVoiceInput}
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'text-gray-500 hover:text-agri-600 hover:bg-agri-50'
+            }`}
+            title={
+              isListening
+                ? (language === 'ta' ? 'கேட்கிறது... (நிறுத்த கிளிக் செய்யவும்)' : 'Listening... (Click to stop)')
+                : (language === 'ta' ? 'குரல் உள்ளீடு' : 'Voice Input')
+            }
           >
             <Mic className="w-5 h-5" />
           </button>

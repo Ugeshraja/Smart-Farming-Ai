@@ -26,9 +26,15 @@ except ImportError:
     logger.warning("google-genai SDK not installed. Please install with: pip install google-genai")
 
 
+class ChatMessage(BaseModel):
+    sender: str = Field(..., description="Message sender ('user' or 'ai')")
+    text: str = Field(..., description="Message text content")
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="Farmer agricultural question")
     language: str = Field("en", description="Language code ('en' or 'ta')")
+    history: Optional[List[ChatMessage]] = Field(default=[], description="Recent conversation history")
 
 
 class ChatResponse(BaseModel):
@@ -127,10 +133,15 @@ async def set_gemini_api_key(payload: ApiKeyPayload):
     }
 
 
-async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[str, Any]:
+async def execute_rag_gemini_pipeline(
+    query: str,
+    language: str = "en",
+    history: Optional[List[Dict[str, str]]] = None
+) -> Dict[str, Any]:
     """
     Core RAG + Gemini Agricultural decision pipeline.
-    Reused identically by both /api/chat and /api/voice to ensure exact consistency.
+    Accepts ANY agricultural question across all crops, pests, diseases, soil, irrigation, and practices.
+    Integrates conversation history, Tanglish comprehension, RAG grounding, and Gemini LLM.
     """
     query = query.strip()
     if not query:
@@ -141,19 +152,21 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
 
     language = "ta" if language == "ta" else "en"
 
-    # 1. RAG RETRIEVAL: Retrieve verified Solanaceae agricultural knowledge
+    # 1. RAG RETRIEVAL: Retrieve verified Solanaceae / soil / irrigation knowledge if matched
     try:
         rag_data = rag_service.retrieve_rag_context(
             query=query,
             top_k=2,
             language=language
         )
-        rag_context = rag_data.get("context_text", "")
+        has_rag = rag_data.get("has_context", False)
+        rag_context = rag_data.get("context_text", "") if has_rag else ""
         primary_source = rag_data.get("primary_source", "TNAU Agritech Knowledge Base")
     except Exception as e:
         logger.error(f"RAG Retrieval Error: {e}")
+        has_rag = False
         rag_context = ""
-        primary_source = "SmartFarm Agricultural Knowledge Base"
+        primary_source = None
 
     # 2. CHECK GEMINI CONFIGURATION
     api_key = get_current_gemini_key()
@@ -184,7 +197,7 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
                 )
             return {
                 "text": fallback_text,
-                "source": f"Verified Knowledge Base • {primary_source} (Knowledge Base Fallback)",
+                "source": f"Verified Knowledge Base • {primary_source}",
                 "primary_source": primary_source,
                 "used_model": "rag-knowledge-base",
                 "has_rag_context": True,
@@ -195,19 +208,43 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
             detail="AI service is temporarily unavailable. Please try again."
         )
 
-    # 3. BUILD GROUNDED SYSTEM & USER PROMPTS
+    # 3. BUILD CONVERSATION HISTORY CONTEXT
+    history_prompt_section = ""
+    if history and len(history) > 0:
+        recent_turns = history[-6:]
+        history_lines = []
+        for h in recent_turns:
+            role = "Farmer" if h.get("sender") == "user" else "Assistant"
+            text_val = (h.get("text") or "").strip()
+            if text_val:
+                history_lines.append(f"{role}: {text_val}")
+        if history_lines:
+            history_prompt_section = (
+                "RECENT CONVERSATION HISTORY:\n"
+                "----------------------------------------\n"
+                + "\n".join(history_lines) +
+                "\n----------------------------------------\n"
+                "Note: Use the conversation history above to understand context and resolve references (such as 'it', 'that crop', 'that disease', 'the fertilizer').\n\n"
+            )
+
+    # 4. BUILD GROUNDED SYSTEM & USER PROMPTS
     lang_name = "Tamil (தமிழ்)" if language == "ta" else "English"
 
     if rag_context:
         system_instruction = (
             "You are the SmartFarm AI Agricultural Assistant, an expert decision support advisor for Indian and global farming.\n\n"
-            f"Language Directive: You MUST respond strictly in {lang_name}. "
-            "If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).\n\n"
-            "Grounding Directive: Ground your answer primarily in the provided Verified Agricultural Knowledge Base context. "
-            "Integrate the specific management practices, treatments, and dosages from the context.\n\n"
-            "Source Integrity: Do NOT invent institutional citations (e.g. do not claim 'TNAU recommends' or 'ICAR recommends') "
-            "unless explicitly stated in the retrieved context.\n\n"
-            "Structuring Directive: Structure your response cleanly with:\n"
+            "Scope: You support ALL agriculture questions. Ground your answer primarily in the provided Verified Agricultural Knowledge Base context.\n\n"
+            f"Language & Script Directive:\n"
+            f"- You MUST respond strictly in {lang_name}.\n"
+            "- If Tamil (ta) is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil script (தமிழ்).\n"
+            "- If English (en) is selected, provide your response in clear, concise English.\n"
+            "- Tanglish Comprehension: Farmers may ask questions in Tanglish (Tamil words written in English/Latin script, e.g. 'tomato ku eppo water kudukanum?', 'nel payiruku enna fertilizer use panlam?'). "
+            "You MUST understand Tanglish questions accurately and respond in the selected language.\n\n"
+            "Source Integrity Directive:\n"
+            "- Ground specific disease and crop management in the provided Verified Knowledge Base context.\n"
+            "- Do NOT invent institutional citations unless explicitly present in the retrieved context.\n\n"
+            "Structuring Directive:\n"
+            "Keep answers practical and structured:\n"
             "1. Identification & Cause (அறிகுறிகள் & காரணங்கள்)\n"
             "2. Recommended Management & Remedies (மேலாண்மை முறைகள் & தீர்வுகள்)\n"
             "3. Preventive & Cultural Practices (வருமுன் காக்கும் மேலாண்மை & பராமரிப்பு)\n\n"
@@ -216,6 +253,7 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
         )
 
         full_prompt = (
+            f"{history_prompt_section}"
             f"VERIFIED AGRICULTURAL KNOWLEDGE BASE CONTEXT:\n"
             f"----------------------------------------\n"
             f"{rag_context}\n"
@@ -226,27 +264,35 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
     else:
         system_instruction = (
             "You are the SmartFarm AI Agricultural Assistant, a comprehensive general agricultural expert assisting farmers "
-            "with all crops (cereals like rice, maize, wheat; cash crops like sugarcane, cotton; fruits like banana, mango; "
-            "vegetables like onion, chilli; pulses, oilseeds, spices), soil science, irrigation, fertilizers, weather impacts, and agronomy.\n\n"
-            "Scope Directive: You support ALL agricultural questions and crops across farming. Never restrict questions to Solanaceae crops. "
-            "Never tell the farmer you only support tomato, potato, or brinjal. Never ask them to select tomato, potato, or brinjal.\n\n"
-            f"Language Directive: You MUST respond strictly in {lang_name}. "
-            "If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).\n\n"
+            "with ALL crops (cereals like rice, wheat, maize; cash crops like sugarcane, cotton; fruits like banana, mango, citrus; "
+            "vegetables like onion, chilli, tomato, potato, brinjal, okra; pulses, oilseeds, spices), soil science, irrigation, fertilizers, weather impacts, and agronomy.\n\n"
+            "Scope Directive:\n"
+            "- You support ANY agricultural question asked by the farmer. Never restrict answers to Solanaceae crops.\n"
+            "- Never tell the farmer you only answer tomato, potato, or brinjal questions. Never reject a valid agricultural inquiry.\n\n"
+            f"Language & Script Directive:\n"
+            f"- You MUST respond strictly in {lang_name}.\n"
+            "- If Tamil (ta) is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil script (தமிழ்).\n"
+            "- If English (en) is selected, provide your response in clear, concise English.\n"
+            "- Tanglish Comprehension: Farmers may ask questions in Tanglish (Tamil words written in English/Latin script, e.g. 'tomato ku eppo water kudukanum?', 'nel payiruku enna fertilizer use panlam?', 'chilli ilai manjal aaguthu enna pannanum?'). "
+            "You MUST understand Tanglish questions accurately and respond in the selected language.\n\n"
             "Agricultural Accuracy & Safety Directive:\n"
             "- Provide sound, practical agronomic guidance.\n"
-            "- Do NOT invent institutional citations. Do NOT falsely claim 'TNAU recommends' or 'ICAR recommends' without verified source material.\n"
-            "- For fertilizers, pesticides, and weedicides, provide general nutrient guidelines or active ingredients, but state clearly that exact dosages depend on soil test results, crop variety, growth stage, field conditions, and local agricultural extension guidance.\n\n"
+            "- Do NOT invent exact chemical dosages or institutional citations.\n"
+            "- For fertilizers and pesticides, explain active ingredients or general guidelines, and advise following product labels and local agricultural extension / TNAU / ICAR recommendations.\n\n"
+            "Response Formatting:\n"
+            "- Keep answers farmer-friendly: brief explanation + key action steps + practical advice.\n"
             "Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-first."
         )
 
         full_prompt = (
+            f"{history_prompt_section}"
             f"FARMER QUESTION: {query}\n\n"
             f"Please provide your expert agricultural advice in {lang_name}."
         )
 
-    # 4. CALL GEMINI API VIA GOOGLE GENAI SDK
-    # Prioritize active, verified canonical models to prevent sequential 404s
+    # 5. CALL GEMINI API VIA GOOGLE GENAI SDK
     candidate_models = [
+        "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
         "gemini-flash-latest",
         "gemini-flash-lite-latest",
@@ -303,7 +349,6 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
             time.sleep(0.5)
             continue
 
-    # Graceful fallback: If Gemini models are unavailable/rate-limited, return RAG knowledge rather than generic 503
     if not ai_text:
         logger.warning(f"Gemini API failure on candidate models: {last_error}")
         if rag_context:
@@ -322,7 +367,7 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
                     f"{rag_context}\n\n"
                     "Recommendation: For exact chemical dosages and application schedules, please consult your local agricultural extension officer or ICAR/TNAU advisories."
                 )
-            source_label = f"Verified Knowledge Base • {primary_source} (Knowledge Base Fallback)"
+            source_label = f"Verified Knowledge Base • {primary_source}"
             return {
                 "text": fallback_text,
                 "source": source_label,
@@ -337,7 +382,12 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
             detail="AI service is temporarily unavailable. Please try again."
         )
 
-    source_label = f"Verified RAG • {primary_source} • {used_model}" if (rag_context and primary_source) else f"SmartFarm AI Advisor • {used_model}"
+    # Label accurately: "Verified Knowledge Base" only when RAG context was used
+    if rag_context and primary_source:
+        source_label = f"Verified Knowledge Base • {primary_source}"
+    else:
+        source_label = "SmartFarm AI Advisor"
+
     return {
         "text": ai_text,
         "source": source_label,
@@ -353,16 +403,22 @@ async def execute_rag_gemini_pipeline(query: str, language: str = "en") -> Dict[
 async def chat_with_assistant(request: ChatRequest):
     """
     Unified RAG + Gemini Farmer Assistant endpoint.
-    1. Retrieves verified agronomic context from the Solanaceae knowledge base (TNAU/ICAR).
-    2. Sends the question + retrieved context to the Gemini LLM.
+    Accepts ANY farmer agricultural question.
+    1. Retrieves verified agronomic context from the knowledge base if matched.
+    2. Sends the question + conversation history + retrieved context to Gemini LLM.
     3. Returns grounded, farmer-friendly recommendations in English or Tamil.
     """
     query = request.message.strip()
     language = "ta" if request.language == "ta" else "en"
+    history_dicts = [h.dict() for h in request.history] if request.history else []
     timestamp_str = datetime.now().strftime("%I:%M %p")
     res_id = int(time.time() * 1000)
 
-    result = await execute_rag_gemini_pipeline(query=query, language=language)
+    result = await execute_rag_gemini_pipeline(
+        query=query,
+        language=language,
+        history=history_dicts
+    )
 
     return ChatResponse(
         id=res_id,
@@ -371,4 +427,5 @@ async def chat_with_assistant(request: ChatRequest):
         source=result["source"],
         timestamp=timestamp_str
     )
+
 

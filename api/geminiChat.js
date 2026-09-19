@@ -97,10 +97,27 @@ function retrieveRagContext(query = '', language = 'en') {
   return { contextText, primarySource };
 }
 
-export async function executeRagGeminiQuery(message, language = 'en') {
+export async function executeRagGeminiQuery(message, language = 'en', history = []) {
   const normLang = language === 'ta' ? 'ta' : 'en';
   const apiKey = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY;
   const { contextText, primarySource } = retrieveRagContext(message, normLang);
+
+  // Build conversation history context
+  let historyPromptSection = '';
+  if (Array.isArray(history) && history.length > 0) {
+    const recentTurns = history.slice(-6);
+    const historyLines = [];
+    for (const h of recentTurns) {
+      const role = h.sender === 'user' ? 'Farmer' : 'Assistant';
+      const textVal = (h.text || '').trim();
+      if (textVal) {
+        historyLines.append ? historyLines.append(`${role}: ${textVal}`) : historyLines.push(`${role}: ${textVal}`);
+      }
+    }
+    if (historyLines.length > 0) {
+      historyPromptSection = `RECENT CONVERSATION HISTORY:\n----------------------------------------\n${historyLines.join('\n')}\n----------------------------------------\nNote: Use the conversation history above to understand context and resolve references (such as 'it', 'that crop', 'that disease', 'the fertilizer').\n\n`;
+    }
+  }
 
   // If API key is not configured, gracefully provide verified RAG knowledge
   if (!apiKey) {
@@ -111,7 +128,7 @@ export async function executeRagGeminiQuery(message, language = 'en') {
 
     return {
       text: fallbackText,
-      source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
+      source: contextText ? `Verified Knowledge Base • ${primarySource}` : 'SmartFarm AI Advisor',
       usedModel: 'Knowledge Base Fallback',
     };
   }
@@ -120,21 +137,42 @@ export async function executeRagGeminiQuery(message, language = 'en') {
   const langName = normLang === 'ta' ? 'Tamil (தமிழ்)' : 'English';
   const systemInstruction = contextText
     ? `You are the SmartFarm AI Agricultural Assistant, an expert decision support advisor for Indian and global farming.
-Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
-Grounding Directive: Ground your answer primarily in the provided Verified Agricultural Knowledge Base context.
+Scope: You support ALL agriculture questions. Ground your answer primarily in the provided Verified Agricultural Knowledge Base context.
+Language & Script Directive:
+- You MUST respond strictly in ${langName}.
+- If Tamil (ta) is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil script (தமிழ்).
+- If English (en) is selected, provide your response in clear, concise English.
+- Tanglish Comprehension: Farmers may ask questions in Tanglish (Tamil words written in English/Latin script, e.g. 'tomato ku eppo water kudukanum?', 'nel payiruku enna fertilizer use panlam?'). You MUST understand Tanglish questions accurately and respond in the selected language.
+Source Integrity Directive:
+- Ground specific disease and crop management in the provided Verified Knowledge Base context.
+- Do NOT invent institutional citations unless explicitly present in the retrieved context.
 Structuring Directive:
+Keep answers practical and structured:
 1. Identification & Cause (அறிகுறிகள் & காரணங்கள்)
 2. Recommended Management & Remedies (மேலாண்மை முறைகள் & தீர்வுகள்)
 3. Preventive & Cultural Practices (வருமுன் காக்கும் மேலாண்மை & பராமரிப்பு)
 Safety Note: Mention that exact dosages and application may vary based on crop variety, growth stage, soil conditions, and local agricultural extension guidance.
 Tone: Respectful, reassuring, practical, and farmer-first.`
-    : `You are the SmartFarm AI Agricultural Assistant, a comprehensive general agricultural expert assisting farmers with all crops, soil science, irrigation, fertilizers, weather impacts, and agronomy.
-Language Directive: You MUST respond strictly in ${langName}. If Tamil is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil (தமிழ்).
+    : `You are the SmartFarm AI Agricultural Assistant, a comprehensive general agricultural expert assisting farmers with ALL crops (cereals like rice, wheat, maize; cash crops like sugarcane, cotton; fruits like banana, mango, citrus; vegetables like onion, chilli, tomato, potato, brinjal, okra; pulses, oilseeds, spices), soil science, irrigation, fertilizers, weather impacts, and agronomy.
+Scope Directive:
+- You support ANY agricultural question asked by the farmer. Never restrict answers to Solanaceae crops.
+- Never tell the farmer you only answer tomato, potato, or brinjal questions. Never reject a valid agricultural inquiry.
+Language & Script Directive:
+- You MUST respond strictly in ${langName}.
+- If Tamil (ta) is selected, provide your complete response in natural, fluent, grammatically correct, farmer-friendly Tamil script (தமிழ்).
+- If English (en) is selected, provide your response in clear, concise English.
+- Tanglish Comprehension: Farmers may ask questions in Tanglish (Tamil words written in English/Latin script, e.g. 'tomato ku eppo water kudukanum?', 'nel payiruku enna fertilizer use panlam?', 'chilli ilai manjal aaguthu enna pannanum?'). You MUST understand Tanglish questions accurately and respond in the selected language.
+Agricultural Accuracy & Safety Directive:
+- Provide sound, practical agronomic guidance.
+- Do NOT invent exact chemical dosages or institutional citations.
+- For fertilizers and pesticides, explain active ingredients or general guidelines, and advise following product labels and local agricultural extension / TNAU / ICAR recommendations.
+Response Formatting:
+- Keep answers farmer-friendly: brief explanation + key action steps + practical advice.
 Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-first.`;
 
   const userPrompt = contextText
-    ? `VERIFIED AGRICULTURAL KNOWLEDGE BASE CONTEXT:\n----------------------------------------\n${contextText}\n----------------------------------------\n\nFARMER QUESTION: ${message}\n\nPlease provide your verified agricultural advice in ${langName}.`
-    : `FARMER QUESTION: ${message}\n\nPlease provide your expert agricultural advice in ${langName}.`;
+    ? `${historyPromptSection}VERIFIED AGRICULTURAL KNOWLEDGE BASE CONTEXT:\n----------------------------------------\n${contextText}\n----------------------------------------\n\nFARMER QUESTION: ${message}\n\nPlease provide your verified agricultural advice in ${langName}.`
+    : `${historyPromptSection}FARMER QUESTION: ${message}\n\nPlease provide your expert agricultural advice in ${langName}.`;
 
   // Candidate models matching backend/routes/chat.py
   const configuredModel = (process.env.LLM_MODEL || 'gemini-3.8-flash').trim();
@@ -202,7 +240,7 @@ Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-firs
         text: normLang === 'ta'
           ? `குறிப்பு: நேரடி AI சேவை தற்காலிகமாக இணைக்கப்படவில்லை. வேளாண் தரவுத்தள பரிந்துரைகள்:\n\n${contextText}`
           : `Note: Direct AI model inference is temporarily unavailable. Verified Knowledge Base recommendations:\n\n${contextText}`,
-        source: `Verified Knowledge Base • ${primarySource} (Knowledge Base Fallback)`,
+        source: `Verified Knowledge Base • ${primarySource}`,
         usedModel: 'Knowledge Base Fallback',
       };
     }
@@ -216,9 +254,10 @@ Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-firs
     };
   }
 
+  // Accurate source label
   const sourceLabel = contextText
-    ? `Verified RAG • ${primarySource} • ${usedModel}`
-    : `SmartFarm AI Advisor • ${usedModel}`;
+    ? `Verified Knowledge Base • ${primarySource}`
+    : 'SmartFarm AI Advisor';
 
   return {
     text: aiText,
@@ -262,6 +301,7 @@ export async function handleGeminiChat(req, res, rawBody) {
 
     const message = (payload.message || '').trim();
     const language = payload.language === 'ta' ? 'ta' : 'en';
+    const history = Array.isArray(payload.history) ? payload.history : [];
 
     if (!message) {
       return res.status(400).json({
@@ -271,7 +311,7 @@ export async function handleGeminiChat(req, res, rawBody) {
       });
     }
 
-    const advice = await executeRagGeminiQuery(message, language);
+    const advice = await executeRagGeminiQuery(message, language, history);
 
     return res.status(200).json({
       id: Date.now(),

@@ -281,6 +281,16 @@ export default function VoiceAssistant() {
         throw new Error('No response from AI service');
       }
 
+      // If backend was unreachable and returned System Notice, treat as technical connection error
+      if (response.source === 'System Notice') {
+        const connError = language === 'ta'
+          ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Unable to connect to the AI service. Please try again.';
+        setErrorMessage(connError);
+        setVoiceState('idle');
+        return;
+      }
+
       setAiResponse(response.text);
       setSource(response.source || '');
 
@@ -295,7 +305,7 @@ export default function VoiceAssistant() {
       if (!err.response) {
         msg =
           language === 'ta'
-            ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
+            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
             : 'Unable to connect to the AI service. Please try again.';
       } else if (serverDetail) {
         msg = serverDetail;
@@ -312,7 +322,7 @@ export default function VoiceAssistant() {
       } else {
         msg =
           language === 'ta'
-            ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
+            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
             : 'Unable to connect to the AI service. Please try again.';
       }
 
@@ -350,6 +360,15 @@ export default function VoiceAssistant() {
         throw new Error('No response from AI service');
       }
 
+      if (response.source === 'System Notice') {
+        const connError = language === 'ta'
+          ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Unable to connect to the AI service. Please try again.';
+        setErrorMessage(connError);
+        setVoiceState('idle');
+        return;
+      }
+
       setTranscript(promptText);
       setAiResponse(response.text);
       setSource(response.source || '');
@@ -363,7 +382,7 @@ export default function VoiceAssistant() {
       if (!err.response) {
         msg =
           language === 'ta'
-            ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
+            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
             : 'Unable to connect to the AI service. Please try again.';
       } else if (serverDetail) {
         msg = serverDetail;
@@ -380,7 +399,7 @@ export default function VoiceAssistant() {
       } else {
         msg =
           language === 'ta'
-            ? 'சேவையகத்தை இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.'
+            ? 'AI சேவையுடன் இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
             : 'Unable to connect to the AI service. Please try again.';
       }
       setErrorMessage(msg);

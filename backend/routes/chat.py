@@ -434,11 +434,22 @@ async def chat_with_assistant(request: ChatRequest):
     timestamp_str = datetime.now().strftime("%I:%M %p")
     res_id = int(time.time() * 1000)
 
+    logger.info("--------------------------------------------------")
+    logger.info("CHAT REQUEST RECEIVED: /api/chat")
+    logger.info(f"VOICE TRANSCRIPT: {query}")
+    logger.info(f"LANGUAGE: {language}")
+
     result = await execute_rag_gemini_pipeline(
         query=query,
         language=language,
         history=history_dicts
     )
+
+    rag_status = "matched" if result.get("has_rag_context") else "no match"
+    logger.info(f"GEMINI MODEL: {result.get('used_model', 'gemini-3.8-flash')}")
+    logger.info(f"RAG: {rag_status}")
+    logger.info("RESPONSE: success")
+    logger.info("--------------------------------------------------")
 
     return ChatResponse(
         id=res_id,

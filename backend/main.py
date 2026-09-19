@@ -159,6 +159,18 @@ app.include_router(sensors.router)
 app.include_router(field.router)
 app.include_router(schemes.router)
 
+# Serverless & local proxy compatibility prefix: /api/backend/api
+BACKEND_API_PREFIX = "/api/backend/api"
+app.include_router(auth.router, prefix=BACKEND_API_PREFIX)
+app.include_router(weather.router, prefix=BACKEND_API_PREFIX)
+app.include_router(chat.router, prefix=BACKEND_API_PREFIX)
+app.include_router(voice.router, prefix=BACKEND_API_PREFIX)
+app.include_router(predict.router, prefix=BACKEND_API_PREFIX)
+app.include_router(library.router, prefix=BACKEND_API_PREFIX)
+app.include_router(sensors.router, prefix=BACKEND_API_PREFIX)
+app.include_router(field.router, prefix=BACKEND_API_PREFIX)
+app.include_router(schemes.router, prefix=BACKEND_API_PREFIX)
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -320,25 +320,54 @@ class TtsResponse(BaseModel):
     reason: Optional[str] = None
 
 
-@router.post("/tts", response_model=TtsResponse)
-@router.post("/synthesize", response_model=TtsResponse)
-async def synthesize_speech_direct(payload: TtsRequest):
+@router.post("/tts")
+async def tts_endpoint(payload: TtsRequest):
     """
-    Direct Text-to-Speech synthesis endpoint via Google TTS (gTTS).
-    Generates authentic MP3 files and returns accessible audio_url paths.
+    POST /api/tts and /api/voice/tts:
+    1. Validates text
+    2. Detects requested language ('ta' -> 'ta-IN', 'en' -> 'en-US')
+    3. Synthesizes via local Piper TTS
+    4. Returns audio/wav WAV bytes (22,050 Hz mono)
     """
+    from fastapi.responses import Response
     from services.tts_service import tts_manager
-    res = tts_manager.synthesize(
-        text=payload.text,
-        language=payload.language or "en"
-    )
-    return TtsResponse(
-        success=res.get("success", False),
-        audio_url=res.get("audio_url"),
-        audio_chunks=res.get("audio_chunks"),
-        language=res.get("language", "en"),
-        reason=res.get("reason")
-    )
+
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text is required for TTS synthesis."
+        )
+
+    raw_lang = (payload.language or "en").strip().lower()
+    norm_lang = "ta" if raw_lang in ("ta", "ta-in", "tamil") else "en"
+
+    try:
+        audio_bytes = tts_manager.synthesize_bytes(text=text, language=norm_lang)
+        if not audio_bytes or len(audio_bytes) < 1000:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Generated audio stream is empty or invalid."
+            )
+        return Response(content=audio_bytes, media_type="audio/wav")
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Piper TTS] Speech synthesis error: {e}")
+        fail_msg = (
+            "தமிழ் குரல் சேவை தற்போது கிடைக்கவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்."
+            if norm_lang == "ta"
+            else "Voice service is currently unavailable. Please try again."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=fail_msg
+        )
 
 
 @router.get("/audio/{filename}")
@@ -350,7 +379,7 @@ async def get_audio_file(filename: str):
     path = STATIC_TTS_DIR / safe_name
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found.")
-    media_type = "audio/mpeg" if safe_name.endswith(".mp3") else "audio/wav"
+    media_type = "audio/wav" if safe_name.endswith(".wav") else "audio/mpeg"
     return FileResponse(str(path), media_type=media_type)
 
 
@@ -361,14 +390,8 @@ class VoiceApiKeyPayload(BaseModel):
 @router.get("/status")
 async def get_voice_status():
     """Returns Voice Assistant status without exposing API keys."""
-    return {
-        "status": "online",
-        "stt_engine": "Sarvam saaras:v3",
-        "tts_engine": "Google TTS (gTTS)",
-        "providers": {
-            "gtts": True
-        }
-    }
+    from services.tts_service import tts_manager
+    return tts_manager.get_providers_status()
 
 
 @router.post("/set-key")

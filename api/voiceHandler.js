@@ -275,10 +275,11 @@ export async function handleVoiceRequest(req, res, rawBody = null, routePath = '
       chunks.map(chunk => fetchGoogleTtsChunk(chunk, language))
     );
 
-    // If direct audio requested via format query parameter or Accept header
+    // If direct audio requested via format query parameter, Accept header, or direct /api/tts endpoint
     const format = req.query?.format || '';
     const accept = req.headers?.['accept'] || '';
-    if (format === 'audio' || (accept.includes('audio/') && !accept.includes('application/json'))) {
+    const isDirectTtsPath = cleanPath === 'api/tts' || cleanPath === 'tts' || cleanPath.endsWith('/tts');
+    if (isDirectTtsPath || format === 'audio' || (accept.includes('audio/') && !accept.includes('application/json'))) {
       const combined = Buffer.concat(audioBuffers);
       return sendBuffer(200, 'audio/mpeg', combined);
     }

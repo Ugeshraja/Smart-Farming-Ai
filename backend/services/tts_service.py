@@ -2,12 +2,14 @@ import os
 import re
 import io
 import time
+import wave
 import hashlib
 import logging
+import threading
 from pathlib import Path
-from typing import Optional, Dict, Any, List
-from gtts import gTTS
+from typing import Optional, Dict, Any
 
+from piper.voice import PiperVoice
 from config import settings
 
 logger = logging.getLogger("smartfarm.tts")
@@ -25,240 +27,196 @@ def ensure_directories():
         logger.warning(f"[TTS Cache] Directory creation notice: {e}")
 
 
-def map_language(language: Optional[str]) -> str:
+def normalize_language(language: Optional[str]) -> str:
     """
-    Authoritative language code mapping for Google TTS (gTTS):
-      ta-IN -> ta
-      ta    -> ta
-      en-IN -> en
-      en    -> en
+    Normalizes input language string to canonical 'ta' or 'en'.
+    Accepts:
+      'ta', 'ta-in', 'tamil' -> 'ta'
+      'en', 'en-in', 'en-us', 'english' -> 'en'
     """
     norm = (language or "").strip().lower()
-    if norm.startswith("ta"):
+    if norm.startswith("ta") or "tamil" in norm:
         return "ta"
     return "en"
 
 
-def compute_cache_key(language: str, text: str) -> str:
+def compute_cache_key(language: str, text: str, model_name: str) -> str:
     """
-    Computes SHA256('gtts|<language>|<chunk text>').
-    Deterministic unique filename hash.
+    Computes deterministic SHA256(language + ":" + text + ":" + model_name).
     """
     normalized_text = re.sub(r"\s+", " ", text).strip()
-    raw = f"gtts|{language}|{normalized_text}".encode("utf-8")
+    raw = f"{language}:{normalized_text}:{model_name}".encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
-def split_text_into_natural_chunks(text: str, max_chars: int = 1500) -> List[str]:
+def clean_text_for_piper(text: str, language: str = "en") -> str:
     """
-    Splits text into natural chunks around target size of ~1500 characters.
-    Prioritizes natural boundaries:
-      1. Paragraph boundaries (\\n\\n)
-      2. Sentence boundaries (. ! ? । Tamil virama / full stop)
-      3. Punctuation boundaries (, ; : -)
-      4. Whitespace boundaries
-
-    Never cuts in the middle of a word or Tamil Unicode character.
+    Cleans markdown formatting and special characters for clean Piper synthesis.
     """
-    if not text or not text.strip():
-        return []
+    if not text:
+        return ""
+    cleaned = str(text)
 
-    cleaned = re.sub(r"\r\n", "\n", text).strip()
-    if len(cleaned) <= max_chars:
-        return [cleaned]
+    # Normalize percentage
+    if language == "ta":
+        cleaned = cleaned.replace("%", " சதவீதம் ")
+    else:
+        cleaned = cleaned.replace("%", " percent ")
 
-    chunks: List[str] = []
-    # 1. Split by paragraphs
-    paragraphs = [p.strip() for p in cleaned.split("\n\n") if p.strip()]
-
-    for para in paragraphs:
-        if len(para) <= max_chars:
-            chunks.append(para)
-            continue
-
-        # 2. Split by sentences (. ! ? ।)
-        sentence_pattern = r"(?<=[.!?।])\s+"
-        sentences = [s.strip() for s in re.split(sentence_pattern, para) if s.strip()]
-
-        current_chunk = ""
-        for sentence in sentences:
-            if not current_chunk:
-                if len(sentence) <= max_chars:
-                    current_chunk = sentence
-                else:
-                    # 3. Sentence itself exceeds max_chars -> split by punctuation
-                    sub_parts = [p.strip() for p in re.split(r"(?<=[,;:\n])\s+", sentence) if p.strip()]
-                    for part in sub_parts:
-                        if not current_chunk:
-                            if len(part) <= max_chars:
-                                current_chunk = part
-                            else:
-                                # 4. Split by whitespace words (never split mid-word)
-                                words = part.split(" ")
-                                for word in words:
-                                    if not word:
-                                        continue
-                                    if len(current_chunk) + len(word) + 1 <= max_chars:
-                                        current_chunk = f"{current_chunk} {word}".strip()
-                                    else:
-                                        if current_chunk:
-                                            chunks.append(current_chunk)
-                                        current_chunk = word
-                        elif len(current_chunk) + len(part) + 1 <= max_chars:
-                            current_chunk = f"{current_chunk} {part}"
-                        else:
-                            chunks.append(current_chunk)
-                            current_chunk = part
-            elif len(current_chunk) + len(sentence) + 1 <= max_chars:
-                current_chunk = f"{current_chunk} {sentence}"
-            else:
-                chunks.append(current_chunk)
-                current_chunk = sentence
-
-        if current_chunk:
-            chunks.append(current_chunk)
-
-    return [c for c in chunks if c.strip()]
+    # Strip markdown syntax
+    cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
+    cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
+    cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
+    cleaned = re.sub(r"_([^_]+)_", r"\1", cleaned)
+    cleaned = re.sub(r"^#+\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*[-*•]\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*\d+\.\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"[`>]", "", cleaned)
+    cleaned = re.sub(r"\n{2,}", ". ", cleaned)
+    cleaned = re.sub(r"\n", ", ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned.strip()
 
 
-class GoogleTTSManager:
+class PiperTTSManager:
     """
-    Dedicated Google TTS (gTTS) Manager.
-    Sole engine for Tamil and English Text-to-Speech synthesis in SmartFarm AI.
-    Handles:
-      - Canonical language mapping ('ta-IN' -> 'ta', 'en-IN' -> 'en')
-      - Natural chunking (~1500 chars)
-      - Deterministic SHA-256 disk caching under static/tts/<hash>.mp3
-      - Direct audio_url output (/static/tts/<hash>.mp3)
-      - Silent error resilience
+    Local / Self-Hosted Piper Text-to-Speech Manager.
+    - Thread-safe lazy singleton loading for Tamil and English ONNX models.
+    - Synthesizes directly to 22,050 Hz mono WAV audio.
+    - Deterministic SHA-256 disk caching under static/tts/<hash>.wav.
+    - Zero external API keys or cloud service dependencies.
     """
 
     def __init__(self):
         ensure_directories()
+        self._tamil_voice: Optional[PiperVoice] = None
+        self._english_voice: Optional[PiperVoice] = None
+        self._lock_ta = threading.Lock()
+        self._lock_en = threading.Lock()
+
+    def _get_tamil_voice(self) -> PiperVoice:
+        """Thread-safe lazy singleton loader for Tamil Piper model."""
+        if self._tamil_voice is None:
+            with self._lock_ta:
+                if self._tamil_voice is None:
+                    model_path = settings.piper_tamil_model_path
+                    if not model_path.exists():
+                        raise FileNotFoundError(
+                            f"Tamil Piper model not found at {model_path}. "
+                            "Please run scripts/download_tts_models.py."
+                        )
+                    logger.info(f"[Piper TTS] Loading Tamil model from {model_path}...")
+                    t0 = time.time()
+                    self._tamil_voice = PiperVoice.load(str(model_path))
+                    logger.info(f"[Piper TTS] Tamil model loaded in {time.time() - t0:.2f}s.")
+        return self._tamil_voice
+
+    def _get_english_voice(self) -> PiperVoice:
+        """Thread-safe lazy singleton loader for English Piper model."""
+        if self._english_voice is None:
+            with self._lock_en:
+                if self._english_voice is None:
+                    model_path = settings.piper_english_model_path
+                    if not model_path.exists():
+                        raise FileNotFoundError(
+                            f"English Piper model not found at {model_path}. "
+                            "Please run scripts/download_tts_models.py."
+                        )
+                    logger.info(f"[Piper TTS] Loading English model from {model_path}...")
+                    t0 = time.time()
+                    self._english_voice = PiperVoice.load(str(model_path))
+                    logger.info(f"[Piper TTS] English model loaded in {time.time() - t0:.2f}s.")
+        return self._english_voice
 
     def get_providers_status(self) -> Dict[str, Any]:
-        """Returns safe provider status."""
+        """Returns safe provider status without exposing secrets."""
+        ta_ready = settings.piper_tamil_model_path.exists()
+        en_ready = settings.piper_english_model_path.exists()
         return {
-            "status": "online",
-            "tts_engine": "Google TTS (gTTS)",
-            "providers": {
-                "gtts": True
+            "status": "online" if (ta_ready and en_ready) else "degraded",
+            "tts_engine": "Piper TTS (Local/Self-Hosted)",
+            "models": {
+                "tamil": {
+                    "model": "ta_IN-rasa_female-medium",
+                    "installed": ta_ready,
+                    "loaded": self._tamil_voice is not None
+                },
+                "english": {
+                    "model": "en_US-lessac-medium",
+                    "installed": en_ready,
+                    "loaded": self._english_voice is not None
+                }
             }
         }
 
-    def _synthesize_single_chunk(self, chunk_text: str, mapped_lang: str) -> Dict[str, Any]:
+    def synthesize_bytes(self, text: Optional[str], language: Optional[str] = "en") -> bytes:
         """
-        Synthesizes a single chunk using gTTS and caches as <hash>.mp3.
-        Returns audio_url on success, or reason on failure.
+        Synthesizes text into raw WAV audio bytes using Piper TTS.
+        1. Validates text
+        2. Normalizes language
+        3. Cleans text
+        4. Checks deterministic disk cache
+        5. Synthesizes with PiperVoice
+        6. Caches and returns WAV bytes
         """
-        ensure_directories()
-        cache_key = compute_cache_key(mapped_lang, chunk_text)
-        mp3_filename = f"{cache_key}.mp3"
-        mp3_filepath = os.path.join(STATIC_TTS_DIR, mp3_filename)
-        audio_url = f"/static/tts/{mp3_filename}"
-
-        # 1. Check if cached audio file already exists
-        if os.path.exists(mp3_filepath):
-            try:
-                if os.path.getsize(mp3_filepath) > 100:
-                    logger.info(f"[gTTS Cache] Cache hit for {mapped_lang} ({cache_key[:10]}...)")
-                    return {
-                        "success": True,
-                        "audio_url": audio_url,
-                        "cached": True
-                    }
-            except Exception as e:
-                logger.warning(f"[gTTS Cache] Error reading cache file: {e}")
-
-        # 2. Synthesize using Google TTS (gTTS)
-        try:
-            logger.info(f"[gTTS] Generating MP3 audio for {len(chunk_text)} chars in '{mapped_lang}'...")
-            tts = gTTS(text=chunk_text, lang=mapped_lang, slow=False)
-            fp = io.BytesIO()
-            tts.write_to_fp(fp)
-            audio_bytes = fp.getvalue()
-
-            if audio_bytes and len(audio_bytes) > 100:
-                with open(mp3_filepath, "wb") as f_out:
-                    f_out.write(audio_bytes)
-                logger.info(f"[gTTS] Successfully saved {len(audio_bytes)} bytes to {mp3_filename}")
-                return {
-                    "success": True,
-                    "audio_url": audio_url,
-                    "cached": False
-                }
-            else:
-                logger.warning("[gTTS] Synthesis produced empty audio stream.")
-                return {
-                    "success": False,
-                    "reason": "gtts_empty_audio"
-                }
-        except Exception as e:
-            logger.warning(f"[gTTS] Synthesis failed: {e}")
-            return {
-                "success": False,
-                "reason": str(e)
-            }
-
-    def synthesize(self, text: Optional[str], language: Optional[str] = "en", preferred_provider: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Synthesizes response text into sequential audio_url chunks via Google TTS.
-        Never crashes or raises unhandled exceptions.
-        """
-        mapped_lang = map_language(language)
-
-        # Handle empty/whitespace text safely
         if not text or not str(text).strip():
-            logger.info("[gTTS] Empty text received. Skipping TTS safely.")
-            return {
-                "success": False,
-                "audio_url": None,
-                "audio_chunks": [],
-                "language": mapped_lang,
-                "reason": "empty_text"
-            }
+            raise ValueError("Text cannot be empty.")
 
-        # Natural chunking around target 1500 chars
-        chunks = split_text_into_natural_chunks(str(text), max_chars=1500)
-        if not chunks:
-            return {
-                "success": False,
-                "audio_url": None,
-                "audio_chunks": [],
-                "language": mapped_lang,
-                "reason": "empty_chunks"
-            }
+        raw_text = str(text).strip()
+        if len(raw_text) > 8000:
+            raise ValueError(f"Text length ({len(raw_text)} chars) exceeds maximum allowable limit (8000).")
 
-        audio_chunks: List[Dict[str, Any]] = []
+        norm_lang = normalize_language(language)
+        cleaned_text = clean_text_for_piper(raw_text, norm_lang)
+        if not cleaned_text:
+            raise ValueError("Text contains no speakable characters.")
 
-        for idx, chunk_text in enumerate(chunks):
-            result = self._synthesize_single_chunk(chunk_text, mapped_lang)
-            if not result.get("success"):
-                logger.warning(f"[gTTS] Failed to synthesize chunk {idx}: {result.get('reason')}")
-                return {
-                    "success": False,
-                    "audio_url": None,
-                    "audio_chunks": [],
-                    "language": mapped_lang,
-                    "reason": result.get("reason", "gtts_failed")
-                }
+        model_name = "ta_IN-rasa_female-medium" if norm_lang == "ta" else "en_US-lessac-medium"
 
-            audio_chunks.append({
-                "chunk_index": idx,
-                "audio_url": result["audio_url"],
-                "cached": result.get("cached", False)
-            })
+        # 1. Check disk cache
+        ensure_directories()
+        cache_key = compute_cache_key(norm_lang, cleaned_text, model_name)
+        wav_filename = f"{cache_key}.wav"
+        wav_filepath = STATIC_TTS_DIR / wav_filename
 
-        first_url = audio_chunks[0]["audio_url"] if audio_chunks else None
+        if wav_filepath.exists():
+            try:
+                if wav_filepath.stat().st_size > 1000:
+                    logger.info(f"[Piper Cache] Cache hit for {norm_lang} ({cache_key[:10]}...)")
+                    with open(wav_filepath, "rb") as f:
+                        return f.read()
+            except Exception as e:
+                logger.warning(f"[Piper Cache] Error reading cache file: {e}")
 
-        return {
-            "success": True,
-            "audio_url": first_url,
-            "audio_chunks": audio_chunks,
-            "language": mapped_lang,
-            "total_chunks": len(audio_chunks)
-        }
+        # 2. Synthesize using PiperVoice
+        logger.info(f"[Piper TTS] Synthesizing {len(cleaned_text)} chars in '{norm_lang}' with {model_name}...")
+        t0 = time.time()
+
+        if norm_lang == "ta":
+            voice = self._get_tamil_voice()
+        else:
+            voice = self._get_english_voice()
+
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wav_file:
+            voice.synthesize_wav(cleaned_text, wav_file)
+
+        wav_bytes = buf.getvalue()
+        elapsed = time.time() - t0
+        logger.info(f"[Piper TTS] Synthesis completed in {elapsed:.2f}s ({len(wav_bytes)} bytes).")
+
+        if not wav_bytes or len(wav_bytes) < 1000:
+            raise RuntimeError("Piper TTS synthesis produced empty or corrupted WAV audio.")
+
+        # 3. Save to disk cache
+        try:
+            with open(wav_filepath, "wb") as f_out:
+                f_out.write(wav_bytes)
+        except Exception as e:
+            logger.warning(f"[Piper Cache] Failed to write cache file: {e}")
+
+        return wav_bytes
 
 
 # Global instance
-tts_manager = GoogleTTSManager()
+tts_manager = PiperTTSManager()

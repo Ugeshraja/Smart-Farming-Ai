@@ -1,151 +1,30 @@
 /**
- * SmartFarm AI - Canonical Speech Service (Browser SpeechSynthesis)
+ * SmartFarm AI - Canonical Speech Service (Google Cloud Text-to-Speech)
  *
- * Implements native browser SpeechSynthesis for Tamil ('ta-IN') and English ('en-IN').
- * - Zero external API keys or serverless dependencies
- * - Full controls: Speak, Pause, Resume, Stop, Replay
- * - Safe natural text cleaning (preserves Tamil and English phrasing)
- * - Safe error handling: voice failure never affects or removes AI text
+ * Replaces browser SpeechSynthesis with server-side Google Cloud Text-to-Speech:
+ * - Direct HTTP POST /api/tts returning audio/mpeg (MP3)
+ * - Safe HTMLAudioElement playback (speak, pause, resume, stop, replay)
+ * - Zero API keys or secrets exposed in frontend code
+ * - Authentic Tamil ('ta-IN' - Wavenet/Standard) and English ('en-IN' - Wavenet/Standard)
+ * - Object URL lifecycle management with automatic cleanup
+ * - Error resilience: TTS failure never affects AI text response
  */
 
 class SpeechService {
   constructor() {
-    this.currentUtterance = null;
+    this.audio = null;
+    this.currentObjectUrl = null;
     this.isPlaying = false;
     this.isPaused = false;
     this.currentCallbacks = null;
     this.lastText = '';
     this.lastLanguage = 'en';
-    this.voices = [];
-    this.voicesLoaded = false;
-    this.initVoices();
+    this.abortController = null;
+    this.isLoading = false;
   }
 
   /**
-   * Safe asynchronous voice loading for Chrome/Chromium browsers.
-   */
-  initVoices() {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-    const updateVoices = () => {
-      try {
-        const list = window.speechSynthesis.getVoices();
-        if (list && list.length > 0) {
-          this.voices = list;
-          this.voicesLoaded = true;
-        }
-      } catch (e) {
-        console.warn('[SpeechService] getVoices error:', e);
-      }
-    };
-
-    updateVoices();
-
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = updateVoices;
-    }
-  }
-
-  /**
-   * Returns current list of available voices, refreshing from speechSynthesis if empty.
-   */
-  getVoices() {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return [];
-    try {
-      const list = window.speechSynthesis.getVoices();
-      if (list && list.length > 0) {
-        this.voices = list;
-        this.voicesLoaded = true;
-      }
-    } catch (e) {}
-    return this.voices;
-  }
-
-  /**
-   * Finds an authentic Tamil voice (ta-IN or starting with 'ta').
-   * Returns null if no Tamil voice is installed.
-   */
-  getTamilVoice() {
-    const voices = this.getVoices();
-    if (!voices || voices.length === 0) return null;
-
-    return (
-      voices.find(v => v.lang === 'ta-IN') ||
-      voices.find(v => v.lang === 'ta_IN') ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('ta-')) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('ta_')) ||
-      voices.find(v => v.lang?.toLowerCase() === 'ta') ||
-      voices.find(v => v.name?.toLowerCase().includes('tamil'))
-    ) || null;
-  }
-
-  /**
-   * Finds an English voice, prioritizing en-IN for Indian farming terminology.
-   */
-  getEnglishVoice() {
-    const voices = this.getVoices();
-    if (!voices || voices.length === 0) return null;
-
-    return (
-      voices.find(v => v.lang === 'en-IN') ||
-      voices.find(v => v.lang === 'en_IN') ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('en-in')) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('en-')) ||
-      voices.find(v => v.lang?.toLowerCase() === 'en')
-    ) || null;
-  }
-
-  /**
-   * Returns boolean indicating if a Tamil voice is available in the browser.
-   */
-  hasTamilVoice() {
-    return this.getTamilVoice() !== null;
-  }
-
-  /**
-   * Development-only diagnostic report on STT/TTS support and available voices.
-   * NEVER logs API keys, passwords, or secrets.
-   */
-  logDiagnostics() {
-    if (typeof window === 'undefined') return null;
-
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const hasSTT = Boolean(SpeechRec);
-    const hasTTS = typeof window.speechSynthesis !== 'undefined';
-    const voices = this.getVoices();
-    const tamilVoice = this.getTamilVoice();
-    const englishVoice = this.getEnglishVoice();
-
-    console.log('=== [SmartFarm AI] Voice Diagnostics ===');
-    console.log('SpeechRecognition:', hasSTT ? 'supported' : 'NOT supported');
-    console.log('SpeechSynthesis:', hasTTS ? 'supported' : 'NOT supported');
-    console.log('Available voices:', voices.length);
-    if (tamilVoice) {
-      console.log('Tamil voice: available');
-      console.log('Selected voice:', tamilVoice.name);
-      console.log('Voice language:', tamilVoice.lang);
-    } else {
-      console.log('Tamil voice: NOT AVAILABLE');
-    }
-    if (englishVoice) {
-      console.log('English voice:', englishVoice.name, `(${englishVoice.lang})`);
-    }
-    console.log('========================================');
-
-    return {
-      speechRecognitionSupported: hasSTT,
-      speechSynthesisSupported: hasTTS,
-      availableVoicesCount: voices.length,
-      tamilVoiceAvailable: Boolean(tamilVoice),
-      selectedTamilVoiceName: tamilVoice?.name || null,
-      selectedTamilVoiceLang: tamilVoice?.lang || null,
-      selectedEnglishVoiceName: englishVoice?.name || null,
-      selectedEnglishVoiceLang: englishVoice?.lang || null,
-    };
-  }
-
-  /**
-   * Clean AI markdown and special characters for natural spoken comprehension.
+   * Cleans AI markdown formatting for spoken text clarity.
    */
   cleanTextForSpeech(text, language = 'en') {
     if (!text) return '';
@@ -176,22 +55,41 @@ class SpeechService {
   }
 
   /**
-   * Complete Stop:
-   * Cancels browser speechSynthesis, resets state and callbacks.
+   * Completely stops currently playing or loading audio.
+   * Optionally keeps the object URL for Replay.
    */
-  stop() {
+  stop(revokeUrl = false) {
+    if (this.abortController) {
+      try {
+        this.abortController.abort();
+      } catch (e) {}
+      this.abortController = null;
+    }
+
+    this.isLoading = false;
     this.isPlaying = false;
     this.isPaused = false;
 
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    if (this.audio) {
       try {
-        window.speechSynthesis.cancel();
+        this.audio.pause();
+        this.audio.currentTime = 0;
       } catch (e) {
-        console.warn('[SpeechService] Stop error:', e);
+        console.warn('[SpeechService] Stop audio error:', e);
       }
     }
 
-    this.currentUtterance = null;
+    if (revokeUrl && this.currentObjectUrl) {
+      try {
+        URL.revokeObjectURL(this.currentObjectUrl);
+      } catch (e) {}
+      this.currentObjectUrl = null;
+      if (this.audio) {
+        this.audio.src = '';
+      }
+      this.lastText = '';
+      this.lastLanguage = 'en';
+    }
 
     if (this.currentCallbacks?.onEnd) {
       const cb = this.currentCallbacks.onEnd;
@@ -203,68 +101,96 @@ class SpeechService {
   }
 
   /**
-   * Pause currently playing speech.
+   * Clears all audio state, revoking object URL and resetting text.
+   * Call when language changes or component unmounts.
+   */
+  clear() {
+    this.stop(true);
+  }
+
+  /**
+   * Pauses active audio playback.
    */
   pause() {
-    if (!this.isPlaying || this.isPaused) return;
-
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.pause();
-        this.isPaused = true;
-      } catch (e) {
-        console.warn('[SpeechService] Pause error:', e);
-      }
+    if (!this.isPlaying || this.isPaused || !this.audio) return;
+    try {
+      this.audio.pause();
+      this.isPaused = true;
+      this.isPlaying = false;
+    } catch (e) {
+      console.warn('[SpeechService] Pause error:', e);
     }
   }
 
   /**
-   * Resume paused speech.
+   * Resumes paused audio playback.
    */
   resume() {
-    if (!this.isPlaying || !this.isPaused) return;
-
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.resume();
-        this.isPaused = false;
-      } catch (e) {
-        console.warn('[SpeechService] Resume error:', e);
+    if (!this.audio || !this.isPaused) return;
+    try {
+      const playPromise = this.audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            this.isPlaying = true;
+            this.isPaused = false;
+          })
+          .catch((err) => {
+            console.warn('[SpeechService] Resume play error:', err);
+          });
       }
+    } catch (e) {
+      console.warn('[SpeechService] Resume error:', e);
     }
   }
 
   /**
-   * Replay last spoken text.
+   * Replays existing audio if available without re-calling Google TTS.
    */
   replay(options = {}) {
+    if (this.audio && this.currentObjectUrl && this.lastText) {
+      this.stop(false);
+      this.currentCallbacks = options;
+      try {
+        this.audio.currentTime = 0;
+        const playPromise = this.audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              this.isPlaying = true;
+              this.isPaused = false;
+              if (options.onStart) options.onStart();
+            })
+            .catch((err) => {
+              console.warn('[SpeechService] Replay play error:', err);
+              if (options.onError) options.onError(err);
+            });
+        }
+        return { success: true, replayed: true };
+      } catch (e) {
+        console.warn('[SpeechService] Replay error:', e);
+      }
+    }
+
     if (!this.lastText) return { success: false, reason: 'no_previous_text' };
     return this.speak(this.lastText, this.lastLanguage, options);
   }
 
   /**
-   * Main TTS Entry Point:
-   * 1. Clean input text
-   * 2. Find matching voice (strictly checks for Tamil voice when language is 'ta')
-   * 3. Configure SpeechSynthesisUtterance
-   * 4. Attach onstart, onend, onerror handlers
-   * 5. Call window.speechSynthesis.speak(utterance)
+   * Main Text-to-Speech method:
+   * 1. If exact same text and language already loaded, replays without calling /api/tts.
+   * 2. Otherwise stops previous audio and revokes previous object URL.
+   * 3. Sends POST /api/tts { text, language }.
+   * 4. Receives MP3 audio/mpeg.
+   * 5. Creates Blob and URL.createObjectURL(blob).
+   * 6. Plays via HTMLAudioElement.
    */
-  speak(text, language = 'en', options = {}) {
+  async speak(text, language = 'en', options = {}) {
     const { onStart, onEnd, onError } = options;
-
-    // Reset previous audio
-    this.stop();
 
     if (!text || typeof text !== 'string' || !text.trim()) {
       if (onEnd) onEnd();
       return { success: false, reason: 'empty_text' };
-    }
-
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      console.warn('[SpeechService] Browser does not support window.speechSynthesis');
-      if (onError) onError(new Error('Browser speech synthesis is not supported.'));
-      return { success: false, reason: 'unsupported' };
     }
 
     const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';
@@ -275,98 +201,181 @@ class SpeechService {
       return { success: false, reason: 'empty_cleaned_text' };
     }
 
-    // Strict Tamil voice check: Do NOT silently speak Tamil text using an English voice
-    let selectedVoice = null;
-    if (normLang === 'ta') {
-      selectedVoice = this.getTamilVoice();
-      if (!selectedVoice) {
-        const noVoiceMsg = "தமிழ் குரல் தற்போது இந்த உலாவியில் கிடைக்கவில்லை. Chrome/Windows தமிழ் குரல் அமைப்பை சரிபார்க்கவும்.";
-        console.warn('[SpeechService] No Tamil voice available in browser/OS.');
-        const err = new Error(noVoiceMsg);
-        err.reason = 'no_tamil_voice';
-        if (onError) onError(err);
-        return {
-          success: false,
-          reason: 'no_tamil_voice',
-          message: noVoiceMsg
-        };
-      }
-    } else {
-      selectedVoice = this.getEnglishVoice();
+    // Check if same audio is already loaded -> replay without calling /api/tts
+    if (
+      this.lastText === cleanedText &&
+      this.lastLanguage === normLang &&
+      this.audio &&
+      this.currentObjectUrl
+    ) {
+      return this.replay(options);
     }
 
-    this.lastText = text;
-    this.lastLanguage = normLang;
+    // Stop and cleanup previous audio
+    this.stop(true);
+
     this.currentCallbacks = options;
+    this.isLoading = true;
+    this.abortController = new AbortController();
+
+    const errorMessage =
+      normLang === 'ta'
+        ? 'தமிழ் குரல் சேவை தற்போது கிடைக்கவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+        : 'Voice service is currently unavailable. Please try again.';
 
     try {
-      // Cancel before starting new speech as specified
-      window.speechSynthesis.cancel();
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'audio/wav, audio/*;q=0.9, */*;q=0.8'
+        },
+        body: JSON.stringify({
+          text: cleanedText,
+          language: normLang
+        }),
+        signal: this.abortController.signal
+      });
 
-      const utterance = new SpeechSynthesisUtterance(cleanedText);
-      utterance.lang = normLang === 'ta' ? 'ta-IN' : 'en-IN';
-      utterance.rate = normLang === 'ta' ? 0.95 : 1.0;
-      utterance.pitch = 1.0;
-
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
+      if (!response.ok) {
+        throw new Error(`TTS server responded with status: ${response.status}`);
       }
 
-      utterance.onstart = () => {
+      const contentType = response.headers.get('content-type') || '';
+      let blob;
+
+      // Handle direct audio/mpeg or JSON response containing audio_url
+      if (contentType.includes('application/json')) {
+        const json = await response.json();
+        if (json.audio_url) {
+          const audioRes = await fetch(json.audio_url, { signal: this.abortController.signal });
+          blob = await audioRes.blob();
+        } else {
+          throw new Error('TTS response did not contain audio data');
+        }
+      } else {
+        blob = await response.blob();
+      }
+
+      if (!blob || blob.size < 100) {
+        throw new Error('Received empty audio stream from TTS service');
+      }
+
+      // Revoke previous URL if any existed
+      if (this.currentObjectUrl) {
+        try { URL.revokeObjectURL(this.currentObjectUrl); } catch (e) {}
+      }
+
+      const audioUrl = URL.createObjectURL(blob);
+      this.currentObjectUrl = audioUrl;
+      this.lastText = cleanedText;
+      this.lastLanguage = normLang;
+      this.isLoading = false;
+
+      const audio = new Audio(audioUrl);
+      this.audio = audio;
+
+      audio.onplay = () => {
         this.isPlaying = true;
         this.isPaused = false;
-        if (onStart) onStart();
-      };
-
-      utterance.onend = () => {
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.currentUtterance = null;
-        if (onEnd) onEnd();
-      };
-
-      utterance.onerror = (e) => {
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.currentUtterance = null;
-        // Don't treat cancel() as a hard error
-        if (e.error !== 'canceled' && e.error !== 'interrupted') {
-          console.warn('[SpeechService] SpeechSynthesis error:', e?.error);
-          if (onError) onError(e);
-        } else if (onEnd) {
-          onEnd();
+        if (this.currentCallbacks?.onStart) {
+          this.currentCallbacks.onStart();
         }
       };
 
-      // Store reference on instance to prevent Chromium garbage collection bug
-      this.currentUtterance = utterance;
+      audio.onended = () => {
+        this.isPlaying = false;
+        this.isPaused = false;
+        if (this.currentCallbacks?.onEnd) {
+          this.currentCallbacks.onEnd();
+        }
+      };
 
-      window.speechSynthesis.speak(utterance);
-      return { success: true, voice: selectedVoice?.name || null };
+      audio.onerror = (e) => {
+        console.warn('[SpeechService] HTMLAudioElement playback error:', e);
+        this.isPlaying = false;
+        this.isPaused = false;
+        const err = new Error(errorMessage);
+        err.reason = 'audio_playback_error';
+        if (this.currentCallbacks?.onError) {
+          this.currentCallbacks.onError(err);
+        }
+      };
+
+      audio.onpause = () => {
+        if (!audio.ended && this.isPlaying) {
+          this.isPaused = true;
+          this.isPlaying = false;
+        }
+      };
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+      }
+
+      return { success: true, audioUrl };
     } catch (err) {
-      console.warn('[SpeechService] speak error:', err);
+      this.isLoading = false;
       this.isPlaying = false;
       this.isPaused = false;
-      this.currentUtterance = null;
-      if (onError) onError(err);
-      return { success: false, reason: 'exception', error: err.message };
+
+      // Don't report abort as a user error
+      if (err.name === 'AbortError') {
+        return { success: false, reason: 'aborted' };
+      }
+
+      console.warn('[SpeechService] Google TTS error:', err?.message || err);
+      const userErr = new Error(errorMessage);
+      userErr.reason = 'tts_service_unavailable';
+      userErr.detail = err?.message;
+
+      if (this.currentCallbacks?.onError) {
+        this.currentCallbacks.onError(userErr);
+      }
+
+      return {
+        success: false,
+        reason: 'tts_failed',
+        message: errorMessage
+      };
     }
   }
 
-  speakText(text, language = 'en', options = {}) {
-    return this.speak(text, language, options);
+  /**
+   * Diagnostic report on STT support and TTS endpoint without exposing secrets.
+   */
+  logDiagnostics() {
+    if (typeof window === 'undefined') return null;
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const hasSTT = Boolean(SpeechRec);
+
+    console.log('=== [SmartFarm AI] Voice Diagnostics ===');
+    console.log('SpeechRecognition (STT):', hasSTT ? 'supported' : 'NOT supported');
+    console.log('Text-to-Speech (TTS):', 'Piper TTS (Local/Self-Hosted) via POST /api/tts');
+    console.log('Tamil Voice (ta):', 'ta_IN-rasa_female-medium (22,050 Hz)');
+    console.log('English Voice (en):', 'en_US-lessac-medium (22,050 Hz)');
+    console.log('Audio Player:', 'HTMLAudioElement (WAV / audio/wav)');
+    console.log('========================================');
+
+    return {
+      speechRecognitionSupported: hasSTT,
+      ttsEngine: 'Piper TTS (Local/Self-Hosted)',
+      ttsEndpoint: '/api/tts',
+      tamilVoice: 'ta_IN-rasa_female-medium',
+      englishVoice: 'en_US-lessac-medium',
+      audioFormat: 'audio/wav (22050 Hz)'
+    };
   }
 }
 
 export const speechService = new SpeechService();
 export const speak = (text, language, options) => speechService.speak(text, language, options);
 export const speakText = (text, language, options) => speechService.speak(text, language, options);
-export const stopSpeaking = () => speechService.stop();
+export const stopSpeaking = () => speechService.stop(false);
 export const pauseSpeaking = () => speechService.pause();
 export const resumeSpeaking = () => speechService.resume();
 export const replaySpeaking = (options) => speechService.replay(options);
 export const logVoiceDiagnostics = () => speechService.logDiagnostics();
-export const getAvailableVoices = () => speechService.getVoices();
-export const getTamilVoice = () => speechService.getTamilVoice();
-export const hasTamilVoice = () => speechService.hasTamilVoice();
 export default speechService;

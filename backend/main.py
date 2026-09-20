@@ -176,6 +176,13 @@ app.include_router(sensors.router, prefix=BACKEND_API_PREFIX)
 app.include_router(field.router, prefix=BACKEND_API_PREFIX)
 app.include_router(schemes.router, prefix=BACKEND_API_PREFIX)
 
+# Direct Piper TTS endpoints
+@app.post("/api/tts", tags=["Voice Assistant"])
+@app.post("/tts", tags=["Voice Assistant"])
+async def direct_api_tts(payload: voice.TtsRequest):
+    return await voice.tts_endpoint(payload)
+
+
 
 if __name__ == "__main__":
     import uvicorn

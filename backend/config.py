@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     WEATHER_API_KEY: str = ""
     OPENWEATHER_API_KEY: str = ""
     VOICE_API_KEY: str = ""
+    # Piper TTS Models Configuration (Local / Self-Hosted)
+    PIPER_TTS_DIR: str = "models/tts"
+    PIPER_TAMIL_MODEL: str = "models/tts/tamil/ta_IN-rasa_female-medium.onnx"
+    PIPER_ENGLISH_MODEL: str = "models/tts/english/en_US-lessac-medium.onnx"
 
     # Trained AI Models Configuration (Deployment-Ready Relative Defaults)
     MODEL_DIR: str = "models"
@@ -279,6 +283,16 @@ class Settings(BaseSettings):
             except Exception:
                 pass
         return ""
+
+    @property
+    def piper_tamil_model_path(self) -> Path:
+        p = Path(self.PIPER_TAMIL_MODEL)
+        return p if p.is_absolute() else BASE_DIR / p
+
+    @property
+    def piper_english_model_path(self) -> Path:
+        p = Path(self.PIPER_ENGLISH_MODEL)
+        return p if p.is_absolute() else BASE_DIR / p
 
     @property
     def hf_token(self) -> str:

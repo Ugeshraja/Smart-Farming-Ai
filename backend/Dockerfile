@@ -15,12 +15,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory inside container
 WORKDIR /app
 
-# Install minimal OS packages required for OpenCV, PyTorch, image processing, and health check
+# Install minimal OS packages required for OpenCV, PyTorch, image processing, Piper TTS, and health check
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     ffmpeg \
     curl \
+    espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies manifest first to leverage Docker layer caching
@@ -39,10 +40,24 @@ COPY . /app
 
 # Ensure runtime writable directories exist for models, static media, and audio caches
 RUN mkdir -p /app/models/brinjal \
+             /app/models/tts/tamil \
+             /app/models/tts/english \
              /app/static/predictions \
              /app/static/tts \
              /app/cache/tts \
              /app/cache
+
+# Download Piper TTS models for Tamil and English during Docker build (fails build if download fails)
+RUN curl -fSsL -o /app/models/tts/tamil/ta_IN-rasa_female-medium.onnx \
+        https://huggingface.co/tinisoft/piper-ta_IN-rasa_female-medium/resolve/main/ta_IN-rasa_female-medium.onnx && \
+    curl -fSsL -o /app/models/tts/tamil/ta_IN-rasa_female-medium.onnx.json \
+        https://huggingface.co/tinisoft/piper-ta_IN-rasa_female-medium/resolve/main/ta_IN-rasa_female-medium.onnx.json && \
+    curl -fSsL -o /app/models/tts/english/en_US-lessac-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx && \
+    curl -fSsL -o /app/models/tts/english/en_US-lessac-medium.onnx.json \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json && \
+    test -s /app/models/tts/tamil/ta_IN-rasa_female-medium.onnx && \
+    test -s /app/models/tts/english/en_US-lessac-medium.onnx
 
 # Container Healthcheck targeting the safe /api/health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

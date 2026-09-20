@@ -37,7 +37,23 @@
       "destination": "/api/backend?path=voice"
     },
     {
-      "source": "/((?!api/backend|api/voice|voice|api/chat).*)",
+      "source": "/api/tts/:path*",
+      "destination": "/api/backend?path=api/tts/:path*"
+    },
+    {
+      "source": "/api/tts",
+      "destination": "/api/backend?path=api/tts"
+    },
+    {
+      "source": "/tts/:path*",
+      "destination": "/api/backend?path=tts/:path*"
+    },
+    {
+      "source": "/tts",
+      "destination": "/api/backend?path=tts"
+    },
+    {
+      "source": "/((?!api/backend|api/voice|voice|api/chat|api/tts|tts).*)",
       "destination": "/index.html"
     }
   ]

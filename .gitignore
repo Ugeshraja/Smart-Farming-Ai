@@ -22,6 +22,9 @@ backend/cache/tts/
 backend/models/*.pth
 backend/models/*.pt
 backend/models/brinjal/*.pth
+backend/models/tts/
+*.onnx
+*.onnx.json
 
 # Local real-image test files
 backend/tests/sample_files/*_real.jpg

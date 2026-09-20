@@ -41,24 +41,9 @@ export default function VoiceAssistant() {
   const timerIntervalRef = useRef(null);
   const hasProcessedRef = useRef(false);
 
-  // Run development-safe voice diagnostics on mount and voice change
+  // Run development-safe voice diagnostics on mount
   useEffect(() => {
     logVoiceDiagnostics();
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const handleVoicesChanged = () => {
-        logVoiceDiagnostics();
-      };
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.addEventListener ?
-          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged) :
-          (window.speechSynthesis.onvoiceschanged = handleVoicesChanged);
-      }
-      return () => {
-        if (window.speechSynthesis.removeEventListener) {
-          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-        }
-      };
-    }
   }, []);
 
   // Cleanup on unmount
@@ -66,13 +51,15 @@ export default function VoiceAssistant() {
     return () => {
       stopAnyRecording();
       stopAnyAudio();
+      speechService.clear();
     };
   }, []);
 
-  // When language changes, stop audio playback, active recognition, and clear errors
+  // When language changes, stop audio playback, active recognition, clear old audio state and errors
   useEffect(() => {
     stopAnyRecording();
     stopAnyAudio();
+    speechService.clear();
     setErrorMessage('');
     logVoiceDiagnostics();
   }, [language]);
@@ -263,7 +250,7 @@ export default function VoiceAssistant() {
     }
   };
 
-  // Central trigger to speak response using browser SpeechSynthesis
+  // Central trigger to speak response using Google Cloud Text-to-Speech
   const triggerSpeak = (text) => {
     if (!text) return;
     stopAnyAudio();
@@ -276,15 +263,12 @@ export default function VoiceAssistant() {
       },
       onError: (err) => {
         setVoiceState('idle');
-        if (err?.reason === 'no_tamil_voice' || err?.message?.includes('தமிழ் குரல்')) {
-          setErrorMessage(
-            language === 'ta'
-              ? 'தமிழ் குரல் தற்போது இந்த உலாவியில் கிடைக்கவில்லை. Chrome/Windows தமிழ் குரல் அமைப்பை சரிபார்க்கவும்.'
-              : 'Tamil voice is not available in this browser. Please check Chrome/Windows voice settings.'
-          );
-        } else {
-          console.warn('Voice playback failed:', err);
-        }
+        const failMsg =
+          language === 'ta'
+            ? 'தமிழ் குரல் சேவை தற்போது கிடைக்கவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+            : 'Voice service is currently unavailable. Please try again.';
+        setErrorMessage(failMsg);
+        console.warn('Google TTS playback failed:', err);
       }
     });
   };

@@ -111,6 +111,11 @@ async def root():
     return resp
 
 
+@app.get("/health", tags=["Health"])
+async def minimal_health_check():
+    return {"status": "healthy"}
+
+
 @app.get(f"{settings.API_V1_PREFIX}/health", tags=["Health"])
 async def health_check():
     rag_files = list(settings.RAG_DIR.glob("*.txt")) if settings.RAG_DIR.exists() else []

@@ -15,7 +15,13 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../services/apiService';
-import { speechService, stopSpeaking, pauseSpeaking, resumeSpeaking } from '../services/speechService';
+import {
+  speechService,
+  stopSpeaking,
+  pauseSpeaking,
+  resumeSpeaking,
+  logVoiceDiagnostics
+} from '../services/speechService';
 
 export default function VoiceAssistant() {
   const { t, language, setLanguage } = useLanguage();
@@ -28,11 +34,32 @@ export default function VoiceAssistant() {
   const [errorMessage, setErrorMessage] = useState('');
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // References for SpeechRecognition, listening guard, and timer
+  // References for SpeechRecognition, listening guard, timer, and processing guard
   const speechRecognitionRef = useRef(null);
   const isListeningRef = useRef(false);
   const liveTranscriptRef = useRef('');
   const timerIntervalRef = useRef(null);
+  const hasProcessedRef = useRef(false);
+
+  // Run development-safe voice diagnostics on mount and voice change
+  useEffect(() => {
+    logVoiceDiagnostics();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const handleVoicesChanged = () => {
+        logVoiceDiagnostics();
+      };
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.addEventListener ?
+          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged) :
+          (window.speechSynthesis.onvoiceschanged = handleVoicesChanged);
+      }
+      return () => {
+        if (window.speechSynthesis.removeEventListener) {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+        }
+      };
+    }
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -47,6 +74,7 @@ export default function VoiceAssistant() {
     stopAnyRecording();
     stopAnyAudio();
     setErrorMessage('');
+    logVoiceDiagnostics();
   }, [language]);
 
   const stopAnyAudio = () => {
@@ -76,6 +104,7 @@ export default function VoiceAssistant() {
   const startRecording = () => {
     stopAnyAudio();
     setErrorMessage('');
+    hasProcessedRef.current = false;
 
     // Prevent double-start (InvalidStateError)
     if (isListeningRef.current) {
@@ -96,7 +125,7 @@ export default function VoiceAssistant() {
 
     try {
       const recognition = new SpeechRec();
-      // Configure language before start
+      // Configure language before start: ta-IN for Tamil, en-IN for English
       recognition.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
       recognition.continuous = false;
       recognition.interimResults = true;
@@ -122,23 +151,30 @@ export default function VoiceAssistant() {
 
       recognition.onresult = (event) => {
         let currentTranscript = '';
+        let hasFinal = false;
+
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
-        }
-        if (currentTranscript.trim()) {
-          liveTranscriptRef.current = currentTranscript.trim();
-          setTranscript(currentTranscript.trim());
+          if (event.results[i].isFinal) {
+            hasFinal = true;
+          }
         }
 
-        // If final result emitted by speech engine, automatically process it
-        const isFinal = event.results[0] && event.results[0].isFinal;
-        if (isFinal && currentTranscript.trim()) {
+        const trimmed = currentTranscript.trim();
+        if (trimmed) {
+          liveTranscriptRef.current = trimmed;
+          setTranscript(trimmed);
+        }
+
+        // Process final result once, avoiding duplicate requests
+        if (hasFinal && trimmed && !hasProcessedRef.current) {
+          hasProcessedRef.current = true;
           stopTimer();
           isListeningRef.current = false;
           try {
             recognition.stop();
           } catch (e) {}
-          processQuestion(currentTranscript.trim());
+          processQuestion(trimmed);
         }
       };
 
@@ -189,10 +225,11 @@ export default function VoiceAssistant() {
       recognition.onend = () => {
         isListeningRef.current = false;
         stopTimer();
-        // If recording finished without auto-final trigger, check captured text
-        if (liveTranscriptRef.current.trim()) {
-          processQuestion(liveTranscriptRef.current.trim());
-        } else {
+        const candidate = liveTranscriptRef.current.trim();
+        if (candidate && !hasProcessedRef.current) {
+          hasProcessedRef.current = true;
+          processQuestion(candidate);
+        } else if (!hasProcessedRef.current) {
           setVoiceState((prev) => (prev === 'recording' ? 'idle' : prev));
         }
       };
@@ -239,7 +276,15 @@ export default function VoiceAssistant() {
       },
       onError: (err) => {
         setVoiceState('idle');
-        console.warn('Voice playback failed silently:', err);
+        if (err?.reason === 'no_tamil_voice' || err?.message?.includes('தமிழ் குரல்')) {
+          setErrorMessage(
+            language === 'ta'
+              ? 'தமிழ் குரல் தற்போது இந்த உலாவியில் கிடைக்கவில்லை. Chrome/Windows தமிழ் குரல் அமைப்பை சரிபார்க்கவும்.'
+              : 'Tamil voice is not available in this browser. Please check Chrome/Windows voice settings.'
+          );
+        } else {
+          console.warn('Voice playback failed:', err);
+        }
       }
     });
   };

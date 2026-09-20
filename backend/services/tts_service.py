@@ -126,6 +126,49 @@ def clean_text_for_piper(text: str, language: str = "en") -> str:
     return cleaned.strip()
 
 
+def split_text_into_chunks(text: str, max_chars: int = 120) -> list[str]:
+    """
+    Splits text into natural sentences/clauses for safe, memory-efficient Piper synthesis.
+    Splits on sentence terminators (. ! ? । \n) and clause boundaries (, ;).
+    Never splits words.
+    Prevents ONNX Runtime intermediate buffer spikes under Render Free 512 MB RAM limit.
+    """
+    if not text:
+        return []
+    cleaned = text.strip()
+    if len(cleaned) <= max_chars:
+        return [cleaned]
+
+    sentences = re.split(r'(?<=[.!?।\n])\s+', cleaned)
+    chunks = []
+    current = ""
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        if len(s) > max_chars:
+            sub_parts = re.split(r'(?<=[,;])\s+', s)
+            for sp in sub_parts:
+                sp = sp.strip()
+                if not sp:
+                    continue
+                if current and len(current) + len(sp) + 1 > max_chars:
+                    chunks.append(current)
+                    current = sp
+                else:
+                    current = f"{current} {sp}".strip() if current else sp
+        else:
+            if current and len(current) + len(s) + 1 > max_chars:
+                chunks.append(current)
+                current = s
+            else:
+                current = f"{current} {s}".strip() if current else s
+
+    if current:
+        chunks.append(current)
+    return chunks if chunks else [cleaned]
+
+
 def find_espeak_data_dir() -> Path:
     """
     Locates the espeak-ng-data directory across environments (Debian Bookworm, Ubuntu, Windows, Docker).
@@ -224,11 +267,18 @@ class PiperTTSManager:
         self._lock_en = threading.Lock()
 
     def _get_tamil_voice(self) -> Tuple[PiperVoice, float]:
-        """Thread-safe lazy singleton loader for Tamil Piper model."""
+        """Thread-safe single-active-model loader for Tamil Piper model."""
         load_time = 0.0
         if self._tamil_voice is None:
             with self._lock_ta:
                 if self._tamil_voice is None:
+                    # Free English model if loaded to preserve Render Free 512 MB limit
+                    if self._english_voice is not None:
+                        logger.info("[Piper TTS] Releasing English model to free memory for Tamil...")
+                        self._english_voice = None
+                        import gc
+                        gc.collect()
+
                     model_path = settings.piper_tamil_model_path
                     if not model_path.exists():
                         raise FileNotFoundError(
@@ -243,11 +293,18 @@ class PiperTTSManager:
         return self._tamil_voice, load_time
 
     def _get_english_voice(self) -> Tuple[PiperVoice, float]:
-        """Thread-safe lazy singleton loader for English Piper model."""
+        """Thread-safe single-active-model loader for English Piper model."""
         load_time = 0.0
         if self._english_voice is None:
             with self._lock_en:
                 if self._english_voice is None:
+                    # Free Tamil model if loaded to preserve Render Free 512 MB limit
+                    if self._tamil_voice is not None:
+                        logger.info("[Piper TTS] Releasing Tamil model to free memory for English...")
+                        self._tamil_voice = None
+                        import gc
+                        gc.collect()
+
                     model_path = settings.piper_english_model_path
                     if not model_path.exists():
                         raise FileNotFoundError(
@@ -263,9 +320,8 @@ class PiperTTSManager:
 
     def preload_models(self) -> Dict[str, Any]:
         """
-        Safely preloads Piper models during server startup if memory permits.
-        Render Free has 512 MB RAM.
-        If current RSS is safe (< 380 MB), preloads Tamil and English models.
+        Safely preloads the primary Tamil model during server startup if memory permits.
+        Render Free has 512 MB RAM. Keeping single-active-model avoids OOM.
         """
         results = {}
         initial_rss = get_process_memory_mb()
@@ -273,7 +329,7 @@ class PiperTTSManager:
 
         MEM_LIMIT_SAFE_MB = 380.0
 
-        # Preload Tamil model
+        # Preload Tamil model only (primary farming language) to keep memory safely under 260 MB
         if initial_rss < MEM_LIMIT_SAFE_MB and settings.piper_tamil_model_path.exists():
             try:
                 logger.info("[Piper TTS Preload] Preloading Tamil model...")
@@ -289,25 +345,8 @@ class PiperTTSManager:
                 logger.warning(f"[Piper TTS Preload] Tamil model preload skipped: {e}")
                 results["tamil"] = {"loaded": False, "error": str(e)}
 
-        current_rss = get_process_memory_mb()
-        # Preload English model if still safe
-        if current_rss < MEM_LIMIT_SAFE_MB and settings.piper_english_model_path.exists():
-            try:
-                logger.info("[Piper TTS Preload] Preloading English model...")
-                _, load_time = self._get_english_voice()
-                en_rss = get_process_memory_mb()
-                results["english"] = {
-                    "loaded": True,
-                    "load_time_s": round(load_time, 3),
-                    "rss_mb": round(en_rss, 2)
-                }
-                logger.info(f"[Piper TTS Preload] English model preloaded in {load_time:.2f}s. Memory: {en_rss:.2f} MB")
-            except Exception as e:
-                logger.warning(f"[Piper TTS Preload] English model preload skipped: {e}")
-                results["english"] = {"loaded": False, "error": str(e)}
-
         final_rss = get_process_memory_mb()
-        logger.info(f"[Piper TTS Preload] Complete. Final process memory: {final_rss:.2f} MB (Delta: {final_rss - initial_rss:+.2f} MB)")
+        logger.info(f"[Piper TTS Preload] Complete. Final process memory: {final_rss:.2f} MB")
         return results
 
     def get_providers_status(self) -> Dict[str, Any]:
@@ -317,6 +356,7 @@ class PiperTTSManager:
         return {
             "status": "online" if (ta_ready and en_ready) else "degraded",
             "tts_engine": "Piper TTS (Local/Self-Hosted)",
+            "memory_rss_mb": round(get_process_memory_mb(), 2),
             "models": {
                 "tamil": {
                     "model": "ta_IN-rasa_female-medium",
@@ -339,6 +379,7 @@ class PiperTTSManager:
     ) -> Union[bytes, Tuple[bytes, Dict[str, Any]]]:
         """
         Synthesizes text into raw WAV audio bytes using Piper TTS.
+        Uses natural clause/sentence chunking to prevent memory spikes on Render Free.
         Logs:
           TTS_REQUEST_START
           MODEL_LOAD_START / MODEL_LOAD_END (if not cached/preloaded)
@@ -398,19 +439,27 @@ class PiperTTSManager:
             except Exception as e:
                 logger.warning(f"[Piper Cache] Error reading cache file: {e}")
 
-        # 2. Load model (singleton / cached in memory)
+        # 2. Load model (single active model in memory to strictly stay under 512 MB)
         if norm_lang == "ta":
             voice, model_load_time = self._get_tamil_voice()
         else:
             voice, model_load_time = self._get_english_voice()
 
-        # 3. Synthesize using PiperVoice
+        # 3. Synthesize using PiperVoice with clause chunking for safe memory execution
         logger.info(f"[Piper TTS] SYNTHESIS_START: model={model_name}, text_len={len(cleaned_text)}")
         syn_t0 = time.time()
 
+        chunks = split_text_into_chunks(cleaned_text, max_chars=120)
+        logger.info(f"[Piper TTS] Synthesizing {len(chunks)} chunks for memory safety...")
+
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wav_file:
-            voice.synthesize_wav(cleaned_text, wav_file)
+            first_chunk = True
+            for chunk in chunks:
+                if not chunk.strip():
+                    continue
+                voice.synthesize_wav(chunk.strip(), wav_file, set_wav_format=first_chunk)
+                first_chunk = False
 
         wav_bytes = buf.getvalue()
         synthesis_time = time.time() - syn_t0
@@ -418,6 +467,9 @@ class PiperTTSManager:
             f"[Piper TTS] SYNTHESIS_END: model={model_name}, synthesis_time={synthesis_time:.3f}s, "
             f"wav_bytes={len(wav_bytes)}"
         )
+
+        import gc
+        gc.collect()
 
         if not wav_bytes or len(wav_bytes) < 1000:
             raise RuntimeError("Piper TTS synthesis produced empty or corrupted WAV audio.")

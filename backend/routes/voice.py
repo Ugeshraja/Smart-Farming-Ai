@@ -396,98 +396,73 @@ async def get_voice_status():
 
 @router.get("/diagnose-tts")
 @router.post("/diagnose-tts")
-async def diagnose_tts():
+async def diagnose_tts(step: int = 1):
     """
-    Diagnostic endpoint that tests each Piper TTS sub-step in a safe child subprocess
-    to identify whether espeakbridge, ONNX Runtime, or memory causes any SIGABRT/SIGSEGV/OOM.
+    Step-by-step diagnostic endpoint to pinpoint the exact failure mechanism
+    (espeakbridge, ONNX Runtime session, memory, or synthesis) in a safe child subprocess.
     """
-    import subprocess
+    import os
     import sys
-    import json
-
-    script = """
-import os, sys, json, time
-
-def get_mem():
+    import subprocess
+    res = {"step": step}
     try:
-        with open('/proc/self/status') as f:
-            for line in f:
-                if line.startswith('VmRSS:'):
-                    return round(float(line.split()[1]) / 1024.0, 2)
-    except Exception:
-        pass
-    return 0.0
-
-out = {"start_mem": get_mem(), "steps": []}
-
-try:
-    # Step 1: espeak data dir
-    from services.tts_service import find_espeak_data_dir
-    espeak_dir = find_espeak_data_dir()
-    out["steps"].append({
-        "step": "espeak_dir",
-        "path": str(espeak_dir),
-        "exists": espeak_dir.exists(),
-        "has_phontab": (espeak_dir / "phontab").exists(),
-        "mem": get_mem()
-    })
-
-    # Step 2: espeakbridge
-    from piper import espeakbridge
-    espeakbridge.initialize(str(espeak_dir))
-    espeakbridge.set_voice("en")
-    phonemes = espeakbridge.get_phonemes("Hello farmer")
-    out["steps"].append({
-        "step": "espeakbridge",
-        "phonemes_count": len(phonemes),
-        "mem": get_mem()
-    })
-
-    # Step 3: ONNX Runtime
-    from config import settings
-    import onnxruntime
-    sess_options = onnxruntime.SessionOptions()
-    sess_options.enable_cpu_mem_arena = False
-    sess_options.inter_op_num_threads = 1
-    sess_options.intra_op_num_threads = 1
-    m_en = settings.piper_english_model_path
-    sess = onnxruntime.InferenceSession(str(m_en), sess_options=sess_options, providers=["CPUExecutionProvider"])
-    out["steps"].append({
-        "step": "onnx_session",
-        "model": str(m_en),
-        "mem": get_mem()
-    })
-
-    # Step 4: Full Piper Synthesis
-    from services.tts_service import tts_manager
-    wav = tts_manager.synthesize_bytes("Hello farmer", "en")
-    out["steps"].append({
-        "step": "synthesis",
-        "wav_bytes": len(wav),
-        "mem": get_mem()
-    })
-except Exception as e:
-    out["error"] = str(e)
-
-print(json.dumps(out))
-"""
-    cmd = [sys.executable, "-c", script]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-        parsed = None
-        if res.stdout.strip():
-            try:
-                parsed = json.loads(res.stdout.strip())
-            except Exception:
-                parsed = res.stdout.strip()
-        return {
-            "returncode": res.returncode,
-            "parsed": parsed,
-            "stdout": res.stdout.strip(),
-            "stderr": res.stderr.strip()
-        }
+        if step == 1:
+            from config import settings
+            res["models"] = {
+                "en": {
+                    "path": str(settings.piper_english_model_path),
+                    "exists": settings.piper_english_model_path.exists(),
+                    "size": settings.piper_english_model_path.stat().st_size if settings.piper_english_model_path.exists() else 0
+                },
+                "ta": {
+                    "path": str(settings.piper_tamil_model_path),
+                    "exists": settings.piper_tamil_model_path.exists(),
+                    "size": settings.piper_tamil_model_path.stat().st_size if settings.piper_tamil_model_path.exists() else 0
+                }
+            }
+        elif step == 2:
+            from services.tts_service import find_espeak_data_dir
+            edir = find_espeak_data_dir()
+            res["espeak_dir"] = str(edir)
+            res["phontab"] = (edir / "phontab").exists()
+            res["espeak_data_path_env"] = os.environ.get("ESPEAK_DATA_PATH")
+        elif step == 3:
+            cmd = [
+                sys.executable, "-c",
+                "import os; from services.tts_service import find_espeak_data_dir; "
+                "ed = find_espeak_data_dir(); from piper import espeakbridge; "
+                "espeakbridge.initialize(str(ed)); espeakbridge.set_voice('en'); "
+                "p = espeakbridge.get_phonemes('Hello'); print('Phonemes:', p)"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            res["espeakbridge_returncode"] = r.returncode
+            res["espeakbridge_stdout"] = r.stdout.strip()
+            res["espeakbridge_stderr"] = r.stderr.strip()
+        elif step == 4:
+            cmd = [
+                sys.executable, "-c",
+                "from config import settings; from services.tts_service import _load_voice; "
+                "v = _load_voice(settings.piper_english_model_path); print('Model loaded successfully!')"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            res["onnx_returncode"] = r.returncode
+            res["onnx_stdout"] = r.stdout.strip()
+            res["onnx_stderr"] = r.stderr.strip()
+        elif step == 5:
+            cmd = [
+                sys.executable, "-c",
+                "from services.tts_service import tts_manager; "
+                "wav = tts_manager.synthesize_bytes('Hello', 'en'); print(f'Synthesized {len(wav)} bytes')"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            res["synth_returncode"] = r.returncode
+            res["synth_stdout"] = r.stdout.strip()
+            res["synth_stderr"] = r.stderr.strip()
     except subprocess.TimeoutExpired:
-        return {"error": "Subprocess timed out after 45 seconds"}
+        res["error"] = f"Step {step} subprocess timed out"
+    except Exception as e:
+        res["error"] = str(e)
+    return res
 
 
 @router.post("/set-key")

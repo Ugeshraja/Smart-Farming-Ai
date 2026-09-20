@@ -429,22 +429,28 @@ async def diagnose_tts(step: int = 1):
         elif step == 3:
             cmd = [
                 sys.executable, "-c",
-                "import os; from services.tts_service import find_espeak_data_dir; "
-                "ed = find_espeak_data_dir(); from piper import espeakbridge; "
-                "espeakbridge.initialize(str(ed)); espeakbridge.set_voice('en'); "
+                "import os; os.environ['ESPEAK_DATA_PATH'] = '/usr/lib/x86_64-linux-gnu/espeak-ng-data'; "
+                "from piper import espeakbridge; "
+                "espeakbridge.initialize('/usr/lib/x86_64-linux-gnu/espeak-ng-data'); "
+                "espeakbridge.set_voice('en'); "
                 "p = espeakbridge.get_phonemes('Hello'); print('Phonemes:', p)"
             ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
             res["espeakbridge_returncode"] = r.returncode
             res["espeakbridge_stdout"] = r.stdout.strip()
             res["espeakbridge_stderr"] = r.stderr.strip()
         elif step == 4:
             cmd = [
                 sys.executable, "-c",
-                "from config import settings; from services.tts_service import _load_voice; "
-                "v = _load_voice(settings.piper_english_model_path); print('Model loaded successfully!')"
+                "import onnxruntime; "
+                "sess_options = onnxruntime.SessionOptions(); "
+                "sess_options.enable_cpu_mem_arena = False; "
+                "sess_options.inter_op_num_threads = 1; "
+                "sess_options.intra_op_num_threads = 1; "
+                "s = onnxruntime.InferenceSession('/app/models/tts/english/en_US-lessac-medium.onnx', sess_options=sess_options, providers=['CPUExecutionProvider']); "
+                "print('ONNX model loaded successfully!')"
             ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             res["onnx_returncode"] = r.returncode
             res["onnx_stdout"] = r.stdout.strip()
             res["onnx_stderr"] = r.stderr.strip()
@@ -454,7 +460,7 @@ async def diagnose_tts(step: int = 1):
                 "from services.tts_service import tts_manager; "
                 "wav = tts_manager.synthesize_bytes('Hello', 'en'); print(f'Synthesized {len(wav)} bytes')"
             ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             res["synth_returncode"] = r.returncode
             res["synth_stdout"] = r.stdout.strip()
             res["synth_stderr"] = r.stderr.strip()

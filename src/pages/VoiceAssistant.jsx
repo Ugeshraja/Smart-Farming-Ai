@@ -578,7 +578,7 @@ export default function VoiceAssistant() {
                 {source && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-white text-agri-800 border border-agri-300 shadow-2xs">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600 mr-1.5 shrink-0" />
-                    <span className="truncate max-w-[280px] sm:max-w-md">{source}</span>
+                    <span className="truncate max-w-[280px] sm:max-w-md">{(source || '').replace(/\s*•\s*gemini[^\s•]*/gi, '').trim()}</span>
                   </span>
                 )}
               </div>

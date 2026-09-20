@@ -387,7 +387,7 @@ async def execute_rag_gemini_pipeline(
     if rag_context and primary_source:
         source_label = f"Verified Knowledge Base • {primary_source}"
     else:
-        source_label = f"SmartFarm AI Advisor • {used_model}"
+        source_label = "SmartFarm AI Advisor"
 
     return {
         "text": ai_text,

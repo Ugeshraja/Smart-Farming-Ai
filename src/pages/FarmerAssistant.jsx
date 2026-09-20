@@ -425,7 +425,7 @@ export default function FarmerAssistant() {
                   <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[10px] text-agri-700 font-semibold gap-2">
                     <div className="flex items-center space-x-1 truncate">
                       <Sparkles className="w-3 h-3 text-agri-600 shrink-0" />
-                      <span className="truncate">{msg.source || 'SmartFarm AI Advisor'}</span>
+                      <span className="truncate">{(msg.source || 'SmartFarm AI Advisor').replace(/\s*•\s*gemini[^\s•]*/gi, '').trim()}</span>
                     </div>
                     <button
                       type="button"

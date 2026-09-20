@@ -394,6 +394,102 @@ async def get_voice_status():
     return tts_manager.get_providers_status()
 
 
+@router.get("/diagnose-tts")
+@router.post("/diagnose-tts")
+async def diagnose_tts():
+    """
+    Diagnostic endpoint that tests each Piper TTS sub-step in a safe child subprocess
+    to identify whether espeakbridge, ONNX Runtime, or memory causes any SIGABRT/SIGSEGV/OOM.
+    """
+    import subprocess
+    import sys
+    import json
+
+    script = """
+import os, sys, json, time
+
+def get_mem():
+    try:
+        with open('/proc/self/status') as f:
+            for line in f:
+                if line.startswith('VmRSS:'):
+                    return round(float(line.split()[1]) / 1024.0, 2)
+    except Exception:
+        pass
+    return 0.0
+
+out = {"start_mem": get_mem(), "steps": []}
+
+try:
+    # Step 1: espeak data dir
+    from services.tts_service import find_espeak_data_dir
+    espeak_dir = find_espeak_data_dir()
+    out["steps"].append({
+        "step": "espeak_dir",
+        "path": str(espeak_dir),
+        "exists": espeak_dir.exists(),
+        "has_phontab": (espeak_dir / "phontab").exists(),
+        "mem": get_mem()
+    })
+
+    # Step 2: espeakbridge
+    from piper import espeakbridge
+    espeakbridge.initialize(str(espeak_dir))
+    espeakbridge.set_voice("en")
+    phonemes = espeakbridge.get_phonemes("Hello farmer")
+    out["steps"].append({
+        "step": "espeakbridge",
+        "phonemes_count": len(phonemes),
+        "mem": get_mem()
+    })
+
+    # Step 3: ONNX Runtime
+    from config import settings
+    import onnxruntime
+    sess_options = onnxruntime.SessionOptions()
+    sess_options.enable_cpu_mem_arena = False
+    sess_options.inter_op_num_threads = 1
+    sess_options.intra_op_num_threads = 1
+    m_en = settings.piper_english_model_path
+    sess = onnxruntime.InferenceSession(str(m_en), sess_options=sess_options, providers=["CPUExecutionProvider"])
+    out["steps"].append({
+        "step": "onnx_session",
+        "model": str(m_en),
+        "mem": get_mem()
+    })
+
+    # Step 4: Full Piper Synthesis
+    from services.tts_service import tts_manager
+    wav = tts_manager.synthesize_bytes("Hello farmer", "en")
+    out["steps"].append({
+        "step": "synthesis",
+        "wav_bytes": len(wav),
+        "mem": get_mem()
+    })
+except Exception as e:
+    out["error"] = str(e)
+
+print(json.dumps(out))
+"""
+    cmd = [sys.executable, "-c", script]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+        parsed = None
+        if res.stdout.strip():
+            try:
+                parsed = json.loads(res.stdout.strip())
+            except Exception:
+                parsed = res.stdout.strip()
+        return {
+            "returncode": res.returncode,
+            "parsed": parsed,
+            "stdout": res.stdout.strip(),
+            "stderr": res.stderr.strip()
+        }
+    except subprocess.TimeoutExpired:
+        return {"error": "Subprocess timed out after 45 seconds"}
+
+
 @router.post("/set-key")
 async def set_sarvam_api_key(payload: VoiceApiKeyPayload):
     """

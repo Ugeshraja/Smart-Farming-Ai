@@ -10,7 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
     ENVIRONMENT=production \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    ESPEAK_DATA_PATH=/usr/share/espeak-ng-data
 
 # Set working directory inside container
 WORKDIR /app

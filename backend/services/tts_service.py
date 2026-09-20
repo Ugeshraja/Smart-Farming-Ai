@@ -104,15 +104,19 @@ def find_espeak_data_dir() -> Path:
         try:
             if p.exists() and (p / "phontab").exists():
                 logger.info(f"[Piper TTS] Verified espeak-ng-data at: {p}")
+                os.environ["ESPEAK_DATA_PATH"] = str(p)
                 return p
         except Exception:
             continue
 
     # Fallback to piper.voice default if none explicitly verified
+    fallback = Path("/usr/share/espeak-ng-data")
     try:
-        return Path(piper.voice.ESPEAK_DATA_DIR)
+        fallback = Path(piper.voice.ESPEAK_DATA_DIR)
     except Exception:
-        return Path("/usr/share/espeak-ng-data")
+        pass
+    os.environ["ESPEAK_DATA_PATH"] = str(fallback)
+    return fallback
 
 
 def _load_voice(model_path: Path) -> PiperVoice:

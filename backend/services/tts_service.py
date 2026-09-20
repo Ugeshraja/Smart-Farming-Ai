@@ -7,7 +7,7 @@ import hashlib
 import logging
 import threading
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, Union
 
 from piper.voice import PiperVoice
 from config import settings
@@ -16,6 +16,15 @@ logger = logging.getLogger("smartfarm.tts")
 
 STATIC_TTS_DIR: Path = settings.STATIC_DIR / "tts"
 CACHE_DIR: Path = settings.CACHE_DIR / "tts"
+
+
+def get_process_memory_mb() -> float:
+    """Returns current process Resident Set Size (RSS) in megabytes."""
+    try:
+        import psutil
+        return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
+    except Exception:
+        return 0.0
 
 
 def ensure_directories():
@@ -51,27 +60,66 @@ def compute_cache_key(language: str, text: str, model_name: str) -> str:
 
 def clean_text_for_piper(text: str, language: str = "en") -> str:
     """
-    Cleans markdown formatting and special characters for clean Piper synthesis.
+    Cleans text specifically for speech synthesis:
+    - Preserves complete meaningful answer (no truncation)
+    - Removes markdown syntax (bold, italic, headers, bullets, code blocks, blockquotes)
+    - Removes emojis and pictographs
+    - Removes URLs
+    - Removes bracketed citations / UI markers (e.g., [1], [source: ...])
+    - Removes HTML tags
+    - Normalizes percentages and symbols for spoken language
+    - Normalizes spacing and line breaks
     """
     if not text:
         return ""
     cleaned = str(text)
 
-    # Normalize percentage
+    # 1. Normalize percentages
     if language == "ta":
         cleaned = cleaned.replace("%", " சதவீதம் ")
     else:
         cleaned = cleaned.replace("%", " percent ")
 
-    # Strip markdown syntax
+    # 2. Remove URLs
+    cleaned = re.sub(r"https?://\S+", "", cleaned)
+
+    # 3. Remove bracketed annotations / citation markers like [1], [source: ...], [image]
+    cleaned = re.sub(r"\[\s*(?:source|ref|citation|\d+)[^\]]*\]", "", cleaned, flags=re.IGNORECASE)
+
+    # 4. Remove HTML tags
+    cleaned = re.sub(r"<[^>]+>", "", cleaned)
+
+    # 5. Remove Markdown formatting
     cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
     cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
     cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
     cleaned = re.sub(r"_([^_]+)_", r"\1", cleaned)
+    cleaned = re.sub(r"~~([^~]+)~~", r"\1", cleaned)
     cleaned = re.sub(r"^#+\s*", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^\s*[-*•]\s+", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^\s*\d+\.\s+", "", cleaned, flags=re.MULTILINE)
-    cleaned = re.sub(r"[`>]", "", cleaned)
+    cleaned = re.sub(r"^>\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"```[^`]*```", "", cleaned)
+    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+
+    # 6. Remove Emojis and Pictographs
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002702-\U000027B0"
+        "\U000024C2-\U0001F251"
+        "\U0001F900-\U0001F9FF"  # supplemental symbols
+        "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-a
+        "\U00002600-\U000026FF"  # misc symbols
+        "]+",
+        flags=re.UNICODE
+    )
+    cleaned = emoji_pattern.sub("", cleaned)
+
+    # 7. Normalize spacing and line breaks
     cleaned = re.sub(r"\n{2,}", ". ", cleaned)
     cleaned = re.sub(r"\n", ", ", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
@@ -109,7 +157,6 @@ def find_espeak_data_dir() -> Path:
         except Exception:
             continue
 
-    # Fallback to piper.voice default if none explicitly verified
     fallback = Path("/usr/share/espeak-ng-data")
     try:
         fallback = Path(piper.voice.ESPEAK_DATA_DIR)
@@ -162,10 +209,11 @@ def _load_voice(model_path: Path) -> PiperVoice:
 class PiperTTSManager:
     """
     Local / Self-Hosted Piper Text-to-Speech Manager.
-    - Thread-safe lazy singleton loading for Tamil and English ONNX models.
+    - Thread-safe singleton loading for Tamil and English ONNX models.
     - Synthesizes directly to 22,050 Hz mono WAV audio.
     - Deterministic SHA-256 disk caching under static/tts/<hash>.wav.
-    - Zero external API keys or cloud service dependencies.
+    - Startup preloading with RAM safety guards.
+    - Detailed server-side timing diagnostics.
     """
 
     def __init__(self):
@@ -175,8 +223,9 @@ class PiperTTSManager:
         self._lock_ta = threading.Lock()
         self._lock_en = threading.Lock()
 
-    def _get_tamil_voice(self) -> PiperVoice:
+    def _get_tamil_voice(self) -> Tuple[PiperVoice, float]:
         """Thread-safe lazy singleton loader for Tamil Piper model."""
+        load_time = 0.0
         if self._tamil_voice is None:
             with self._lock_ta:
                 if self._tamil_voice is None:
@@ -186,14 +235,16 @@ class PiperTTSManager:
                             f"Tamil Piper model not found at {model_path}. "
                             "Please run scripts/download_tts_models.py."
                         )
-                    logger.info(f"[Piper TTS] Loading Tamil model from {model_path}...")
+                    logger.info(f"[Piper TTS] MODEL_LOAD_START: model={model_path.name}")
                     t0 = time.time()
                     self._tamil_voice = _load_voice(model_path)
-                    logger.info(f"[Piper TTS] Tamil model loaded in {time.time() - t0:.2f}s.")
-        return self._tamil_voice
+                    load_time = time.time() - t0
+                    logger.info(f"[Piper TTS] MODEL_LOAD_END: model={model_path.name}, load_time={load_time:.3f}s")
+        return self._tamil_voice, load_time
 
-    def _get_english_voice(self) -> PiperVoice:
+    def _get_english_voice(self) -> Tuple[PiperVoice, float]:
         """Thread-safe lazy singleton loader for English Piper model."""
+        load_time = 0.0
         if self._english_voice is None:
             with self._lock_en:
                 if self._english_voice is None:
@@ -203,11 +254,61 @@ class PiperTTSManager:
                             f"English Piper model not found at {model_path}. "
                             "Please run scripts/download_tts_models.py."
                         )
-                    logger.info(f"[Piper TTS] Loading English model from {model_path}...")
+                    logger.info(f"[Piper TTS] MODEL_LOAD_START: model={model_path.name}")
                     t0 = time.time()
                     self._english_voice = _load_voice(model_path)
-                    logger.info(f"[Piper TTS] English model loaded in {time.time() - t0:.2f}s.")
-        return self._english_voice
+                    load_time = time.time() - t0
+                    logger.info(f"[Piper TTS] MODEL_LOAD_END: model={model_path.name}, load_time={load_time:.3f}s")
+        return self._english_voice, load_time
+
+    def preload_models(self) -> Dict[str, Any]:
+        """
+        Safely preloads Piper models during server startup if memory permits.
+        Render Free has 512 MB RAM.
+        If current RSS is safe (< 380 MB), preloads Tamil and English models.
+        """
+        results = {}
+        initial_rss = get_process_memory_mb()
+        logger.info(f"[Piper TTS Preload] Initial process memory: {initial_rss:.2f} MB")
+
+        MEM_LIMIT_SAFE_MB = 380.0
+
+        # Preload Tamil model
+        if initial_rss < MEM_LIMIT_SAFE_MB and settings.piper_tamil_model_path.exists():
+            try:
+                logger.info("[Piper TTS Preload] Preloading Tamil model...")
+                _, load_time = self._get_tamil_voice()
+                ta_rss = get_process_memory_mb()
+                results["tamil"] = {
+                    "loaded": True,
+                    "load_time_s": round(load_time, 3),
+                    "rss_mb": round(ta_rss, 2)
+                }
+                logger.info(f"[Piper TTS Preload] Tamil model preloaded in {load_time:.2f}s. Memory: {ta_rss:.2f} MB")
+            except Exception as e:
+                logger.warning(f"[Piper TTS Preload] Tamil model preload skipped: {e}")
+                results["tamil"] = {"loaded": False, "error": str(e)}
+
+        current_rss = get_process_memory_mb()
+        # Preload English model if still safe
+        if current_rss < MEM_LIMIT_SAFE_MB and settings.piper_english_model_path.exists():
+            try:
+                logger.info("[Piper TTS Preload] Preloading English model...")
+                _, load_time = self._get_english_voice()
+                en_rss = get_process_memory_mb()
+                results["english"] = {
+                    "loaded": True,
+                    "load_time_s": round(load_time, 3),
+                    "rss_mb": round(en_rss, 2)
+                }
+                logger.info(f"[Piper TTS Preload] English model preloaded in {load_time:.2f}s. Memory: {en_rss:.2f} MB")
+            except Exception as e:
+                logger.warning(f"[Piper TTS Preload] English model preload skipped: {e}")
+                results["english"] = {"loaded": False, "error": str(e)}
+
+        final_rss = get_process_memory_mb()
+        logger.info(f"[Piper TTS Preload] Complete. Final process memory: {final_rss:.2f} MB (Delta: {final_rss - initial_rss:+.2f} MB)")
+        return results
 
     def get_providers_status(self) -> Dict[str, Any]:
         """Returns safe provider status without exposing secrets."""
@@ -230,16 +331,25 @@ class PiperTTSManager:
             }
         }
 
-    def synthesize_bytes(self, text: Optional[str], language: Optional[str] = "en") -> bytes:
+    def synthesize_bytes(
+        self,
+        text: Optional[str],
+        language: Optional[str] = "en",
+        return_metadata: bool = False
+    ) -> Union[bytes, Tuple[bytes, Dict[str, Any]]]:
         """
         Synthesizes text into raw WAV audio bytes using Piper TTS.
-        1. Validates text
-        2. Normalizes language
-        3. Cleans text
-        4. Checks deterministic disk cache
-        5. Synthesizes with PiperVoice
-        6. Caches and returns WAV bytes
+        Logs:
+          TTS_REQUEST_START
+          MODEL_LOAD_START / MODEL_LOAD_END (if not cached/preloaded)
+          SYNTHESIS_START / SYNTHESIS_END
+          RESPONSE_READY
+        Calculates:
+          - model loading time
+          - synthesis time
+          - total TTS response time
         """
+        request_start = time.time()
         if not text or not str(text).strip():
             raise ValueError("Text cannot be empty.")
 
@@ -254,6 +364,10 @@ class PiperTTSManager:
 
         model_name = "ta_IN-rasa_female-medium" if norm_lang == "ta" else "en_US-lessac-medium"
 
+        logger.info(
+            f"[Piper TTS] TTS_REQUEST_START: language={norm_lang}, text_len={len(cleaned_text)}, model={model_name}"
+        )
+
         # 1. Check disk cache
         ensure_directories()
         cache_key = compute_cache_key(norm_lang, cleaned_text, model_name)
@@ -263,41 +377,77 @@ class PiperTTSManager:
         if wav_filepath.exists():
             try:
                 if wav_filepath.stat().st_size > 1000:
-                    logger.info(f"[Piper Cache] Cache hit for {norm_lang} ({cache_key[:10]}...)")
                     with open(wav_filepath, "rb") as f:
-                        return f.read()
+                        wav_bytes = f.read()
+                    total_time = time.time() - request_start
+                    logger.info(
+                        f"[Piper TTS] RESPONSE_READY: language={norm_lang}, model_load_time=0.000s, "
+                        f"synthesis_time=0.000s, total_time={total_time:.3f}s, cache_hit=True"
+                    )
+                    timing = {
+                        "model_load_time": 0.0,
+                        "synthesis_time": 0.0,
+                        "total_time": total_time,
+                        "cache_hit": True,
+                        "language": norm_lang,
+                        "model": model_name
+                    }
+                    if return_metadata:
+                        return wav_bytes, timing
+                    return wav_bytes
             except Exception as e:
                 logger.warning(f"[Piper Cache] Error reading cache file: {e}")
 
-        # 2. Synthesize using PiperVoice
-        logger.info(f"[Piper TTS] Synthesizing {len(cleaned_text)} chars in '{norm_lang}' with {model_name}...")
-        t0 = time.time()
-
+        # 2. Load model (singleton / cached in memory)
         if norm_lang == "ta":
-            voice = self._get_tamil_voice()
+            voice, model_load_time = self._get_tamil_voice()
         else:
-            voice = self._get_english_voice()
+            voice, model_load_time = self._get_english_voice()
+
+        # 3. Synthesize using PiperVoice
+        logger.info(f"[Piper TTS] SYNTHESIS_START: model={model_name}, text_len={len(cleaned_text)}")
+        syn_t0 = time.time()
 
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wav_file:
             voice.synthesize_wav(cleaned_text, wav_file)
 
         wav_bytes = buf.getvalue()
-        elapsed = time.time() - t0
-        logger.info(f"[Piper TTS] Synthesis completed in {elapsed:.2f}s ({len(wav_bytes)} bytes).")
+        synthesis_time = time.time() - syn_t0
+        logger.info(
+            f"[Piper TTS] SYNTHESIS_END: model={model_name}, synthesis_time={synthesis_time:.3f}s, "
+            f"wav_bytes={len(wav_bytes)}"
+        )
 
         if not wav_bytes or len(wav_bytes) < 1000:
             raise RuntimeError("Piper TTS synthesis produced empty or corrupted WAV audio.")
 
-        # 3. Save to disk cache
+        # 4. Save to disk cache safely
         try:
             with open(wav_filepath, "wb") as f_out:
                 f_out.write(wav_bytes)
         except Exception as e:
             logger.warning(f"[Piper Cache] Failed to write cache file: {e}")
 
+        total_time = time.time() - request_start
+        logger.info(
+            f"[Piper TTS] RESPONSE_READY: language={norm_lang}, model_load_time={model_load_time:.3f}s, "
+            f"synthesis_time={synthesis_time:.3f}s, total_time={total_time:.3f}s, cache_hit=False"
+        )
+
+        timing = {
+            "model_load_time": model_load_time,
+            "synthesis_time": synthesis_time,
+            "total_time": total_time,
+            "cache_hit": False,
+            "language": norm_lang,
+            "model": model_name
+        }
+        if return_metadata:
+            return wav_bytes, timing
         return wav_bytes
 
 
 # Global instance
 tts_manager = PiperTTSManager()
+

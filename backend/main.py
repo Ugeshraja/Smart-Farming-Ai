@@ -91,6 +91,13 @@ async def startup_event():
 
     logger.info("AI pipeline service configured for on-demand lazy loading (conserving memory).")
 
+    # Preload Piper TTS models if memory permits (eliminating first-request latency)
+    try:
+        from services.tts_service import tts_manager
+        tts_manager.preload_models()
+    except Exception as e:
+        logger.warning(f"Piper TTS preload failed during startup: {e}")
+
 
 # Root & Health check endpoints
 @app.get("/", tags=["Health"])

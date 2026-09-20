@@ -37,15 +37,34 @@ class SpeechService {
       cleaned = cleaned.replace(/%/g, ' percent ');
     }
 
+    // Remove URLs
+    cleaned = cleaned.replace(/https?:\/\/\S+/g, '');
+
+    // Remove bracketed citations / annotations like [1], [source: ...]
+    cleaned = cleaned.replace(/\[\s*(?:source|ref|citation|\d+)[^\]]*\]/gi, '');
+
+    // Remove HTML tags
+    cleaned = cleaned.replace(/<[^>]+>/g, '');
+
+    // Remove Markdown formatting
     cleaned = cleaned
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
       .replace(/__([^_]+)__/g, '$1')
       .replace(/_([^_]+)_/g, '$1')
+      .replace(/~~([^~]+)~~/g, '$1')
       .replace(/^#+\s*/gm, '')
       .replace(/^\s*[-*•]\s+/gm, '')
       .replace(/^\s*\d+\.\s+/gm, '')
-      .replace(/[`>]/g, '')
+      .replace(/^>\s*/gm, '')
+      .replace(/```[^`]*```/g, '')
+      .replace(/`([^`]+)`/g, '$1');
+
+    // Remove emojis and pictographs
+    cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2702}-\u{27B0}\u{24C2}-\u{1F251}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}]/gu, '');
+
+    // Normalize whitespace and line breaks
+    cleaned = cleaned
       .replace(/\n{2,}/g, '. ')
       .replace(/\n/g, ', ')
       .replace(/\s{2,}/g, ' ')
@@ -239,6 +258,13 @@ class SpeechService {
 
       if (!response.ok) {
         throw new Error(`TTS server responded with status: ${response.status}`);
+      }
+
+      const serverTotalTime = response.headers.get('x-tts-total-time');
+      const serverSynTime = response.headers.get('x-tts-synthesis-time');
+      const serverCacheHit = response.headers.get('x-tts-cache-hit');
+      if (serverTotalTime) {
+        console.log(`[SpeechService] TTS timing: total=${serverTotalTime}, synthesis=${serverSynTime}, cacheHit=${serverCacheHit}`);
       }
 
       const contentType = response.headers.get('content-type') || '';

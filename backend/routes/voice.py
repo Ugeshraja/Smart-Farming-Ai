@@ -343,13 +343,21 @@ async def tts_endpoint(payload: TtsRequest):
     norm_lang = "ta" if raw_lang in ("ta", "ta-in", "tamil") else "en"
 
     try:
-        audio_bytes = tts_manager.synthesize_bytes(text=text, language=norm_lang)
+        audio_bytes, timing = tts_manager.synthesize_bytes(text=text, language=norm_lang, return_metadata=True)
         if not audio_bytes or len(audio_bytes) < 1000:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Generated audio stream is empty or invalid."
             )
-        return Response(content=audio_bytes, media_type="audio/wav")
+        headers = {
+            "X-TTS-Model-Load-Time": f"{timing['model_load_time']:.3f}s",
+            "X-TTS-Synthesis-Time": f"{timing['synthesis_time']:.3f}s",
+            "X-TTS-Total-Time": f"{timing['total_time']:.3f}s",
+            "X-TTS-Cache-Hit": str(timing['cache_hit']).lower(),
+            "X-TTS-Language": timing['language'],
+            "X-TTS-Model": timing['model']
+        }
+        return Response(content=audio_bytes, media_type="audio/wav", headers=headers)
     except ValueError as ve:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

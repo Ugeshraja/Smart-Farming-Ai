@@ -121,14 +121,11 @@ export default async function handler(req, res) {
 
     const response = await fetch(targetUrl, fetchOptions);
 
-    const resContentType = response.headers.get('content-type');
-    if (resContentType) {
-      res.setHeader('Content-Type', resContentType);
-    }
-
-    const contentLength = response.headers.get('content-length');
-    if (contentLength) {
-      res.setHeader('Content-Length', contentLength);
+    for (const [key, val] of response.headers.entries()) {
+      const lower = key.toLowerCase();
+      if (lower.startsWith('x-tts-') || lower === 'content-type' || lower === 'content-length') {
+        res.setHeader(key, val);
+      }
     }
 
     const body = await response.arrayBuffer();

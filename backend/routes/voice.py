@@ -396,79 +396,41 @@ async def get_voice_status():
 
 @router.get("/diagnose-tts")
 @router.post("/diagnose-tts")
-async def diagnose_tts(step: int = 1):
-    """
-    Step-by-step diagnostic endpoint to pinpoint the exact failure mechanism
-    (espeakbridge, ONNX Runtime session, memory, or synthesis) in a safe child subprocess.
-    """
+async def diagnose_tts():
+    """Returns runtime diagnostic metrics including memory usage and Piper TTS status."""
+    from services.tts_service import tts_manager, find_espeak_data_dir
+    from config import settings
     import os
-    import sys
-    import subprocess
-    res = {"step": step}
+
+    mem_mb = 0.0
     try:
-        if step == 1:
-            from config import settings
-            res["models"] = {
-                "en": {
-                    "path": str(settings.piper_english_model_path),
-                    "exists": settings.piper_english_model_path.exists(),
-                    "size": settings.piper_english_model_path.stat().st_size if settings.piper_english_model_path.exists() else 0
-                },
-                "ta": {
-                    "path": str(settings.piper_tamil_model_path),
-                    "exists": settings.piper_tamil_model_path.exists(),
-                    "size": settings.piper_tamil_model_path.stat().st_size if settings.piper_tamil_model_path.exists() else 0
-                }
+        with open("/proc/self/status", "r") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    mem_mb = round(float(line.split()[1]) / 1024.0, 2)
+                    break
+    except Exception:
+        pass
+
+    espeak_dir = find_espeak_data_dir()
+    return {
+        "status": "online",
+        "memory_rss_mb": mem_mb,
+        "espeak_data_dir": str(espeak_dir),
+        "phontab_exists": (espeak_dir / "phontab").exists(),
+        "espeak_data_path_env": os.environ.get("ESPEAK_DATA_PATH"),
+        "models": {
+            "english": {
+                "exists": settings.piper_english_model_path.exists(),
+                "size_mb": round(settings.piper_english_model_path.stat().st_size / (1024 * 1024), 2) if settings.piper_english_model_path.exists() else 0
+            },
+            "tamil": {
+                "exists": settings.piper_tamil_model_path.exists(),
+                "size_mb": round(settings.piper_tamil_model_path.stat().st_size / (1024 * 1024), 2) if settings.piper_tamil_model_path.exists() else 0
             }
-        elif step == 2:
-            from services.tts_service import find_espeak_data_dir
-            edir = find_espeak_data_dir()
-            res["espeak_dir"] = str(edir)
-            res["phontab"] = (edir / "phontab").exists()
-            res["espeak_data_path_env"] = os.environ.get("ESPEAK_DATA_PATH")
-        elif step == 3:
-            cmd = [
-                sys.executable, "-c",
-                "import os; os.environ['ESPEAK_DATA_PATH'] = '/usr/lib/x86_64-linux-gnu/espeak-ng-data'; "
-                "from piper import espeakbridge; "
-                "espeakbridge.initialize('/usr/lib/x86_64-linux-gnu/espeak-ng-data'); "
-                "espeakbridge.set_voice('en'); "
-                "p = espeakbridge.get_phonemes('Hello'); print('Phonemes:', p)"
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
-            res["espeakbridge_returncode"] = r.returncode
-            res["espeakbridge_stdout"] = r.stdout.strip()
-            res["espeakbridge_stderr"] = r.stderr.strip()
-        elif step == 4:
-            cmd = [
-                sys.executable, "-c",
-                "import onnxruntime; "
-                "sess_options = onnxruntime.SessionOptions(); "
-                "sess_options.enable_cpu_mem_arena = False; "
-                "sess_options.inter_op_num_threads = 1; "
-                "sess_options.intra_op_num_threads = 1; "
-                "s = onnxruntime.InferenceSession('/app/models/tts/english/en_US-lessac-medium.onnx', sess_options=sess_options, providers=['CPUExecutionProvider']); "
-                "print('ONNX model loaded successfully!')"
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            res["onnx_returncode"] = r.returncode
-            res["onnx_stdout"] = r.stdout.strip()
-            res["onnx_stderr"] = r.stderr.strip()
-        elif step == 5:
-            cmd = [
-                sys.executable, "-c",
-                "from services.tts_service import tts_manager; "
-                "wav = tts_manager.synthesize_bytes('Hello', 'en'); print(f'Synthesized {len(wav)} bytes')"
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            res["synth_returncode"] = r.returncode
-            res["synth_stdout"] = r.stdout.strip()
-            res["synth_stderr"] = r.stderr.strip()
-    except subprocess.TimeoutExpired:
-        res["error"] = f"Step {step} subprocess timed out"
-    except Exception as e:
-        res["error"] = str(e)
-    return res
+        },
+        "tts_status": tts_manager.get_providers_status()
+    }
 
 
 @router.post("/set-key")

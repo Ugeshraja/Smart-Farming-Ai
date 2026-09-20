@@ -89,12 +89,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Error during model bootstrap: {e}")
 
-    logger.info("Loading AI models once into memory...")
-    try:
-        ai_pipeline_service.initialize()
-        logger.info("AI models initialized successfully on startup.")
-    except Exception as e:
-        logger.error(f"Error during AI model startup initialization: {e}")
+    logger.info("AI pipeline service configured for on-demand lazy loading (conserving memory).")
 
 
 # Root & Health check endpoints

@@ -704,7 +704,7 @@ export const apiService = {
     return response.data;
   },
 
-  // 6b. Google TTS Synthesis via backend serverless endpoint (/voice/tts)
+  // 6b. Piper TTS Synthesis via backend endpoint (/voice/tts)
   async synthesizeSpeech(text, language = 'en') {
     try {
       const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';

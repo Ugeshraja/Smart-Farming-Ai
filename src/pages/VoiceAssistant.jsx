@@ -268,7 +268,7 @@ export default function VoiceAssistant() {
             ? 'தமிழ் குரல் சேவை தற்போது கிடைக்கவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
             : 'Voice service is currently unavailable. Please try again.';
         setErrorMessage(failMsg);
-        console.warn('Google TTS playback failed:', err);
+        console.warn('Piper TTS playback failed:', err);
       }
     });
   };

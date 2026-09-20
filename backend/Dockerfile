@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     espeak-ng \
+    espeak-ng-data \
+    libespeak-ng1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies manifest first to leverage Docker layer caching

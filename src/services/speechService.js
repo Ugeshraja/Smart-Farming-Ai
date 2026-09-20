@@ -145,7 +145,7 @@ class SpeechService {
   }
 
   /**
-   * Replays existing audio if available without re-calling Google TTS.
+   * Replays existing audio if available without re-calling Piper TTS.
    */
   replay(options = {}) {
     if (this.audio && this.currentObjectUrl && this.lastText) {
@@ -325,7 +325,7 @@ class SpeechService {
         return { success: false, reason: 'aborted' };
       }
 
-      console.warn('[SpeechService] Google TTS error:', err?.message || err);
+      console.warn('[SpeechService] Piper TTS error:', err?.message || err);
       const userErr = new Error(errorMessage);
       userErr.reason = 'tts_service_unavailable';
       userErr.detail = err?.message;

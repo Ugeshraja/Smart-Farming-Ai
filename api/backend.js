@@ -126,6 +126,11 @@ export default async function handler(req, res) {
       res.setHeader('Content-Type', resContentType);
     }
 
+    const contentLength = response.headers.get('content-length');
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+
     const body = await response.arrayBuffer();
     return res.status(response.status).send(Buffer.from(body));
   } catch (error) {

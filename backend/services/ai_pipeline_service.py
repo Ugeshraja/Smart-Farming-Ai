@@ -16,12 +16,6 @@ import numpy as np
 import cv2
 from PIL import Image
 
-import torch
-from torchvision import models, transforms
-from ultralytics import YOLO
-from segment_anything import sam_model_registry, SamPredictor
-from lime import lime_image
-
 from config import settings
 from services.rag_service import rag_service
 
@@ -60,33 +54,44 @@ BRINJAL_CLASS_NAMES = [
 
 class AIPipelineService:
     def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cpu"
         self.is_loaded = False
-        self.yolo: Optional[YOLO] = None
-        self.sam_predictor: Optional[SamPredictor] = None
-        self.resnet: Optional[torch.nn.Module] = None
-        self.brinjal_resnet: Optional[torch.nn.Module] = None
+        self.yolo: Optional[Any] = None
+        self.sam_predictor: Optional[Any] = None
+        self.resnet: Optional[Any] = None
+        self.brinjal_resnet: Optional[Any] = None
         self.brinjal_is_loaded: bool = False
         self._lock = threading.Lock()
         pred_dir = settings.STATIC_DIR / "predictions"
         pred_dir.mkdir(parents=True, exist_ok=True)
         self.static_predictions_dir = str(pred_dir)
-
-        # Standard ResNet preprocessing used during training
-        self.resnet_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-        ])
+        self.resnet_transform = None
 
     def initialize(self):
         """
-        Loads all models ONCE at backend startup into memory in a thread-safe manner.
+        Loads all models ONCE at first prediction request into memory in a thread-safe manner.
         """
         with self._lock:
+            if self.is_loaded:
+                logger.info("AIPipelineService models are already loaded.")
+                return
+
+            global torch, models, transforms, YOLO, sam_model_registry, SamPredictor, lime_image
+            import torch
+            from torchvision import models, transforms
+            from ultralytics import YOLO
+            from segment_anything import sam_model_registry, SamPredictor
+            from lime import lime_image
+
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.resnet_transform = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            ])
             if self.is_loaded:
                 logger.info("AIPipelineService models are already loaded.")
                 return

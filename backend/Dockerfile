@@ -37,6 +37,16 @@ RUN pip install --no-cache-dir --upgrade pip && \
         --index-url https://download.pytorch.org/whl/cu128 && \
     pip install --no-cache-dir -r /app/requirements.txt
 
+# Ensure espeak-ng-data is symlinked to piper's expected location in site-packages and /app
+RUN python -c "import piper, os, glob; \
+    p_dir = os.path.join(os.path.dirname(piper.__file__), 'espeak-ng-data'); \
+    sys_dirs = glob.glob('/usr/**/espeak-ng-data', recursive=True); \
+    valid = [d for d in sys_dirs if os.path.exists(os.path.join(d, 'phontab'))]; \
+    src = valid[0] if valid else '/usr/share/espeak-ng-data'; \
+    print(f'Symlinking {src} -> {p_dir}'); \
+    os.symlink(src, p_dir) if not os.path.exists(p_dir) else None; \
+    os.symlink(src, '/app/espeak-ng-data') if not os.path.exists('/app/espeak-ng-data') else None"
+
 # Copy backend application source code, models, and RAG knowledge base
 COPY . /app
 

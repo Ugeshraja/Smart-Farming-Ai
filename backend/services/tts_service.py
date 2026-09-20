@@ -78,6 +78,83 @@ def clean_text_for_piper(text: str, language: str = "en") -> str:
     return cleaned.strip()
 
 
+def find_espeak_data_dir() -> Path:
+    """
+    Locates the espeak-ng-data directory across environments (Debian Bookworm, Ubuntu, Windows, Docker).
+    Guarantees that the returned directory contains 'phontab' required by libpiper_phonemize / espeakbridge,
+    preventing SIGABRT / C++ abort on Linux containers.
+    """
+    import piper.voice
+    candidates = [
+        Path("/usr/share/espeak-ng-data"),
+        Path("/usr/lib/espeak-ng-data"),
+        Path("/usr/lib/x86_64-linux-gnu/espeak-ng-data"),
+        Path("/usr/local/share/espeak-ng-data"),
+        Path("/app/espeak-ng-data"),
+    ]
+    try:
+        if hasattr(piper.voice, "ESPEAK_DATA_DIR") and piper.voice.ESPEAK_DATA_DIR:
+            candidates.append(Path(piper.voice.ESPEAK_DATA_DIR))
+        import piper
+        candidates.append(Path(os.path.dirname(piper.__file__)) / "espeak-ng-data")
+    except Exception:
+        pass
+
+    for p in candidates:
+        try:
+            if p.exists() and (p / "phontab").exists():
+                logger.info(f"[Piper TTS] Verified espeak-ng-data at: {p}")
+                return p
+        except Exception:
+            continue
+
+    # Fallback to piper.voice default if none explicitly verified
+    try:
+        return Path(piper.voice.ESPEAK_DATA_DIR)
+    except Exception:
+        return Path("/usr/share/espeak-ng-data")
+
+
+def _load_voice(model_path: Path) -> PiperVoice:
+    """
+    Loads PiperVoice with conservative ONNX Runtime SessionOptions (to avoid OOM
+    under Render Free's 512 MB memory limit) and verified espeak-ng data directory.
+    """
+    import json
+    import onnxruntime
+    from piper.voice import PiperConfig, PiperVoice
+
+    config_path = model_path.with_suffix(".onnx.json")
+    if not config_path.exists():
+        config_path = Path(f"{model_path}.json")
+    if not config_path.exists():
+        raise FileNotFoundError(f"Model config not found for {model_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config_dict = json.load(f)
+
+    sess_options = onnxruntime.SessionOptions()
+    sess_options.enable_cpu_mem_arena = False
+    sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+    sess_options.inter_op_num_threads = 1
+    sess_options.intra_op_num_threads = 1
+
+    espeak_dir = find_espeak_data_dir()
+
+    session = onnxruntime.InferenceSession(
+        str(model_path),
+        sess_options=sess_options,
+        providers=["CPUExecutionProvider"]
+    )
+
+    return PiperVoice(
+        config=PiperConfig.from_dict(config_dict),
+        session=session,
+        espeak_data_dir=espeak_dir,
+        download_dir=model_path.parent
+    )
+
+
 class PiperTTSManager:
     """
     Local / Self-Hosted Piper Text-to-Speech Manager.
@@ -107,7 +184,7 @@ class PiperTTSManager:
                         )
                     logger.info(f"[Piper TTS] Loading Tamil model from {model_path}...")
                     t0 = time.time()
-                    self._tamil_voice = PiperVoice.load(str(model_path))
+                    self._tamil_voice = _load_voice(model_path)
                     logger.info(f"[Piper TTS] Tamil model loaded in {time.time() - t0:.2f}s.")
         return self._tamil_voice
 
@@ -124,7 +201,7 @@ class PiperTTSManager:
                         )
                     logger.info(f"[Piper TTS] Loading English model from {model_path}...")
                     t0 = time.time()
-                    self._english_voice = PiperVoice.load(str(model_path))
+                    self._english_voice = _load_voice(model_path)
                     logger.info(f"[Piper TTS] English model loaded in {time.time() - t0:.2f}s.")
         return self._english_voice
 

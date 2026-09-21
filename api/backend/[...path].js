@@ -53,7 +53,13 @@ export default async function handler(req, res) {
     cleanPath === 'api/voice/' ||
     cleanPath === 'voice/' ||
     cleanPath.startsWith('api/voice/') ||
-    cleanPath.startsWith('voice/');
+    cleanPath.startsWith('voice/') ||
+    cleanPath === 'api/tts' ||
+    cleanPath === 'tts' ||
+    cleanPath === 'api/tts/' ||
+    cleanPath === 'tts/' ||
+    cleanPath.startsWith('api/tts/') ||
+    cleanPath.startsWith('tts/');
 
   if (isVoice) {
     return handleVoiceRequest(req, res, rawBody, cleanPath);

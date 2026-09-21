@@ -291,10 +291,10 @@ async def execute_rag_gemini_pipeline(
         )
 
     # 5. CALL GEMINI API VIA GOOGLE GENAI SDK
-    primary_model = (settings.LLM_MODEL or "gemini-3.8-flash").strip()
+    primary_model = (os.environ.get("LLM_MODEL") or settings.LLM_MODEL or "gemini-3.5-flash-lite").strip()
     fallback_models = [
+        "gemini-3.8-flash",
         "gemini-3.6-flash",
-        "gemini-3.5-flash-lite",
         "gemini-3.5-flash",
         "gemini-flash-lite-latest"
     ]

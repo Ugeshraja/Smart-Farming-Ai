@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     # LLM & AI Services
     LLM_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-3.8-flash"
+    LLM_MODEL: str = "gemini-3.5-flash-lite"
     WEATHER_API_KEY: str = ""
     OPENWEATHER_API_KEY: str = ""
     VOICE_API_KEY: str = ""

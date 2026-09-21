@@ -175,9 +175,10 @@ Tone: Helpful, respectful, practical, scientific yet accessible, and farmer-firs
     : `${historyPromptSection}FARMER QUESTION: ${message}\n\nPlease provide your expert agricultural advice in ${langName}.`;
 
   // Candidate models matching backend/routes/chat.py
-  const configuredModel = (process.env.LLM_MODEL || 'gemini-3.8-flash').trim();
+  const configuredModel = (process.env.LLM_MODEL || 'gemini-3.5-flash-lite').trim();
   const candidateModels = [
     configuredModel,
+    'gemini-3.8-flash',
     'gemini-3.6-flash',
     'gemini-flash-latest',
     'gemini-flash-lite-latest',
@@ -276,7 +277,7 @@ export async function handleGeminiChat(req, res, rawBody) {
       status: 'online',
       gemini_sdk_available: true,
       api_key_configured: Boolean(key),
-      configured_model: process.env.LLM_MODEL || 'gemini-3.8-flash',
+      configured_model: process.env.LLM_MODEL || 'gemini-3.5-flash-lite',
       rag_knowledge_base_size: AGRICULTURAL_KNOWLEDGE_BASE.length,
     });
   }

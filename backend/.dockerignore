@@ -44,6 +44,7 @@ docs/
 
 # Exclude model weights from Docker build context (provisioned via model_bootstrap from Hugging Face Hub)
 models/*.pt
+!models/yolo11_best.pt
 models/*.pth
 models/brinjal/*.pth
 

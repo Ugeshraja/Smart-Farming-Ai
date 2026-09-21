@@ -66,7 +66,8 @@ RUN curl -fSsL -o /app/models/tts/tamil/ta_IN-rasa_female-medium.onnx \
     curl -fSsL -o /app/models/tts/english/en_US-lessac-medium.onnx.json \
         https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json && \
     test -s /app/models/tts/tamil/ta_IN-rasa_female-medium.onnx && \
-    test -s /app/models/tts/english/en_US-lessac-medium.onnx
+    test -s /app/models/tts/english/en_US-lessac-medium.onnx && \
+    test -s /app/models/yolo11_best.pt
 
 # Container Healthcheck targeting the safe /api/health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

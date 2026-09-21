@@ -21,6 +21,7 @@ backend/cache/tts/
 *.wav
 backend/models/*.pth
 backend/models/*.pt
+!backend/models/yolo11_best.pt
 backend/models/brinjal/*.pth
 backend/models/tts/
 *.onnx

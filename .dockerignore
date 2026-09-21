@@ -53,6 +53,7 @@ scratch/
 
 # Exclude model weights from Docker build context (provisioned via model_bootstrap from Hugging Face Hub)
 backend/models/*.pt
+!backend/models/yolo11_best.pt
 backend/models/*.pth
 backend/models/brinjal/*.pth
 

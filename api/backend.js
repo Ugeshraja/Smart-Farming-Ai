@@ -1,3 +1,4 @@
+import { handleCropPrediction } from './hfGradioPredict.js';
 import { handleGeminiChat } from './geminiChat.js';
 import { handleWeatherRequest } from './weatherHandler.js';
 import { handleVoiceRequest } from './voiceHandler.js';
@@ -32,6 +33,16 @@ export default async function handler(req, res) {
       chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
     }
     rawBody = Buffer.concat(chunks);
+  }
+
+  // 1. Route crop prediction requests to Hugging Face ZeroGPU Space
+  const normalizedPath = cleanPath.replace(/\/+$/, '');
+  const isPredict =
+    req.method === 'POST' &&
+    (normalizedPath === 'api/predict' || normalizedPath === 'predict');
+
+  if (isPredict) {
+    return handleCropPrediction(req, res, rawBody);
   }
 
   // 2. Route Weather requests to serverless OpenWeather handler

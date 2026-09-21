@@ -11,6 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000 \
     ENVIRONMENT=production \
     PIP_NO_CACHE_DIR=1 \
+    LLM_MODEL=gemini-3.5-flash-lite \
     ESPEAK_DATA_PATH=/usr/share/espeak-ng-data
 
 # Set working directory inside container

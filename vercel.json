@@ -17,6 +17,22 @@
       "destination": "/api/backend?path=api/chat/:path*"
     },
     {
+      "source": "/api/predict",
+      "destination": "/api/backend?path=api/predict"
+    },
+    {
+      "source": "/api/predict/:path*",
+      "destination": "/api/backend?path=api/predict/:path*"
+    },
+    {
+      "source": "/predict",
+      "destination": "/api/backend?path=api/predict"
+    },
+    {
+      "source": "/predict/:path*",
+      "destination": "/api/backend?path=api/predict/:path*"
+    },
+    {
       "source": "/api/backend/:path*",
       "destination": "/api/backend?path=:path*"
     },
@@ -53,7 +69,7 @@
       "destination": "/api/backend?path=tts"
     },
     {
-      "source": "/((?!api/backend|api/voice|voice|api/chat|api/tts|tts).*)",
+      "source": "/((?!api/backend|api/predict|predict|api/voice|voice|api/chat|api/tts|tts).*)",
       "destination": "/index.html"
     }
   ]

@@ -1,0 +1,2581 @@
+{
+  "checkpoints": {
+    "Tomato": {
+      "model": "ResNet-50 (13-class Tomato/Potato)",
+      "path": "C:\\Users\\ugesh\\.gemini\\antigravity\\scratch\\smartfarm-ai\\backend\\models\\resnet50_best_model.pth",
+      "exists": true,
+      "size_mb": 90.08,
+      "sha256_prefix": "9fb048609272b0b8...",
+      "mtime": "2026-08-31T17:35:57.342000+00:00",
+      "arch": "ResNet-50",
+      "num_classes": 13,
+      "state_keys_count": 320
+    },
+    "Potato": {
+      "model": "ResNet-50 (13-class Tomato/Potato)",
+      "path": "C:\\Users\\ugesh\\.gemini\\antigravity\\scratch\\smartfarm-ai\\backend\\models\\resnet50_best_model.pth",
+      "exists": true,
+      "size_mb": 90.08,
+      "sha256_prefix": "9fb048609272b0b8...",
+      "mtime": "2026-08-31T17:35:57.342000+00:00",
+      "arch": "ResNet-50",
+      "num_classes": 13,
+      "state_keys_count": 320
+    },
+    "Brinjal": {
+      "model": "ResNet-50 (8-class Brinjal)",
+      "path": "C:\\Users\\ugesh\\.gemini\\antigravity\\scratch\\smartfarm-ai\\backend\\models\\brinjal\\best_model.pth",
+      "exists": true,
+      "size_mb": 90.04,
+      "sha256_prefix": "463e0595aef3070f...",
+      "mtime": "2026-09-10T15:57:36.067942+00:00",
+      "arch": "ResNet-50",
+      "num_classes": 8,
+      "state_keys_count": 320
+    },
+    "YOLO11": {
+      "model": "YOLO11 Leaf Detector",
+      "path": "C:\\Users\\ugesh\\.gemini\\antigravity\\scratch\\smartfarm-ai\\backend\\models\\yolo11_best.pt",
+      "exists": true,
+      "size_mb": 5.18,
+      "sha256_prefix": "c6c025dde69bec47...",
+      "mtime": "2026-09-09T14:41:34.218000+00:00",
+      "arch": "YOLO11",
+      "num_classes": 1,
+      "state_keys_count": 0
+    },
+    "SAM ViT-B": {
+      "model": "Segment Anything ViT-B",
+      "path": "C:\\Users\\ugesh\\.gemini\\antigravity\\scratch\\smartfarm-ai\\backend\\models\\sam_vit_b_01ec64.pth",
+      "exists": true,
+      "size_mb": 357.67,
+      "sha256_prefix": "ec2df62732614e57...",
+      "mtime": "2023-04-04T06:53:38+00:00",
+      "arch": "ViT-B",
+      "num_classes": null,
+      "state_keys_count": 314
+    }
+  },
+  "potato_metrics": {
+    "accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": {
+      "Potato___Early_blight": {
+        "Potato___Early_blight": 25,
+        "Potato___Late_blight": 0,
+        "Potato___healthy": 0
+      },
+      "Potato___Late_blight": {
+        "Potato___Early_blight": 0,
+        "Potato___Late_blight": 3,
+        "Potato___healthy": 0
+      },
+      "Potato___healthy": {
+        "Potato___Early_blight": 0,
+        "Potato___Late_blight": 0,
+        "Potato___healthy": 3
+      }
+    },
+    "classes": [
+      "Potato___Early_blight",
+      "Potato___Late_blight",
+      "Potato___healthy"
+    ],
+    "per_class": {
+      "Potato___Early_blight": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 25
+      },
+      "Potato___Late_blight": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "Potato___healthy": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      }
+    }
+  },
+  "brinjal_metrics": {
+    "accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": {
+      "Bacterial_Leaf_Spot": {
+        "Bacterial_Leaf_Spot": 3,
+        "Cercospora_Leaf_Spot": 0,
+        "Healthy": 0
+      },
+      "Cercospora_Leaf_Spot": {
+        "Bacterial_Leaf_Spot": 0,
+        "Cercospora_Leaf_Spot": 25,
+        "Healthy": 0
+      },
+      "Healthy": {
+        "Bacterial_Leaf_Spot": 0,
+        "Cercospora_Leaf_Spot": 0,
+        "Healthy": 3
+      }
+    },
+    "classes": [
+      "Bacterial_Leaf_Spot",
+      "Cercospora_Leaf_Spot",
+      "Healthy"
+    ],
+    "per_class": {
+      "Bacterial_Leaf_Spot": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "Cercospora_Leaf_Spot": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 25
+      },
+      "Healthy": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      }
+    }
+  },
+  "tomato_metrics": {
+    "accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": {
+      "Tomato___Early_blight": {
+        "Tomato___Early_blight": 1,
+        "Tomato___Late_blight": 0,
+        "Tomato___healthy": 0
+      },
+      "Tomato___Late_blight": {
+        "Tomato___Early_blight": 0,
+        "Tomato___Late_blight": 1,
+        "Tomato___healthy": 0
+      },
+      "Tomato___healthy": {
+        "Tomato___Early_blight": 0,
+        "Tomato___Late_blight": 0,
+        "Tomato___healthy": 1
+      }
+    },
+    "classes": [
+      "Tomato___Early_blight",
+      "Tomato___Late_blight",
+      "Tomato___healthy"
+    ],
+    "per_class": {
+      "Tomato___Early_blight": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "Tomato___Late_blight": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "Tomato___healthy": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      }
+    }
+  },
+  "non_leaf": [
+    {
+      "name": "soil",
+      "rejected": true,
+      "status": "invalid_image",
+      "crop": null,
+      "disease": null,
+      "confidence": null
+    },
+    {
+      "name": "human_hand",
+      "rejected": true,
+      "status": "invalid_image",
+      "crop": null,
+      "disease": null,
+      "confidence": null
+    },
+    {
+      "name": "vehicle_car",
+      "rejected": true,
+      "status": "invalid_image",
+      "crop": null,
+      "disease": null,
+      "confidence": null
+    },
+    {
+      "name": "sky_background",
+      "rejected": true,
+      "status": "invalid_image",
+      "crop": null,
+      "disease": null,
+      "confidence": null
+    },
+    {
+      "name": "lawn_grass",
+      "rejected": false,
+      "status": "success",
+      "crop": "Tomato",
+      "disease": "Tomato___Septoria_leaf_spot",
+      "confidence": 0.4192
+    }
+  ],
+  "timings": {
+    "tomato": {
+      "yolo_ms": 84.04,
+      "sam_ms": 22051.15,
+      "resnet_ms": 320.78,
+      "lime_ms": 0.0,
+      "rag_ms": 8.35,
+      "gemini_ms": 0.0,
+      "total_ms": 22489.03
+    },
+    "potato": {
+      "yolo_ms": 102.52,
+      "sam_ms": 21326.46,
+      "resnet_ms": 270.9,
+      "lime_ms": 0.0,
+      "rag_ms": 4.23,
+      "gemini_ms": 0.0,
+      "total_ms": 21728.91
+    },
+    "brinjal": {
+      "brinjal_resnet_ms": 252.51,
+      "lime_ms": 0.0,
+      "rag_ms": 6.1,
+      "gemini_ms": 0.0,
+      "total_ms": 359.93
+    }
+  },
+  "potato_results": [
+    {
+      "filename": "00_002a55fb-7a3d-4a3a-aca8-ce2d5ebc6925___RS_Early.B 8170.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_00d8f10f-5038-4e0f-bb58-0b885ddc0cc5___RS_Early.B 8722.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_034959c1-f1e8-4a79-a6d5-3c1d14efa2f3___RS_Early.B 7136_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_044c3abc-0bc9-45fb-8fd5-094aeb605f90___RS_Early.B 8044_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_048d18ae-98b1-484d-97da-5a0e69b9ebc1___RS_Early.B 6845.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_0604174e-3018-4faa-9975-0be32d2c0789___RS_Early.B 7123_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_060fd5a7-1606-4a59-895b-604c90d6b414___RS_Early.B 7205_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_065fc68f-88c9-4fc3-b0a6-a6f5e1072eaa___RS_Early.B 7174_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_07953ca1-8935-449f-b338-4357ed683b2d___RS_Early.B 6815_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_07d777f8-2c5a-48da-935e-f17c572b1e6e___RS_Early.B 7880.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_212c3c65-e30e-496f-ab5e-c2f4b0446d8f___RS_Early.B 8195_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_432f1b02-9493-4cf1-8ef7-a40f817e43ff___RS_Early.B 8497_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_450b4a32-39ae-4daa-aeb6-87559afb0b42___RS_Early.B 9202.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_57c5fe0f-ce93-412a-a29e-a70a4aa23649___RS_Early.B 6818.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_7855ccc3-28ac-4269-a8ce-618df8a27573___RS_Early.B 7834.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_87c0254c-c987-4c54-adda-45c5e7346170___RS_Early.B 8848_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_95d42b98-1945-4cb3-ab27-0dbd56def41b___RS_Early.B 8866_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_ab808dff-e0fc-42d0-ad9a-c4cb7f69e59b___RS_Early.B 9210.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_b54a2105-b9a4-4665-9e34-44df46d0be5a___RS_Early.B 8507.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_c4dd703b-1d4c-4e4c-8064-0e1d743c47ae___RS_Early.B 7050_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_c53efbea-fddd-481d-aec5-14fd3c3e1723___RS_Early.B 7796_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_c5cb3e89-f00f-4032-80ca-eb39bead0796___RS_Early.B 8645_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_ca2c9c12-f2ba-4864-806c-b85f4fb36f92___RS_Early.B 7640.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_f7db505f-aabe-4b96-b719-8c930b5ff471___RS_Early.B 9224_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "00_fe772b3d-351c-4d18-9dcb-26feb90afa0d___RS_Early.B 7456_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Early_blight",
+      "prediction": "Potato___Early_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "01_00695906-210d-4a9d-822e-986a17384115___RS_LB 4026.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Late_blight",
+      "prediction": "Potato___Late_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "01_0085ef03-aec3-431a-99a1-de286e10c0cf___RS_LB 2949_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Late_blight",
+      "prediction": "Potato___Late_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "01_0085ef03-aec3-431a-99a1-de286e10c0cf___RS_LB 2949_flipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___Late_blight",
+      "prediction": "Potato___Late_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "02_00fc2ee5-729f-4757-8aeb-65c3355874f2___RS_HL 1864_180deg.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___healthy",
+      "prediction": "Potato___healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "02_00fc2ee5-729f-4757-8aeb-65c3355874f2___RS_HL 1864_flipLR.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___healthy",
+      "prediction": "Potato___healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "02_00fc2ee5-729f-4757-8aeb-65c3355874f2___RS_HL 1864_new90degFlipTB.JPG",
+      "crop": "Potato",
+      "ground_truth": "Potato___healthy",
+      "prediction": "Potato___healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Potato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Potato",
+          "class_id": 2,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Potato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Potato",
+          "class_id": 1,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Potato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Potato",
+          "class_id": 0,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    }
+  ],
+  "brinjal_results": [
+    {
+      "filename": "cercospora_cls_001.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_003.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_007.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_013.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_015.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 0.9986,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.9986,
+          "confidence_percent": 99.86
+        },
+        {
+          "rank": 2,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0013,
+          "confidence_percent": 0.13
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0001,
+          "confidence_percent": 0.01
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_017.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_029.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_149.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_160.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_161.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_162.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_163.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_167.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_173.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_174.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_175.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 2,
+          "disease": "Bacterial_Wilt",
+          "disease_clean": "Bacterial Wilt",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_177.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_188.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_198.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_201.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 0.9998,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.9998,
+          "confidence_percent": 99.98
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0001,
+          "confidence_percent": 0.01
+        },
+        {
+          "rank": 3,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_203.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 2,
+          "disease": "Bacterial_Wilt",
+          "disease_clean": "Bacterial Wilt",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_205.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_211.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 0.9999,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.9999,
+          "confidence_percent": 99.99
+        },
+        {
+          "rank": 2,
+          "class_id": 7,
+          "disease": "Powdery_Mildew",
+          "disease_clean": "Powdery Mildew",
+          "crop": "Brinjal",
+          "confidence": 0.0001,
+          "confidence_percent": 0.01
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_215.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "cercospora_cls_217.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Cercospora_Leaf_Spot",
+      "prediction": "Cercospora_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "bacterial_bs_046.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Bacterial_Leaf_Spot",
+      "prediction": "Bacterial_Leaf_Spot",
+      "confidence": 0.9997,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.9997,
+          "confidence_percent": 99.97
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0001,
+          "confidence_percent": 0.01
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0001,
+          "confidence_percent": 0.01
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "bacterial_bs_052.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Bacterial_Leaf_Spot",
+      "prediction": "Bacterial_Leaf_Spot",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "bacterial_bs_085.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Bacterial_Leaf_Spot",
+      "prediction": "Bacterial_Leaf_Spot",
+      "confidence": 0.9997,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 1,
+          "disease": "Bacterial_Leaf_Spot",
+          "disease_clean": "Bacterial Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.9997,
+          "confidence_percent": 99.97
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0002,
+          "confidence_percent": 0.02
+        },
+        {
+          "rank": 3,
+          "class_id": 5,
+          "disease": "Little_Leaf",
+          "disease_clean": "Little Leaf",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "healthy_h_001.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Healthy",
+      "prediction": "Healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "healthy_h_160.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Healthy",
+      "prediction": "Healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 6,
+          "disease": "Mosaic_Virus",
+          "disease_clean": "Mosaic Virus",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "healthy_h_161.jpg",
+      "crop": "Brinjal",
+      "ground_truth": "Healthy",
+      "prediction": "Healthy",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "rank": 1,
+          "class_id": 4,
+          "disease": "Healthy",
+          "disease_clean": "Healthy",
+          "crop": "Brinjal",
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "rank": 2,
+          "class_id": 3,
+          "disease": "Cercospora_Leaf_Spot",
+          "disease_clean": "Cercospora Leaf Spot",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "rank": 3,
+          "class_id": 0,
+          "disease": "Bacterial_Blight",
+          "disease_clean": "Bacterial Blight",
+          "crop": "Brinjal",
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    }
+  ],
+  "tomato_results": [
+    {
+      "filename": "leaf_crop_1789027565_56abfd46.jpg",
+      "crop": "Tomato",
+      "ground_truth": "Tomato___healthy",
+      "prediction": "Tomato___healthy",
+      "confidence": 0.9989,
+      "top3": [
+        {
+          "disease": "Tomato___healthy",
+          "disease_clean": "healthy",
+          "crop": "Tomato",
+          "class_id": 12,
+          "confidence": 0.9989,
+          "confidence_percent": 99.9
+        },
+        {
+          "disease": "Tomato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Tomato",
+          "class_id": 5,
+          "confidence": 0.0008,
+          "confidence_percent": 0.1
+        },
+        {
+          "disease": "Tomato___Target_Spot",
+          "disease_clean": "Target Spot",
+          "crop": "Tomato",
+          "class_id": 9,
+          "confidence": 0.0002,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "tomato_real.png",
+      "crop": "Tomato",
+      "ground_truth": "Tomato___Early_blight",
+      "prediction": "Tomato___Early_blight",
+      "confidence": 0.9965,
+      "top3": [
+        {
+          "disease": "Tomato___Early_blight",
+          "disease_clean": "Early blight",
+          "crop": "Tomato",
+          "class_id": 4,
+          "confidence": 0.9965,
+          "confidence_percent": 99.6
+        },
+        {
+          "disease": "Tomato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Tomato",
+          "class_id": 5,
+          "confidence": 0.0023,
+          "confidence_percent": 0.2
+        },
+        {
+          "disease": "Tomato___Septoria_leaf_spot",
+          "disease_clean": "Septoria leaf spot",
+          "crop": "Tomato",
+          "class_id": 7,
+          "confidence": 0.0011,
+          "confidence_percent": 0.1
+        }
+      ],
+      "correct": true
+    },
+    {
+      "filename": "original_1789035254_13c6c0e2.jpg",
+      "crop": "Tomato",
+      "ground_truth": "Tomato___Late_blight",
+      "prediction": "Tomato___Late_blight",
+      "confidence": 1.0,
+      "top3": [
+        {
+          "disease": "Tomato___Late_blight",
+          "disease_clean": "Late blight",
+          "crop": "Tomato",
+          "class_id": 5,
+          "confidence": 1.0,
+          "confidence_percent": 100.0
+        },
+        {
+          "disease": "Tomato___Target_Spot",
+          "disease_clean": "Target Spot",
+          "crop": "Tomato",
+          "class_id": 9,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        },
+        {
+          "disease": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+          "disease_clean": "Tomato Yellow Leaf Curl Virus",
+          "crop": "Tomato",
+          "class_id": 10,
+          "confidence": 0.0,
+          "confidence_percent": 0.0
+        }
+      ],
+      "correct": true
+    }
+  ]
+}

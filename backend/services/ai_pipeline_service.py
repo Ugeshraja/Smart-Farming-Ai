@@ -16,6 +16,11 @@ import numpy as np
 import cv2
 from PIL import Image
 
+try:
+    from lime import lime_image
+except ImportError:
+    lime_image = None
+
 from config import settings
 from services.rag_service import rag_service
 

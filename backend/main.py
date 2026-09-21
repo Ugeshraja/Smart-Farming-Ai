@@ -118,7 +118,10 @@ async def minimal_health_check():
     return {"status": "healthy"}
 
 
+@app.get("/api/health", tags=["Health"])
 @app.get(f"{settings.API_V1_PREFIX}/health", tags=["Health"])
+@app.get("/api/v1/health", tags=["Health"])
+@app.get("/api/backend/api/health", tags=["Health"])
 async def health_check():
     rag_files = list(settings.RAG_DIR.glob("*.txt")) if settings.RAG_DIR.exists() else []
     return {

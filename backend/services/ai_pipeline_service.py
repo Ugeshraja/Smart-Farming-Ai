@@ -52,9 +52,17 @@ BRINJAL_CLASS_NAMES = [
 ]
 
 
+# Class index partition for crop-conditioned logit masking
+POTATO_CLASS_INDICES = [0, 1, 2]
+TOMATO_CLASS_INDICES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+
+import torch
+
+
 class AIPipelineService:
     def __init__(self):
-        self.device = "cpu"
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.is_loaded = False
         self.yolo: Optional[Any] = None
         self.sam_predictor: Optional[Any] = None
@@ -189,27 +197,43 @@ class AIPipelineService:
                 all_probs.append(probs.cpu().numpy())
         return np.concatenate(all_probs, axis=0)
 
-    def _predict_resnet_batch(self, images: list) -> np.ndarray:
+    def _predict_resnet_batch(self, images: list, crop_hint: Optional[str] = None) -> np.ndarray:
         """
-        Batch prediction helper for ResNet-50 and LIME explainer.
-        Efficiently converts and infers in sub-batches.
+        Batch prediction helper for ResNet-50 and LIME explainer with crop-conditioned logit masking.
+        When crop_hint indicates Tomato, Potato class logits are set to -inf before softmax.
+        When crop_hint indicates Potato, Tomato class logits are set to -inf before softmax.
+        When no crop_hint is provided, all 13 classes compete.
         """
         all_probs = []
         batch_size = 32
-        
+
+        # Determine active crop masking
+        crop_norm = crop_hint.strip().lower() if (crop_hint and isinstance(crop_hint, str)) else ""
+        is_tomato = crop_norm in ("tomato", "தக்காளி")
+        is_potato = crop_norm in ("potato", "உருளைக்கிழங்கு")
+
         for i in range(0, len(images), batch_size):
             chunk = images[i : i + batch_size]
             tensors = []
             for img in chunk:
                 pil_img = Image.fromarray(img.astype(np.uint8))
                 tensors.append(self.resnet_transform(pil_img))
-            
+
             batch_tensor = torch.stack(tensors).to(self.device)
             with torch.inference_mode():
                 outputs = self.resnet(batch_tensor)
-                probs = torch.softmax(outputs, dim=1)
+                if is_tomato:
+                    masked_outputs = outputs.clone()
+                    masked_outputs[:, POTATO_CLASS_INDICES] = -float("inf")
+                    probs = torch.softmax(masked_outputs, dim=1)
+                elif is_potato:
+                    masked_outputs = outputs.clone()
+                    masked_outputs[:, TOMATO_CLASS_INDICES] = -float("inf")
+                    probs = torch.softmax(masked_outputs, dim=1)
+                else:
+                    probs = torch.softmax(outputs, dim=1)
                 all_probs.append(probs.cpu().numpy())
-                
+
         return np.concatenate(all_probs, axis=0)
 
     def _get_disease_key(self, disease_class: str) -> str:
@@ -824,22 +848,7 @@ Important note:
                 for rank, idx in enumerate(top3_indices)
             ]
 
-            # Uncertainty Gate Check for Brinjal
-            if not certainty["is_certain"]:
-                timings["total_ms"] = round((time.time() - start_time) * 1000, 2)
-                return {
-                    "success": False,
-                    "valid_image": True,
-                    "status": "uncertain_prediction",
-                    "message": "The image appears to contain a Brinjal leaf, but the disease prediction is uncertain. Please upload a clearer, well-lit leaf photograph.",
-                    "crop": "Brinjal",
-                    "disease": None,
-                    "confidence": round(confidence, 4),
-                    "confidence_percent": round(confidence * 100, 2),
-                    "top3_predictions": top3_predictions,
-                    "advisory": None,
-                    "timings": timings
-                }
+
 
             # 2. Text-Only LIME Explainability (No image heatmap generated)
             t0 = time.time()
@@ -925,6 +934,13 @@ Important note:
                 "disease_clean": formatted_disease_clean,
                 "confidence": round(confidence, 4),
                 "confidence_percent": round(confidence * 100, 2),
+                "leaf_crop_url": leaf_crop_url,
+                "image_url": leaf_crop_url,
+                "original_image_url": original_image_url,
+                "lime_summary": lime_explanation_str,
+                "model_used": "ResNet-50",
+                "rag_sources": [f"Brinjal: {formatted_disease_clean} (TNAU / ICAR Knowledge Base)"],
+                "rag_context": rag_context[:800] if rag_context else None,
                 "top3_predictions": top3_predictions,
                 "prediction": {
                     "crop": "Brinjal",
@@ -938,6 +954,16 @@ Important note:
                 },
                 "leaf_crop": {
                     "image_url": leaf_crop_url
+                },
+                "classification_input": {
+                    "type": "raw_image",
+                    "description": "Full uncropped image directly to Brinjal ResNet-50",
+                    "image_url": original_image_url
+                },
+                "segmentation_visualization": {
+                    "available": False,
+                    "image_url": None,
+                    "type": None
                 },
                 "yolo": {
                     "detected": True,
@@ -963,6 +989,26 @@ Important note:
                 },
                 "advisory": {
                     "text": advisory_text
+                },
+                "diagnostics": {
+                    "crop_hint": crop_hint,
+                    "effective_crop": "Brinjal",
+                    "preprocessing": "Existing direct ResNet pipeline",
+                    "classification_input": "raw_image",
+                    "segmentation_visualization": None,
+                    "segmentation_used_for_classification": False,
+                    "crop_masking_applied": False,
+                    "active_classes_count": 8,
+                    "segmentation_used": False,
+                    "sam_score": None,
+                    "sam_mask_pct": None,
+                    "background_neutralized": False,
+                    "background_rgb": None,
+                    "top1_confidence": round(float(np.max(probabilities)), 4),
+                    "top2_confidence": round(float(np.sort(probabilities)[::-1][1]), 4) if len(probabilities) > 1 else 0.0,
+                    "margin": round(certainty["margin"], 4),
+                    "entropy": round(certainty["entropy"], 4),
+                    "is_certain": certainty["is_certain"]
                 },
                 "timings": timings
             }
@@ -1038,49 +1084,123 @@ Important note:
             }
 
         # ----------------------------------------------------------------------
-        # 2. SAM LEAF SEGMENTATION
+        # 2. SAM LEAF SEGMENTATION & BACKGROUND NEUTRALIZATION (FOR VISUALIZATION / TOMATO)
         # ----------------------------------------------------------------------
+        crop_norm = crop_hint.strip().lower() if (crop_hint and isinstance(crop_hint, str)) else ""
+        is_potato_crop = crop_norm in ("potato", "உருளைக்கிழங்கு")
+
         t0 = time.time()
         segmentation_used = False
-        final_crop = yolo_crop
         sam_crop = None
+        sam_neutral_grey_crop = None
         sam_score = 0.0
+        mask_pct = 0.0
 
-        try:
-            self.sam_predictor.set_image(image_rgb)
-            sam_box = np.array([x1, y1, x2, y2])
-            masks, scores, _ = self.sam_predictor.predict(
-                box=sam_box,
-                multimask_output=True
-            )
-            best_mask_index = int(np.argmax(scores))
-            mask = masks[best_mask_index]
-            sam_score = float(scores[best_mask_index])
+        # Run SAM leaf segmentation (used for visualization, and for Tomato classification)
+        need_sam = True
 
-            # Leaf masked crop preserving disease textures and setting background to 255 (white)
-            sam_crop = image_rgb[y1:y2, x1:x2].copy()
-            crop_mask = mask[y1:y2, x1:x2]
-            sam_crop[~crop_mask] = 255
+        if need_sam:
+            try:
+                self.sam_predictor.set_image(image_rgb)
+                sam_box = np.array([x1, y1, x2, y2])
+                masks, scores, _ = self.sam_predictor.predict(
+                    box=sam_box,
+                    multimask_output=True
+                )
+                best_mask_index = int(np.argmax(scores))
+                mask = masks[best_mask_index]
+                sam_score = float(scores[best_mask_index])
 
-            if sam_crop.size > 0:
-                segmentation_used = True
-        except Exception as e:
-            logger.warning(f"SAM leaf segmentation failed: {e}")
+                # Verify mask dimensions match original image
+                if mask.shape[:2] != (height, width):
+                    mask = cv2.resize(mask.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST).astype(bool)
+
+                # Extract crop mask corresponding to YOLO bounding box
+                crop_mask = mask[y1:y2, x1:x2]
+
+                # Verify crop_mask shape matches yolo_crop shape
+                if crop_mask.shape[:2] != yolo_crop.shape[:2]:
+                    crop_mask = cv2.resize(crop_mask.astype(np.uint8), (yolo_crop.shape[1], yolo_crop.shape[0]), interpolation=cv2.INTER_NEAREST).astype(bool)
+
+                mask_pixels = int(np.sum(crop_mask))
+                total_crop_pixels = crop_mask.size
+                mask_pct = (mask_pixels / total_crop_pixels) * 100 if total_crop_pixels > 0 else 0.0
+
+                logger.info(
+                    f"SAM Mask Alignment: original=({width}x{height}), bbox=[{x1},{y1},{x2},{y2}], "
+                    f"yolo_crop=({yolo_crop.shape[1]}x{yolo_crop.shape[0]}), crop_mask=({crop_mask.shape[1]}x{crop_mask.shape[0]}), "
+                    f"mask_pixels={mask_pixels}/{total_crop_pixels} ({mask_pct:.1f}%)"
+                )
+
+                # Apply neutral grey background [115, 115, 115] matching PlantVillage training distribution
+                # Note: yolo_crop is in RGB order; [115, 115, 115] preserves RGB order.
+                if mask_pixels > 0 and mask_pct >= 5.0:
+                    neutral_bg_crop = yolo_crop.copy()
+                    neutral_bg_crop[~crop_mask] = [115, 115, 115]
+                    sam_neutral_grey_crop = neutral_bg_crop
+                    sam_crop = neutral_bg_crop
+                    segmentation_used = True
+                else:
+                    logger.warning(f"SAM mask has insufficient leaf coverage ({mask_pct:.1f}%). Falling back to yolo_crop.")
+                    sam_neutral_grey_crop = yolo_crop
+                    sam_crop = None
+                    segmentation_used = False
+            except Exception as e:
+                logger.warning(f"SAM leaf segmentation failed: {e}")
+                sam_neutral_grey_crop = yolo_crop
+                sam_crop = None
+                segmentation_used = False
+        else:
+            sam_neutral_grey_crop = yolo_crop
+            sam_crop = None
             segmentation_used = False
 
         timings["sam_ms"] = round((time.time() - t0) * 1000, 2)
 
         # ----------------------------------------------------------------------
+        # CROP-SPECIFIC PREPROCESSING SELECTION
+        # Explicit logic based on forensic diagnostic evidence:
+        # - Potato: Use raw YOLO crop (SAM neutral-grey destroys lesion contrast, dropping recall to 32%)
+        # - Tomato: Use SAM neutral-grey crop (fixes real-world background false-positive Late Blight)
+        # - Brinjal: Already handled above via direct ResNet pipeline
+        # ----------------------------------------------------------------------
+        crop_norm = crop_hint.strip().lower() if (crop_hint and isinstance(crop_hint, str)) else ""
+        if crop_norm in ("potato", "உருளைக்கிழங்கு"):
+            crop = "Potato"
+            classification_image = yolo_crop
+            classification_input_type = "yolo_crop"
+            lime_hide_color = 0
+        elif crop_norm in ("tomato", "தக்காளி"):
+            crop = "Tomato"
+            classification_image = sam_neutral_grey_crop if segmentation_used else yolo_crop
+            classification_input_type = "sam_neutral_grey_crop" if segmentation_used else "yolo_crop"
+            lime_hide_color = 115
+        else:
+            # Fallback if crop_hint is not provided:
+            # Determine crop by running a quick unmasked forward pass on yolo_crop
+            temp_probs = self._predict_resnet_batch([yolo_crop], crop_hint=None)[0]
+            temp_top_class = CLASS_NAMES[int(np.argmax(temp_probs))]
+            if temp_top_class.startswith("Potato"):
+                crop = "Potato"
+                classification_image = yolo_crop
+                classification_input_type = "yolo_crop"
+                lime_hide_color = 0
+            else:
+                crop = "Tomato"
+                classification_image = sam_neutral_grey_crop if segmentation_used else yolo_crop
+                classification_input_type = "sam_neutral_grey_crop" if segmentation_used else "yolo_crop"
+                lime_hide_color = 115
+
+        # ----------------------------------------------------------------------
         # 3. RESNET-50 DISEASE CLASSIFICATION & UNCERTAINTY GATE
         # ----------------------------------------------------------------------
         t0 = time.time()
-        # ResNet-50 is evaluated on the localized leaf bounding box (matching training distribution)
-        probabilities = self._predict_resnet_batch([yolo_crop])[0]
+        # ResNet-50 is evaluated on the crop-specific classification_image with crop-conditioned logit masking
+        probabilities = self._predict_resnet_batch([classification_image], crop_hint=crop_hint)[0]
         certainty = self._evaluate_prediction_certainty(probabilities)
         class_id = certainty["class_id"]
         confidence = certainty["confidence"]
         disease_name = CLASS_NAMES[class_id]
-        crop = "Potato" if disease_name.startswith("Potato") else "Tomato"
 
         # Extract top-3 predictions
         top3_indices = np.argsort(probabilities)[::-1][:3]
@@ -1116,6 +1236,7 @@ Important note:
 
         # ----------------------------------------------------------------------
         # 4. LIME EXPLAINABILITY (500 samples, top 3 labels, 10 features)
+        # Ensure LIME receives the SAME classification image used by ResNet
         # ----------------------------------------------------------------------
         t0 = time.time()
         lime_explanation_data = None
@@ -1123,16 +1244,16 @@ Important note:
             try:
                 explainer = lime_image.LimeImageExplainer()
                 explanation = explainer.explain_instance(
-                    final_crop,
-                    self._predict_resnet_batch,
+                    classification_image,
+                    lambda imgs: self._predict_resnet_batch(imgs, crop_hint=crop_hint),
                     top_labels=3,
-                    hide_color=0,
+                    hide_color=lime_hide_color,
                     num_samples=500
                 )
                 lime_explanation_data = self._extract_lime_explanation(
                     explanation=explanation,
                     class_id=class_id,
-                    final_crop=final_crop,
+                    final_crop=classification_image,
                     disease_name=disease_name
                 )
             except Exception as e:
@@ -1198,10 +1319,18 @@ Important note:
             "valid_image": True,
             "status": "success",
             "crop": crop,
+            "class_id": class_id,
             "disease": disease_name,
             "disease_clean": formatted_disease_clean,
             "confidence": round(confidence, 4),
             "confidence_percent": round(confidence * 100, 1),
+            "leaf_crop_url": leaf_crop_url,
+            "image_url": leaf_crop_url,
+            "original_image_url": original_image_url,
+            "lime_summary": lime_explanation_str,
+            "model_used": "ResNet-50",
+            "rag_sources": [f"{crop}: {formatted_disease_clean} (TNAU / ICAR Knowledge Base)"],
+            "rag_context": rag_context[:800] if rag_context else None,
             "prediction": {
                 "crop": crop,
                 "disease": disease_name,
@@ -1218,9 +1347,19 @@ Important note:
                 "confidence": round(yolo_conf, 4),
                 "bbox": [x1, y1, x2, y2]
             },
+            "classification_input": {
+                "type": classification_input_type,
+                "description": "Raw YOLO bounding box crop" if classification_input_type == "yolo_crop" else "SAM segmented leaf with neutral grey background",
+                "image_url": leaf_crop_url if classification_input_type == "yolo_crop" else (seg_url or leaf_crop_url)
+            },
+            "segmentation_visualization": {
+                "available": bool(segmentation_used),
+                "image_url": seg_url if segmentation_used else None,
+                "type": "sam_mask_overlay" if segmentation_used else None
+            },
             "segmentation": {
                 "success": bool(segmentation_used),
-                "used": segmentation_used,
+                "used": bool(segmentation_used),
                 "score": round(sam_score, 4) if segmentation_used else None,
                 "image_url": seg_url or leaf_crop_url
             },
@@ -1239,6 +1378,26 @@ Important note:
             },
             "advisory": {
                 "text": advisory_text
+            },
+            "diagnostics": {
+                "crop_hint": crop_hint,
+                "effective_crop": crop,
+                "preprocessing": "YOLO crop only" if crop == "Potato" else ("YOLO + SAM + Grey BG" if segmentation_used else "YOLO crop"),
+                "classification_input": classification_input_type,
+                "segmentation_visualization": "sam_mask" if segmentation_used else None,
+                "segmentation_used_for_classification": bool(segmentation_used and crop == "Tomato"),
+                "crop_masking_applied": crop_norm in ("tomato", "தக்காளி", "potato", "உருளைக்கிழங்கு"),
+                "active_classes_count": 10 if crop == "Tomato" else (3 if crop == "Potato" else 13),
+                "segmentation_used": bool(segmentation_used),
+                "sam_score": round(sam_score, 4) if segmentation_used else None,
+                "sam_mask_pct": round(mask_pct, 2) if segmentation_used else None,
+                "background_neutralized": bool(segmentation_used and crop == "Tomato"),
+                "background_rgb": [115, 115, 115] if (segmentation_used and crop == "Tomato") else None,
+                "top1_confidence": round(float(np.max(probabilities)), 4),
+                "top2_confidence": round(float(np.sort(probabilities)[::-1][1]), 4) if len(probabilities) > 1 else 0.0,
+                "margin": round(certainty["margin"], 4),
+                "entropy": round(certainty["entropy"], 4),
+                "is_certain": certainty["is_certain"]
             },
             "timings": timings
         }

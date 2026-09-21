@@ -33,3 +33,7 @@ backend/tests/sample_files/*_real.png
 .env.production
 .env.development
 modal_app.py
+scratch/
+backend/tests/sample_files/download*
+backend/tests/sample_files/images*
+backend/tests/sample_files/* 1.jpg

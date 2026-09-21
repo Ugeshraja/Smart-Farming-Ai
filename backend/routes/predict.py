@@ -132,6 +132,14 @@ async def predict_crop_disease(
                 db.add(user_rec)
                 db.flush()
 
+            leaf_url = result.get("leaf_crop_url") or result.get("image_url")
+            if not leaf_url and isinstance(result.get("leaf_crop"), dict):
+                leaf_url = result.get("leaf_crop", {}).get("image_url")
+
+            lime_exp = result.get("lime_summary")
+            if not lime_exp and isinstance(result.get("lime"), dict):
+                lime_exp = result.get("lime", {}).get("explanation")
+
             pred_record = DiseasePredictionRecord(
                 user_id=user_id,
                 crop=result.get("crop") or crop or "Unknown",
@@ -140,25 +148,27 @@ async def predict_crop_disease(
                 confidence=float(result.get("confidence", 0.0)) if result.get("confidence") is not None else None,
                 confidence_percent=float(result.get("confidence_percent", 0.0)) if result.get("confidence_percent") is not None else None,
                 status=result.get("status", "success"),
-                model_used=result.get("model_used"),
-                image_url=result.get("leaf_crop_url") or result.get("image_url"),
-                leaf_crop_url=result.get("leaf_crop_url"),
+                model_used=result.get("model_used") or "ResNet-50",
+                image_url=leaf_url or (result.get("original_image", {}).get("image_url") if isinstance(result.get("original_image"), dict) else None),
+                leaf_crop_url=leaf_url,
                 top3_predictions=result.get("top3_predictions"),
-                lime_summary=result.get("lime_summary")
+                lime_summary=lime_exp
             )
             db.add(pred_record)
             db.flush()
 
             advisory_content = result.get("advisory")
             if advisory_content:
-                adv_text = advisory_content.get("advisory_text") if isinstance(advisory_content, dict) else str(advisory_content)
+                adv_text = (advisory_content.get("text") or advisory_content.get("advisory_text")) if isinstance(advisory_content, dict) else str(advisory_content)
+                rag_content = result.get("rag", {})
+                rag_sources_list = rag_content.get("sources") if isinstance(rag_content, dict) else (result.get("rag_sources") or [result.get("rag_context")])
                 report_record = AiReportRecord(
                     user_id=user_id,
                     prediction_id=pred_record.id,
                     language="en",
                     report_title=f"AI Advisory: {result.get('disease')}",
                     advisory_text=adv_text,
-                    rag_sources=result.get("rag_context")
+                    rag_sources=rag_sources_list
                 )
                 db.add(report_record)
                 db.flush()

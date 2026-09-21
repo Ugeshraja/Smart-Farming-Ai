@@ -47,7 +47,7 @@ def run_tests():
     # 1. Real Potato Leaf
     potato_files = glob.glob(os.path.join(val_dir, "00_*.JPG")) if val_dir else []
     if not potato_files:
-        sample_potato = sample_dir / "tomato_early_blight.jpg"
+        sample_potato = sample_dir / "potato_real.jpg"
         if sample_potato.exists():
             potato_files = [str(sample_potato)]
 
@@ -66,7 +66,7 @@ def run_tests():
     # 2. Real Tomato Leaf
     tomato_files = glob.glob(os.path.join(val_dir, "03_*.JPG")) if val_dir else []
     if not tomato_files:
-        sample_tomato = sample_dir / "tomato_early_blight.jpg"
+        sample_tomato = sample_dir / "tomato_real.png"
         if sample_tomato.exists():
             tomato_files = [str(sample_tomato)]
 

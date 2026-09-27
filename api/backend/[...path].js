@@ -46,14 +46,24 @@ export default async function handler(req, res) {
     return handleWeatherRequest(req, res, subPath);
   }
 
-  // 3. Route Voice Assistant TTS and Status requests to serverless handler
+  // 3. Route Voice Assistant interaction and Status requests to serverless handler
   const isVoice =
     cleanPath === 'api/voice' ||
     cleanPath === 'voice' ||
     cleanPath === 'api/voice/' ||
     cleanPath === 'voice/' ||
     cleanPath.startsWith('api/voice/') ||
-    cleanPath.startsWith('voice/') ||
+    cleanPath.startsWith('voice/');
+
+  if (isVoice) {
+    return handleVoiceRequest(req, res, rawBody, cleanPath);
+  }
+
+  // 4. Forward all other requests (including /api/chat and /api/tts) directly to production FastAPI backend
+  const backendUrl = process.env.FASTAPI_BACKEND_URL || process.env.BACKEND_URL || process.env.LIGHTNING_BACKEND_URL;
+  const lightningApiKey = process.env.FASTAPI_API_KEY || process.env.BACKEND_API_KEY || process.env.LIGHTNING_API_KEY;
+
+  const isTtsRoute =
     cleanPath === 'api/tts' ||
     cleanPath === 'tts' ||
     cleanPath === 'api/tts/' ||
@@ -61,15 +71,11 @@ export default async function handler(req, res) {
     cleanPath.startsWith('api/tts/') ||
     cleanPath.startsWith('tts/');
 
-  if (isVoice) {
-    return handleVoiceRequest(req, res, rawBody, cleanPath);
-  }
-
-  // 4. Forward all other requests (including /api/chat) directly to production FastAPI backend
-  const backendUrl = process.env.FASTAPI_BACKEND_URL || process.env.BACKEND_URL || process.env.LIGHTNING_BACKEND_URL;
-  const lightningApiKey = process.env.FASTAPI_API_KEY || process.env.BACKEND_API_KEY || process.env.LIGHTNING_API_KEY;
-
   if (!backendUrl) {
+    if (isTtsRoute) {
+      console.warn('[Proxy] Backend URL not configured, falling back to serverless voice handler for TTS.');
+      return handleVoiceRequest(req, res, rawBody, cleanPath);
+    }
     return res.status(500).json({
       error: 'Backend proxy is not configured',
     });
@@ -81,7 +87,7 @@ export default async function handler(req, res) {
   const query = queryString.toString();
   const base = backendUrl.replace(/\/+$/, '');
 
-  // Normalize path so /api/chat or chat routes correctly to ${base}/api/chat
+  // Normalize path so /api/chat, /api/tts route correctly to ${base}/api/...
   let forwardPath = cleanPath;
   if (!forwardPath.startsWith('api/') && !base.endsWith('/api')) {
     forwardPath = `api/${forwardPath}`;
@@ -122,17 +128,31 @@ export default async function handler(req, res) {
 
     const response = await fetch(targetUrl, fetchOptions);
 
-    const resContentType = response.headers.get('content-type');
-    if (resContentType) {
-      res.setHeader('Content-Type', resContentType);
+    // If FastAPI backend returned an error for TTS, fallback to serverless voice handler
+    if (!response.ok && isTtsRoute) {
+      console.warn(`[Proxy] FastAPI /api/tts returned status ${response.status}. Falling back to serverless voice handler.`);
+      return handleVoiceRequest(req, res, rawBody, cleanPath);
+    }
+
+    for (const [key, val] of response.headers.entries()) {
+      const lower = key.toLowerCase();
+      if (lower.startsWith('x-tts-') || lower === 'content-type' || lower === 'content-length') {
+        res.setHeader(key, val);
+      }
     }
 
     const body = await response.arrayBuffer();
     return res.status(response.status).send(Buffer.from(body));
   } catch (error) {
     console.error('Backend proxy error:', error?.message || 'Request failed');
+    if (isTtsRoute) {
+      console.warn('[Proxy] Render backend unreachable for TTS. Falling back to serverless voice handler.');
+      return handleVoiceRequest(req, res, rawBody, cleanPath);
+    }
     return res.status(500).json({
       error: 'Backend proxy request failed',
+      detail: error?.message || 'Request failed',
+      target: targetUrl,
     });
   }
 }

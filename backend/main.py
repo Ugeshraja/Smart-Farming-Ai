@@ -184,6 +184,7 @@ app.include_router(schemes.router, prefix=BACKEND_API_PREFIX)
 # Direct Piper TTS endpoints
 @app.post("/api/tts", tags=["Voice Assistant"])
 @app.post("/tts", tags=["Voice Assistant"])
+@app.post(f"{BACKEND_API_PREFIX}/tts", tags=["Voice Assistant"])
 async def direct_api_tts(payload: voice.TtsRequest):
     return await voice.tts_endpoint(payload)
 

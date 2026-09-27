@@ -39,9 +39,10 @@ export default function FarmerAssistant() {
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Stop speech synthesis & recognition when unmounting or changing language
+  // Stop speech synthesis, speechService & recognition when unmounting or changing language
   useEffect(() => {
     return () => {
+      speechService.stop(true);
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -56,13 +57,14 @@ export default function FarmerAssistant() {
   }, []);
 
   useEffect(() => {
+    speechService.stop(true);
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setSpeakingState({ id: null, status: 'idle' });
   }, [language]);
 
-  // Clean text of markdown formatting for natural browser speech
+  // Clean text of markdown formatting for natural browser speech fallback
   const cleanTextForSpeech = (text, lang) => {
     if (!text) return '';
     let cleaned = text
@@ -83,49 +85,125 @@ export default function FarmerAssistant() {
     return cleaned;
   };
 
-  // Browser SpeechSynthesis Text-to-Speech (ta-IN for Tamil, en-IN for English)
-  const handleToggleSpeak = (msgId, text) => {
-    if (!('speechSynthesis' in window)) {
-      alert(language === 'ta' ? 'உங்கள் உலாவியில் குரல் வாசிப்பு வசதி இல்லை.' : 'Speech synthesis is not supported in this browser.');
-      return;
+  // Language detection prioritizing assistant language toggle and Tamil Unicode range
+  const detectLanguage = (text, currentLang) => {
+    const isTaLang = String(currentLang || '').trim().toLowerCase().startsWith('ta');
+    const tamilChars = (text && typeof text === 'string') ? (text.match(/[\u0B80-\u0BFF]/g) || []).length : 0;
+    if (isTaLang || tamilChars > 5) {
+      return 'ta';
     }
+    return 'en';
+  };
 
-    if (speakingState.id === msgId && speakingState.status === 'playing') {
-      window.speechSynthesis.cancel();
-      setSpeakingState({ id: null, status: 'idle' });
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const cleaned = cleanTextForSpeech(text, language);
-    const utterance = new SpeechSynthesisUtterance(cleaned);
-    const targetLang = language === 'ta' ? 'ta-IN' : 'en-IN';
-    utterance.lang = targetLang;
-    utterance.rate = language === 'ta' ? 0.95 : 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    const matchedVoice = voices.find(
-      v => v.lang === targetLang || v.lang.replace('_', '-').startsWith(targetLang) || v.lang.startsWith(language)
-    );
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
-    }
-
-    utterance.onstart = () => {
-      setSpeakingState({ id: msgId, status: 'playing' });
-    };
-    utterance.onend = () => {
-      setSpeakingState({ id: null, status: 'idle' });
-    };
-    utterance.onerror = () => {
+  // Optional Browser SpeechSynthesis fallback ONLY when Piper backend is unavailable
+  const handleBrowserFallback = (text, targetLang, msgId) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      console.warn('[FarmerAssistant] Browser speechSynthesis not supported.');
       setSpeakingState({ id: msgId, status: 'error' });
       setTimeout(() => {
         setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
       }, 3000);
-    };
+      return;
+    }
 
-    setSpeakingState({ id: msgId, status: 'playing' });
-    window.speechSynthesis.speak(utterance);
+    const isTa = targetLang === 'ta';
+    const targetVoiceLang = isTa ? 'ta-IN' : 'en-IN';
+    const voices = window.speechSynthesis.getVoices();
+    const matchedVoice = voices.find(
+      (v) =>
+        v.lang === targetVoiceLang ||
+        v.lang.replace('_', '-').startsWith(targetVoiceLang) ||
+        v.lang.startsWith(targetLang)
+    );
+
+    // If Tamil and no Tamil voice exists on user device, DO NOT silently speak English!
+    if (isTa && !matchedVoice) {
+      console.warn('[FarmerAssistant] No Tamil browser voice available on device for fallback.');
+      setSpeakingState({ id: msgId, status: 'error' });
+      setTimeout(() => {
+        setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
+      }, 3000);
+      return;
+    }
+
+    try {
+      const cleaned = cleanTextForSpeech(text, targetLang);
+      const utterance = new SpeechSynthesisUtterance(cleaned);
+      utterance.lang = targetVoiceLang;
+      utterance.rate = isTa ? 0.95 : 1.0;
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+
+      utterance.onstart = () => {
+        setSpeakingState({ id: msgId, status: 'playing' });
+      };
+      utterance.onend = () => {
+        setSpeakingState({ id: null, status: 'idle' });
+      };
+      utterance.onerror = (e) => {
+        console.error('[FarmerAssistant] Browser SpeechSynthesis error:', e);
+        setSpeakingState({ id: msgId, status: 'error' });
+        setTimeout(() => {
+          setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
+        }, 3000);
+      };
+
+      setSpeakingState({ id: msgId, status: 'playing' });
+      window.speechSynthesis.speak(utterance);
+    } catch (fallbackErr) {
+      console.error('[FarmerAssistant] Browser SpeechSynthesis execution failed:', fallbackErr);
+      setSpeakingState({ id: msgId, status: 'error' });
+      setTimeout(() => {
+        setSpeakingState((prev) => (prev.id === msgId ? { id: null, status: 'idle' } : prev));
+      }, 3000);
+    }
+  };
+
+  // Primary Voice Output via Canonical Piper TTS Service (/api/tts)
+  const handleToggleSpeak = (msgId, text) => {
+    if (!text || typeof text !== 'string' || !text.trim()) return;
+
+    // 1. If currently playing this message, stop it
+    if (speakingState.id === msgId && speakingState.status === 'playing') {
+      speechService.stop(true);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeakingState({ id: null, status: 'idle' });
+      return;
+    }
+
+    // 2. Prevent duplicate clicks while loading
+    if (speakingState.id === msgId && speakingState.status === 'loading') {
+      return;
+    }
+
+    // 3. Stop currently playing audio before starting new audio and revoke old URLs
+    speechService.stop(true);
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // 4. Set loading state immediately
+    setSpeakingState({ id: msgId, status: 'loading' });
+
+    // 5. Detect target language (Tamil vs English)
+    const targetLang = detectLanguage(text, language);
+
+    // 6. Speak via canonical Piper TTS backend
+    speechService.speak(text, targetLang, {
+      onStart: () => {
+        setSpeakingState({ id: msgId, status: 'playing' });
+      },
+      onEnd: () => {
+        setSpeakingState({ id: null, status: 'idle' });
+      },
+      onError: (err) => {
+        console.error('[FarmerAssistant] Piper TTS error:', err?.message || err);
+        handleBrowserFallback(text, targetLang, msgId);
+      }
+    });
   };
 
   // Voice Input Speech-to-Text via Web Speech API
@@ -430,9 +508,12 @@ export default function FarmerAssistant() {
                     <button
                       type="button"
                       onClick={() => handleToggleSpeak(msg.id, msg.text)}
+                      disabled={speakingState.id === msg.id && speakingState.status === 'loading'}
                       className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-2xs ${
                         speakingState.id === msg.id && speakingState.status === 'playing'
                           ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                          : speakingState.id === msg.id && speakingState.status === 'loading'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200 cursor-wait'
                           : speakingState.id === msg.id && speakingState.status === 'error'
                           ? 'bg-red-50 text-red-700 border border-red-200'
                           : 'bg-white hover:bg-agri-50 text-agri-800 border border-agri-200'
@@ -440,6 +521,8 @@ export default function FarmerAssistant() {
                       title={
                         speakingState.id === msg.id && speakingState.status === 'playing'
                           ? (language === 'ta' ? 'நிறுத்து' : 'Stop')
+                          : speakingState.id === msg.id && speakingState.status === 'loading'
+                          ? (language === 'ta' ? 'கேட்கிறது...' : 'Loading...')
                           : (language === 'ta' ? 'பதிலை கேள் (ஆடியோ)' : 'Listen')
                       }
                     >
@@ -447,6 +530,11 @@ export default function FarmerAssistant() {
                         <>
                           <VolumeX className="w-3.5 h-3.5 text-red-600" />
                           <span>{language === 'ta' ? 'நிறுத்து' : 'Stop'}</span>
+                        </>
+                      ) : speakingState.id === msg.id && speakingState.status === 'loading' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                          <span>{language === 'ta' ? 'கேட்கிறது...' : 'Loading...'}</span>
                         </>
                       ) : speakingState.id === msg.id && speakingState.status === 'error' ? (
                         <>

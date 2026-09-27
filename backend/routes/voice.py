@@ -340,7 +340,8 @@ async def tts_endpoint(payload: TtsRequest):
         )
 
     raw_lang = (payload.language or "en").strip().lower()
-    norm_lang = "ta" if raw_lang in ("ta", "ta-in", "tamil") else "en"
+    tamil_chars = len(re.findall(r"[\u0B80-\u0BFF]", text))
+    norm_lang = "ta" if (raw_lang in ("ta", "ta-in", "tamil") or tamil_chars > 5) else "en"
 
     try:
         audio_bytes, timing = tts_manager.synthesize_bytes(text=text, language=norm_lang, return_metadata=True)

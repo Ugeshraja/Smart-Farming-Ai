@@ -265,7 +265,18 @@ class SpeechService {
     });
 
     if (!response.ok) {
-      throw new Error(`TTS server responded with status: ${response.status}`);
+      let errorDetail = `Status ${response.status}`;
+      try {
+        const errJson = await response.json();
+        errorDetail = errJson.detail || errJson.error || errJson.message || JSON.stringify(errJson);
+      } catch {
+        try {
+          const errText = await response.text();
+          if (errText) errorDetail = errText;
+        } catch {}
+      }
+      console.error(`[SpeechService] /api/tts backend error (${response.status}):`, errorDetail);
+      throw new Error(`TTS server responded with status ${response.status}: ${errorDetail}`);
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -330,6 +341,14 @@ class SpeechService {
       // Completed all chunks
       this.isPlaying = false;
       this.isPaused = false;
+      for (const item of this.queue) {
+        if (item.audioUrl) {
+          try {
+            URL.revokeObjectURL(item.audioUrl);
+            item.audioUrl = null;
+          } catch (e) {}
+        }
+      }
       if (this.currentCallbacks?.onEnd) {
         const cb = this.currentCallbacks.onEnd;
         this.currentCallbacks = null;
@@ -463,7 +482,9 @@ class SpeechService {
       return { success: false, reason: 'empty_text' };
     }
 
-    const normLang = String(language || 'en').trim().toLowerCase().startsWith('ta') ? 'ta' : 'en';
+    const isTaLang = String(language || 'en').trim().toLowerCase().startsWith('ta');
+    const tamilChars = (text && typeof text === 'string') ? (text.match(/[\u0B80-\u0BFF]/g) || []).length : 0;
+    const normLang = (isTaLang || tamilChars > 5) ? 'ta' : 'en';
     const cleanedText = this.cleanTextForSpeech(text, normLang);
 
     if (!cleanedText) {

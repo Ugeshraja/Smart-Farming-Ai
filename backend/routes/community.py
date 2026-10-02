@@ -14,11 +14,11 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 import uuid
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, text
 
 from database.session import get_db
 from database.models import User, CommunityPostRecord, CommunityCommentRecord, CommunityLikeRecord
@@ -30,20 +30,36 @@ security = HTTPBearer(auto_error=False)
 
 # --- Dependency: Authentication Extraction ---
 
-async def get_optional_user_id(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[str]:
+async def get_optional_user_id(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[str]:
     """Extracts authenticated user_id if valid Bearer token provided, otherwise returns None."""
-    if not credentials or not credentials.credentials:
+    token = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif "authorization" in request.headers:
+        auth_hdr = request.headers["authorization"].strip()
+        if auth_hdr.lower().startswith("bearer "):
+            token = auth_hdr[7:].strip()
+        elif auth_hdr:
+            token = auth_hdr
+
+    if not token:
         return None
-    token = credentials.credentials
+
     payload = supabase_auth_service.decode_access_token(token)
     if payload and "sub" in payload:
         return str(payload["sub"])
     return None
 
 
-async def get_required_user_id(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
+async def get_required_user_id(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> str:
     """Extracts authenticated user_id or raises 401 Unauthorized."""
-    user_id = await get_optional_user_id(credentials)
+    user_id = await get_optional_user_id(request, credentials)
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -179,17 +195,47 @@ async def create_community_post(
     Guarantees that the author's real display name and created_at timestamp are persisted.
     """
     # Verify user exists in public.users, if not create record
-    user = db.execute(select(User).where(User.user_id == current_user_id)).scalar_one_or_none()
-    if not user:
-        user = User(
-            id=current_user_id,
-            user_id=current_user_id,
-            email=f"{current_user_id}@smartfarm.user",
-            name="Farmer",
-            preferred_language=payload.language
-        )
-        db.add(user)
-        db.flush()
+    user = db.execute(
+        select(User).where((User.user_id == current_user_id) | (User.id == current_user_id))
+    ).scalar_one_or_none()
+
+    if not user or not user.name or user.name.strip().lower() == "farmer":
+        # Synchronize authentic name from auth.users metadata if available
+        auth_name = None
+        auth_email = f"{current_user_id}@smartfarm.user"
+        try:
+            row = db.execute(
+                text("SELECT email, raw_user_meta_data FROM auth.users WHERE id::text = :uid;"),
+                {"uid": str(current_user_id)}
+            ).fetchone()
+            if row:
+                if row[0]:
+                    auth_email = row[0]
+                meta = row[1] or {}
+                if isinstance(meta, dict) and meta.get("name"):
+                    auth_name = str(meta["name"]).strip()
+        except Exception:
+            pass
+
+        if not auth_name:
+            if "@" in auth_email and not auth_email.endswith("@smartfarm.user"):
+                auth_name = auth_email.split("@")[0].capitalize()
+            else:
+                auth_name = "Farmer"
+
+        if not user:
+            user = User(
+                id=current_user_id,
+                user_id=current_user_id,
+                email=auth_email,
+                name=auth_name,
+                preferred_language=payload.language
+            )
+            db.add(user)
+            db.flush()
+        elif auth_name != "Farmer":
+            user.name = auth_name
+            db.flush()
 
     new_post = CommunityPostRecord(
         id=str(uuid.uuid4()),
@@ -290,6 +336,48 @@ async def add_post_comment(
     post = db.execute(select(CommunityPostRecord).where(CommunityPostRecord.id == post_id)).scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
+
+    # Verify commenter exists in public.users, if not create/sync record
+    user = db.execute(
+        select(User).where((User.user_id == current_user_id) | (User.id == current_user_id))
+    ).scalar_one_or_none()
+
+    if not user or not user.name or user.name.strip().lower() == "farmer":
+        auth_name = None
+        auth_email = f"{current_user_id}@smartfarm.user"
+        try:
+            row = db.execute(
+                text("SELECT email, raw_user_meta_data FROM auth.users WHERE id::text = :uid;"),
+                {"uid": str(current_user_id)}
+            ).fetchone()
+            if row:
+                if row[0]:
+                    auth_email = row[0]
+                meta = row[1] or {}
+                if isinstance(meta, dict) and meta.get("name"):
+                    auth_name = str(meta["name"]).strip()
+        except Exception:
+            pass
+
+        if not auth_name:
+            if "@" in auth_email and not auth_email.endswith("@smartfarm.user"):
+                auth_name = auth_email.split("@")[0].capitalize()
+            else:
+                auth_name = "Farmer"
+
+        if not user:
+            user = User(
+                id=current_user_id,
+                user_id=current_user_id,
+                email=auth_email,
+                name=auth_name,
+                preferred_language="en"
+            )
+            db.add(user)
+            db.flush()
+        elif auth_name != "Farmer":
+            user.name = auth_name
+            db.flush()
 
     comment = CommunityCommentRecord(
         id=str(uuid.uuid4()),

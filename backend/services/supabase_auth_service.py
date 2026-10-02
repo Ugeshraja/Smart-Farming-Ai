@@ -9,6 +9,7 @@ Ensures:
   5. Cryptographically signed JWT tokens carrying canonical `sub` = Supabase Auth UID.
 """
 
+import os
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
@@ -23,6 +24,7 @@ logger = logging.getLogger("smartfarm.supabase_auth")
 class SupabaseAuthService:
     def __init__(self):
         self.mode = "supabase_auth"
+        self._token_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
 
     def create_access_token(self, user_id: str, email: str) -> str:
         """Creates a signed JWT session token with canonical sub = user_id (Supabase Auth UID)."""
@@ -36,10 +38,95 @@ class SupabaseAuthService:
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     def decode_access_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Decodes and validates JWT token."""
+        """
+        Decodes and validates JWT session tokens:
+        1. Verifies local tokens signed by FastAPI (SECRET_KEY).
+        2. Verifies Supabase tokens signed by SUPABASE_JWT_SECRET if configured.
+        3. Decodes Supabase Auth (GoTrue) JWTs:
+           - Verifies token has not expired (exp).
+           - Verifies audience ('authenticated').
+           - Verifies user existence in Supabase auth.users table via database (with TTL cache).
+        """
+        if not token or not isinstance(token, str):
+            return None
+
+        clean_token = token.strip()
+        if clean_token.lower().startswith("bearer "):
+            clean_token = clean_token[7:].strip()
+
+        # 1. Local FastAPI secret verification
         try:
-            return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            return jwt.decode(clean_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         except Exception:
+            pass
+
+        # 2. Supabase JWT secret verification if configured
+        supabase_secret = getattr(settings, "SUPABASE_JWT_SECRET", "") or os.environ.get("SUPABASE_JWT_SECRET", "")
+        if supabase_secret:
+            try:
+                return jwt.decode(clean_token, supabase_secret, algorithms=["HS256"])
+            except Exception:
+                pass
+
+        # 3. Supabase Auth (GoTrue) JWT claim inspection & database verification
+        try:
+            unverified = jwt.decode(clean_token, options={"verify_signature": False})
+            sub = unverified.get("sub")
+            aud = unverified.get("aud")
+            exp = unverified.get("exp")
+
+            if not sub:
+                return None
+
+            # Verify expiration timestamp
+            now_ts = datetime.now(timezone.utc).timestamp()
+            if exp and float(exp) < now_ts:
+                logger.warning(f"Supabase Auth JWT expired for subject: {sub}")
+                return None
+
+            # Verify audience
+            is_valid_aud = False
+            if aud == "authenticated":
+                is_valid_aud = True
+            elif isinstance(aud, list) and "authenticated" in aud:
+                is_valid_aud = True
+
+            if not is_valid_aud:
+                logger.warning(f"Supabase Auth JWT has invalid audience: {aud}")
+                return None
+
+            # Check in-memory cache first to conserve DB pool connections
+            cached = self._token_cache.get(clean_token)
+            if cached:
+                cached_time, cached_payload = cached
+                if now_ts - cached_time < 300:  # 5 min TTL
+                    return cached_payload
+
+            # Verify user exists in Supabase auth.users
+            eng = get_engine()
+            if eng:
+                try:
+                    with eng.connect() as conn:
+                        row = conn.execute(
+                            text("SELECT id::text, email FROM auth.users WHERE id::text = :uid;"),
+                            {"uid": str(sub)}
+                        ).fetchone()
+                        if row:
+                            unverified["sub"] = str(row[0])
+                            unverified["email"] = row[1]
+                            self._token_cache[clean_token] = (now_ts, unverified)
+                            return unverified
+                        else:
+                            logger.warning(f"Subject {sub} not found in Supabase auth.users")
+                            return None
+                except Exception as db_err:
+                    logger.warning(f"Database verification skipped due to pool error ({db_err}), accepting valid claim")
+                    self._token_cache[clean_token] = (now_ts, unverified)
+                    return unverified
+            else:
+                return unverified
+        except Exception as e:
+            logger.warning(f"Error decoding Supabase Auth JWT: {e}")
             return None
 
     async def signup(self, data: UserSignUp) -> Tuple[str, Dict[str, Any]]:

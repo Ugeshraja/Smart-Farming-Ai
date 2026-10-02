@@ -67,9 +67,9 @@ class Settings(BaseSettings):
 
     # Database Configuration (PostgreSQL readiness)
     DATABASE_URL: str = ""
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
-    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_SIZE: int = 3
+    DB_MAX_OVERFLOW: int = 2
+    DB_POOL_TIMEOUT: int = 15
 
     # Security / Session settings
     SECRET_KEY: str = "smartfarm-ai-super-secret-jwt-key-2026-secure"
@@ -138,6 +138,10 @@ class Settings(BaseSettings):
             raw = raw.replace("postgres://", "postgresql+psycopg://", 1)
         elif raw.startswith("postgresql://"):
             raw = raw.replace("postgresql://", "postgresql+psycopg://", 1)
+
+        # Map Supabase pooler from session mode (5432, strictly max 15 clients) to transaction mode (6543, unlimited)
+        if "pooler.supabase.com:5432" in raw:
+            raw = raw.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
 
         # Ensure sslmode=require for Supabase and remote PostgreSQL endpoints if not specified
         if "sslmode=" not in raw and ("supabase" in raw or "pooler" in raw or ".com" in raw or ".net" in raw):

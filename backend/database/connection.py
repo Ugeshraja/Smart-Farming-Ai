@@ -41,6 +41,13 @@ def get_engine() -> Optional[Engine]:
                 connect_args={"check_same_thread": False},
                 poolclass=StaticPool
             )
+        elif "6543" in db_url or "pooler" in db_url:
+            from sqlalchemy.pool import NullPool
+            _engine = create_engine(
+                db_url,
+                poolclass=NullPool,
+                connect_args=connect_args
+            )
         else:
             _engine = create_engine(
                 db_url,

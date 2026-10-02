@@ -196,12 +196,38 @@ export default function Community() {
       );
       setTimeout(() => setToastMessage(''), 3000);
     } catch (err) {
-      setToastMessage(
-        isTa
-          ? 'பதிவை உருவாக்க முடியவில்லை. உள்நுழைந்துள்ளீர்களா என்பதை உறுதிப்படுத்தவும்.'
-          : 'Failed to publish post. Please verify you are logged in.'
-      );
-      setTimeout(() => setToastMessage(''), 4000);
+      console.error("[Community] Create post error:", err);
+      const status = err?.response?.status;
+      let msg = '';
+
+      if (status === 401) {
+        msg = isTa
+          ? 'உங்கள் உள்நுழைவு அமர்வு காலாவதியானது. மீண்டும் உள்நுழையவும்.'
+          : 'Your session has expired. Please sign in again.';
+      } else if (status === 403) {
+        msg = isTa
+          ? 'இந்த பதிவை வெளியிட உங்களுக்கு அனுமதி இல்லை.'
+          : 'You are not permitted to publish this post.';
+      } else if (status === 422) {
+        msg = isTa
+          ? 'பதிவு தகவல்களைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Please check the post information and try again.';
+      } else if (status === 500) {
+        msg = isTa
+          ? 'தற்போது பதிவை வெளியிட முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
+          : 'Unable to publish the post right now. Please try again.';
+      } else if (!err?.response && (err?.code === 'ERR_NETWORK' || err?.message?.toLowerCase().includes('network') || !navigator.onLine)) {
+        msg = isTa
+          ? 'சேவையகத்தை இணைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
+          : 'Unable to connect to the server. Please try again.';
+      } else {
+        msg = isTa
+          ? 'தற்போது பதிவை வெளியிட முடியவில்லை. மீண்டும் முயற்சிக்கவும்.'
+          : 'Unable to publish the post right now. Please try again.';
+      }
+
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(''), 4500);
     } finally {
       setSubmitting(false);
     }

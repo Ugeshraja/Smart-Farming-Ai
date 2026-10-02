@@ -37,6 +37,14 @@
       "destination": "/api/backend?path=:path*"
     },
     {
+      "source": "/api/community/:path*",
+      "destination": "/api/backend?path=api/community/:path*"
+    },
+    {
+      "source": "/api/community",
+      "destination": "/api/backend?path=api/community"
+    },
+    {
       "source": "/api/voice/:path*",
       "destination": "/api/backend?path=api/voice/:path*"
     },
@@ -69,7 +77,7 @@
       "destination": "/api/backend?path=tts"
     },
     {
-      "source": "/((?!api/backend|api/predict|predict|api/voice|voice|api/chat|api/tts|tts).*)",
+      "source": "/((?!api/backend|api/community|api/predict|predict|api/voice|voice|api/chat|api/tts|tts).*)",
       "destination": "/index.html"
     }
   ]

@@ -141,7 +141,7 @@ export const translations = {
     generateReport: "Generate AI Report",
     askAssistant: "Ask AI Assistant",
     savePrediction: "Save Prediction",
-    createPost: "Create Post",
+    createPost: "Start Discussion",
     reply: "Reply",
     like: "Like",
 
@@ -227,6 +227,17 @@ export const translations = {
     // Settings
     notifications: "Notification Preferences",
     systemDiagnostics: "System Diagnostics",
+
+    // Community Page
+    communityTitle: "Farmer Community",
+    communitySubtitle: "Connect with verified farmers, share crop management practices, and ask agronomic questions.",
+    postModalTitle: "Start a Discussion",
+    allCrops: "All Crops",
+    tomato: "Tomato",
+    potato: "Potato",
+    brinjal: "Brinjal",
+    allLanguages: "All Languages",
+    publishPost: "Publish Post",
   },
   ta: {
     appTitle: "ஸ்மார்ட்ஃபார்ம் AI",
@@ -366,7 +377,7 @@ export const translations = {
     generateReport: "AI அறிக்கை உருவாக்கு",
     askAssistant: "AI இடம் கேள்",
     savePrediction: "சேமிக்கவும்",
-    createPost: "பதிவு உருவாக்கு",
+    createPost: "கலந்துரையாடலைத் தொடங்கு",
     reply: "பதிலளி",
     like: "விருப்பம்",
 
@@ -452,6 +463,17 @@ export const translations = {
     // Settings
     notifications: "அறிவிப்பு விருப்பங்கள்",
     systemDiagnostics: "கணினி பரிசோதனை",
+
+    // Community Page
+    communityTitle: "விவசாயக் கூட்டமைப்பு",
+    communitySubtitle: "உறுதிப்படுத்தப்பட்ட விவசாயிகளுடன் கலந்துரையாடி, பயிர் மேலாண்மை முறைகளை பகிர்ந்து கொள்ளுங்கள்.",
+    postModalTitle: "விவசாயக் கலந்துரையாடலைத் தொடங்குங்கள்",
+    allCrops: "அனைத்து பயிர்கள்",
+    tomato: "தக்காளி",
+    potato: "உருளை",
+    brinjal: "கத்தரி",
+    allLanguages: "அனைத்து மொழிகள்",
+    publishPost: "பதிவை வெளியிடு",
   }
 };
 

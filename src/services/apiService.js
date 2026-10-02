@@ -814,40 +814,187 @@ export const apiService = {
 
   async createCommunityPost(postData) {
     try {
-      const response = await apiClient.post('/community/posts', postData);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionToken = sessionData?.session?.access_token;
+      const headers = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+
+      const response = await apiClient.post('/community/posts', postData, { headers });
       return response.data;
     } catch (error) {
-      console.error("Error creating community post:", error?.response?.data || error?.message);
+      console.warn("Backend create post error, attempting direct Supabase fallback:", error?.response?.data || error?.message);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeUser = sessionData?.session?.user;
+        if (activeUser && activeUser.id) {
+          const authorName = activeUser.user_metadata?.name || activeUser.email?.split('@')[0] || "Farmer";
+          const newRecord = {
+            id: crypto.randomUUID(),
+            user_id: activeUser.id,
+            crop: postData.crop || 'Tomato',
+            topic: postData.topic || 'Discussion',
+            language: postData.language || 'en',
+            content: (postData.content || '').trim(),
+            likes_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: inserted, error: sbErr } = await supabase
+            .from('community_posts')
+            .insert([newRecord])
+            .select()
+            .single();
+
+          if (!sbErr && inserted) {
+            return {
+              id: inserted.id,
+              user_id: inserted.user_id,
+              author_id: inserted.user_id,
+              farmerName: authorName,
+              author_name: authorName,
+              author_avatar: null,
+              crop: inserted.crop,
+              topic: inserted.topic,
+              language: inserted.language,
+              content: inserted.content,
+              likes: inserted.likes_count || 0,
+              has_liked: false,
+              created_at: inserted.created_at,
+              updated_at: inserted.updated_at,
+              comments: []
+            };
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Direct Supabase fallback also encountered error:", fallbackErr);
+      }
       throw error;
     }
   },
 
   async deleteCommunityPost(postId) {
     try {
-      const response = await apiClient.delete(`/community/posts/${postId}`);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionToken = sessionData?.session?.access_token;
+      const headers = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+
+      const response = await apiClient.delete(`/community/posts/${postId}`, { headers });
       return response.data;
     } catch (error) {
-      console.error("Error deleting community post:", error?.response?.data || error?.message);
+      console.warn("Backend delete post error, attempting direct Supabase fallback:", error?.response?.data || error?.message);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeUser = sessionData?.session?.user;
+        if (activeUser && activeUser.id) {
+          const { error: sbErr } = await supabase
+            .from('community_posts')
+            .delete()
+            .eq('id', postId)
+            .eq('user_id', activeUser.id);
+
+          if (!sbErr) {
+            return { status: 'success', message: 'Post deleted successfully.' };
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Direct Supabase delete fallback error:", fallbackErr);
+      }
       throw error;
     }
   },
 
   async likeCommunityPost(postId) {
     try {
-      const response = await apiClient.post(`/community/posts/${postId}/like`);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionToken = sessionData?.session?.access_token;
+      const headers = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+
+      const response = await apiClient.post(`/community/posts/${postId}/like`, {}, { headers });
       return response.data;
     } catch (error) {
-      console.error("Error toggling like on post:", error?.response?.data || error?.message);
+      console.warn("Backend like error, attempting direct Supabase fallback:", error?.response?.data || error?.message);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeUser = sessionData?.session?.user;
+        if (activeUser && activeUser.id) {
+          const { data: existingLike } = await supabase
+            .from('community_likes')
+            .select('id')
+            .eq('post_id', postId)
+            .eq('user_id', activeUser.id)
+            .maybeSingle();
+
+          if (existingLike) {
+            await supabase.from('community_likes').delete().eq('id', existingLike.id);
+            const { data: p } = await supabase.from('community_posts').select('likes_count').eq('id', postId).single();
+            const newCount = Math.max(0, (p?.likes_count || 1) - 1);
+            await supabase.from('community_posts').update({ likes_count: newCount }).eq('id', postId);
+            return { status: 'success', likes: newCount, has_liked: false };
+          } else {
+            await supabase.from('community_likes').insert([{
+              id: crypto.randomUUID(),
+              post_id: postId,
+              user_id: activeUser.id,
+              created_at: new Date().toISOString()
+            }]);
+            const { data: p } = await supabase.from('community_posts').select('likes_count').eq('id', postId).single();
+            const newCount = (p?.likes_count || 0) + 1;
+            await supabase.from('community_posts').update({ likes_count: newCount }).eq('id', postId);
+            return { status: 'success', likes: newCount, has_liked: true };
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Direct Supabase like fallback error:", fallbackErr);
+      }
       throw error;
     }
   },
 
   async addCommunityComment(postId, content) {
     try {
-      const response = await apiClient.post(`/community/posts/${postId}/comments`, { content });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionToken = sessionData?.session?.access_token;
+      const headers = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+
+      const response = await apiClient.post(`/community/posts/${postId}/comments`, { content }, { headers });
       return response.data;
     } catch (error) {
-      console.error("Error adding comment to post:", error?.response?.data || error?.message);
+      console.warn("Backend add comment error, attempting direct Supabase fallback:", error?.response?.data || error?.message);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeUser = sessionData?.session?.user;
+        if (activeUser && activeUser.id) {
+          const authorName = activeUser.user_metadata?.name || activeUser.email?.split('@')[0] || "Farmer";
+          const newComment = {
+            id: crypto.randomUUID(),
+            post_id: postId,
+            user_id: activeUser.id,
+            content: content.trim(),
+            created_at: new Date().toISOString()
+          };
+
+          const { data: inserted, error: sbErr } = await supabase
+            .from('community_comments')
+            .insert([newComment])
+            .select()
+            .single();
+
+          if (!sbErr && inserted) {
+            return {
+              id: inserted.id,
+              post_id: inserted.post_id,
+              user_id: inserted.user_id,
+              author: authorName,
+              author_name: authorName,
+              text: inserted.content,
+              content: inserted.content,
+              created_at: inserted.created_at
+            };
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Direct Supabase comment fallback error:", fallbackErr);
+      }
       throw error;
     }
   },

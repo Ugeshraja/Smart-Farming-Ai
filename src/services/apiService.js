@@ -1,9 +1,7 @@
 import axios from 'axios';
 import {
   mockPredictions,
-  mockLatestSensors,
-  mockSensorHistory,
-  mockRecentSensorActivity,
+  mockRecentActivities,
   generateLeafSvg,
   mockAiInsights,
   mockCommunityPosts,
@@ -740,68 +738,123 @@ export const apiService = {
   },
 
 
-  // 7. Community Posts API
-  async getCommunityPosts() {
+  // 7. Community Members & Posts API
+  async getCommunityMembers() {
     try {
-      const response = await apiClient.get('/community');
-      return response.data;
+      const response = await apiClient.get('/community/members');
+      return response.data || [];
     } catch (error) {
+      console.warn("Backend getCommunityMembers notice:", error?.message);
       try {
-        return JSON.parse(localStorage.getItem('smartfarm_community_posts') || '[]');
-      } catch {
-        return [];
-      }
+        // Direct Supabase fallback if backend network error
+        const { data, error: supaErr } = await supabase
+          .from('users')
+          .select('id, user_id, name, farm_location, preferred_language, farm_details, created_at')
+          .order('created_at', { ascending: true });
+        if (!supaErr && data) {
+          return data.map(u => ({
+            id: u.user_id || u.id,
+            user_id: u.user_id || u.id,
+            name: u.name || "Farmer",
+            display_name: u.name || "Farmer",
+            location: u.farm_location || "Tamil Nadu, India",
+            farm_location: u.farm_location || "Tamil Nadu, India",
+            primary_crops: u.farm_details?.primary_crops || ["Tomato", "Potato", "Brinjal"],
+            preferred_language: u.preferred_language || "en",
+            created_at: u.created_at
+          }));
+        }
+      } catch {}
+      return [];
+    }
+  },
+
+  async getCommunityPosts(params = {}) {
+    try {
+      const response = await apiClient.get('/community/posts', { params });
+      return response.data || [];
+    } catch (error) {
+      console.warn("Backend getCommunityPosts notice:", error?.message);
+      try {
+        const { data, error: supaErr } = await supabase
+          .from('community_posts')
+          .select(`
+            *,
+            user:users!user_id(id, user_id, name, farm_location),
+            comments:community_comments(*)
+          `)
+          .order('created_at', { ascending: false });
+        if (!supaErr && data) {
+          return data.map(p => ({
+            id: p.id,
+            user_id: p.user_id,
+            farmerName: p.user?.name || "Farmer",
+            author_name: p.user?.name || "Farmer",
+            crop: p.crop,
+            topic: p.topic,
+            language: p.language,
+            content: p.content,
+            likes: p.likes_count || 0,
+            has_liked: false,
+            created_at: p.created_at,
+            createdAt: p.created_at,
+            comments: (p.comments || []).map(c => ({
+              id: c.id,
+              author: "Farmer",
+              text: c.content,
+              time: c.created_at,
+              created_at: c.created_at
+            }))
+          }));
+        }
+      } catch {}
+      return [];
     }
   },
 
   async createCommunityPost(postData) {
     try {
-      const response = await apiClient.post('/community', postData);
+      const response = await apiClient.post('/community/posts', postData);
       return response.data;
     } catch (error) {
-      const newPost = {
-        id: `POST-${Math.floor(100 + Math.random() * 900)}`,
-        farmerName: postData.farmerName || "Farmer",
-        createdAt: "Just now",
-        crop: postData.crop || "Tomato",
-        topic: postData.topic || "General Discussion",
-        language: postData.language || "en",
-        content: postData.content,
-        likes: 0,
-        comments: []
-      };
-      try {
-        const current = JSON.parse(localStorage.getItem('smartfarm_community_posts') || '[]');
-        current.unshift(newPost);
-        localStorage.setItem('smartfarm_community_posts', JSON.stringify(current));
-      } catch (e) {
-        console.warn("Local post save error:", e);
-      }
-      return newPost;
+      console.error("Error creating community post:", error?.response?.data || error?.message);
+      throw error;
     }
   },
 
-  // 8. Sensor Telemetry (ESP32)
-  async getLatestSensors() {
+  async deleteCommunityPost(postId) {
     try {
-      const response = await apiClient.get('/sensors/latest');
+      const response = await apiClient.delete(`/community/posts/${postId}`);
       return response.data;
     } catch (error) {
-      return mockLatestSensors;
+      console.error("Error deleting community post:", error?.response?.data || error?.message);
+      throw error;
     }
   },
 
-  async getSensorHistory() {
+  async likeCommunityPost(postId) {
     try {
-      const response = await apiClient.get('/sensors/history');
+      const response = await apiClient.post(`/community/posts/${postId}/like`);
       return response.data;
     } catch (error) {
-      return mockSensorHistory;
+      console.error("Error toggling like on post:", error?.response?.data || error?.message);
+      throw error;
     }
   },
 
-  async getRecentSensorActivity() {
-    return mockRecentSensorActivity;
+  async addCommunityComment(postId, content) {
+    try {
+      const response = await apiClient.post(`/community/posts/${postId}/comments`, { content });
+      return response.data;
+    } catch (error) {
+      console.error("Error adding comment to post:", error?.response?.data || error?.message);
+      throw error;
+    }
+  },
+
+  // 8. Platform Activity Telemetry
+  async getRecentActivities() {
+    return mockRecentActivities;
   },
 
   // Helper to obtain the active authenticated user ID (canonical Supabase UID)

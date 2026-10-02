@@ -598,36 +598,11 @@ export default function AiReports() {
           </div>
         </div>
 
-        {/* 4. Environmental Conditions */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
-            {isTa ? '4. சுற்றுச்சூழல் நிலை (கள சென்சார் அளவீடு)' : '4. Environmental Conditions (Field Sensor Snapshot)'}
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
-              <span className="text-gray-400 block">{isTa ? 'மண் ஈரப்பதம்' : 'Soil Moisture'}</span>
-              <strong className="text-sm text-gray-800">{prediction.iotSnapshot?.soilMoisture || '62%'}</strong>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
-              <span className="text-gray-400 block">{isTa ? 'வெப்பநிலை' : 'Temperature'}</span>
-              <strong className="text-sm text-gray-800">{prediction.iotSnapshot?.temperature || '29.5°C'}</strong>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
-              <span className="text-gray-400 block">{isTa ? 'ஈரப்பதம்' : 'Humidity'}</span>
-              <strong className="text-sm text-gray-800">{prediction.iotSnapshot?.humidity || '76%'}</strong>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
-              <span className="text-gray-400 block">{isTa ? 'மழை நிலை' : 'Rain Status'}</span>
-              <strong className="text-sm text-gray-800">{prediction.iotSnapshot?.rainStatus || 'No Rain'}</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Agricultural Advisory */}
+        {/* 4. Agricultural Advisory */}
         <div className="space-y-3">
           <div className="flex items-center justify-between border-b border-gray-100 pb-2">
             <h3 className="text-sm font-bold text-gray-900 uppercase">
-              {isTa ? '5. மேலாண்மை ஆலோசனை' : '5. Agricultural Advisory'}
+              {isTa ? '4. மேலாண்மை ஆலோசனை' : '4. Agricultural Advisory'}
             </h3>
             {(prediction.advisory?.en || prediction.advisory?.ta) && (
               <button
@@ -673,10 +648,10 @@ export default function AiReports() {
           </div>
         </div>
 
-        {/* 6. Preventive Measures */}
+        {/* 5. Preventive Measures */}
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-gray-900 uppercase border-b border-gray-100 pb-2">
-            {isTa ? '6. தடுப்பு நடவடிக்கைகள்' : '6. Preventive Measures'}
+            {isTa ? '5. தடுப்பு நடவடிக்கைகள்' : '5. Preventive Measures'}
           </h3>
           {(() => {
             const preventiveList = getPreventiveMeasures(prediction, isTa);

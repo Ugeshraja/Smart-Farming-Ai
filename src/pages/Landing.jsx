@@ -603,7 +603,7 @@ export default function Landing() {
                 <div className="absolute top-4 left-4 right-4 flex items-center pointer-events-none">
                   <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-agri-800 dark:text-emerald-300 shadow-sm border border-white/60 dark:border-slate-700 flex items-center gap-1.5">
                     <Activity className="w-3.5 h-3.5 text-agri-600 dark:text-emerald-400" />
-                    <span>IoT Telemetry Active</span>
+                    <span>AI Diagnostics Active</span>
                   </div>
                 </div>
 
@@ -800,8 +800,8 @@ export default function Landing() {
             </h2>
             <p className="mt-3 text-base text-gray-600 dark:text-slate-300">
               {isTa
-                ? "பலதரப்பட்ட களத் தரவுகள் எவ்வாறு பகுப்பாய்வு செய்யப்பட்டு துல்லியமான உழவர் முடிவாக மாறுகிறது."
-                : "How multi-sensor field intelligence and agricultural knowledge bases fuse to empower farmers."}
+                ? "பலதரப்பட்ட விவசாயத் தரவுகள் எவ்வாறு பகுப்பாய்வு செய்யப்பட்டு துல்லியமான உழவர் முடிவாக மாறுகிறது."
+                : "How multimodal AI diagnostics, weather intelligence, and agricultural knowledge bases fuse to empower farmers."}
             </p>
           </div>
 
@@ -818,7 +818,7 @@ export default function Landing() {
                   </h4>
                   <ul className="space-y-1.5 text-xs text-gray-600 dark:text-slate-300">
                     <li className="flex items-center gap-1.5"><span>📷</span> Crop Leaf Image</li>
-                    <li className="flex items-center gap-1.5"><span>📡</span> Field Soil Moisture</li>
+                    <li className="flex items-center gap-1.5"><span>🎙️</span> Farmer Voice / Text Query</li>
                     <li className="flex items-center gap-1.5"><span>🌦️</span> Microclimate Forecast</li>
                     <li className="flex items-center gap-1.5"><span>📚</span> Agronomy Protocols</li>
                   </ul>
@@ -1022,8 +1022,8 @@ export default function Landing() {
 
             <p className="text-base sm:text-lg text-gray-600 dark:text-slate-300 leading-relaxed">
               {isTa
-                ? "SmartFarm AI என்பது இறுதி ஆண்டு கணினி மற்றும் வேளாண் பொறியியல் ஆராய்ச்சி திட்டமாகும். இது பயிர் நோய் கண்டறிதல், IoT கள சென்சார்கள், வானிலை முன்னறிவிப்பு மற்றும் AI உழவர் வழிகாட்டலை ஒரே பாதுகாப்பான தளத்தில் ஒருங்கிணைக்கிறது."
-                : "SmartFarm AI is an engineering capstone platform engineered to demonstrate how accessible artificial intelligence, explainable computer vision, and IoT field telemetry can solve practical challenges for vegetable farmers in Tamil Nadu and beyond."}
+                ? "SmartFarm AI என்பது இறுதி ஆண்டு கணினி மற்றும் வேளாண் பொறியியல் ஆராய்ச்சி திட்டமாகும். இது பயிர் நோய் கண்டறிதல், வானிலை நுண்ணறிவு, வேளாண் திட்டமிடல் மற்றும் AI உழவர் வழிகாட்டலை ஒரே பாதுகாப்பான தளத்தில் ஒருங்கிணைக்கிறது."
+                : "SmartFarm AI is an engineering capstone platform engineered to demonstrate how accessible artificial intelligence, explainable computer vision, and RAG-LLM farmer advisory can solve practical challenges for vegetable farmers in Tamil Nadu and beyond."}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-left">
@@ -1032,8 +1032,8 @@ export default function Landing() {
                 <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Deep learning models trained on agricultural leaf disease datasets</div>
               </div>
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
-                <div className="font-extrabold text-agri-700 dark:text-emerald-400 text-sm">Field Telemetry</div>
-                <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Micro-climate sensors monitoring soil and ambient conditions</div>
+                <div className="font-extrabold text-agri-700 dark:text-emerald-400 text-sm">Weather Intelligence</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Real-time atmospheric insights and weather-based crop risk advisories</div>
               </div>
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
                 <div className="font-extrabold text-agri-700 dark:text-emerald-400 text-sm">Visual Explanations</div>

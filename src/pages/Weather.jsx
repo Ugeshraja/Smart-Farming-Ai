@@ -77,7 +77,7 @@ export default function Weather() {
   // Handle "Use Current Location" (Browser GPS)
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
-      setLocationStatus(isTa ? "ஜி.பி.எஸ் இருப்பிடம் அறியப்படுகிறது..." : "Accessing GPS sensor...");
+      setLocationStatus(isTa ? "ஜி.பி.எஸ் இருப்பிடம் அறியப்படுகிறது..." : "Detecting device location...");
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const lat = Number(pos.coords.latitude.toFixed(4));
@@ -663,66 +663,7 @@ export default function Weather() {
             </div>
           </div>
 
-          {/* 8. Weather Data + Field Sensor Telemetry Comparison */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
-            <div className="border-b border-gray-100 pb-3">
-              <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                <CloudSun className="w-5 h-5 text-agri-600" />
-                <span>{isTa ? "வானிலை முன்னறிவிப்பு மற்றும் கள மண் நிலைமைகள்" : "Weather Forecast & Field Soil Conditions"}</span>
-              </h3>
-              <p className="text-xs text-gray-500">
-                {isTa ? "பிராந்திய வானிலை முன்னறிவிப்பு மற்றும் உள்ளூர் கள சென்சார் அளவீடுகளின் ஒப்பீடு." : "Comparison between regional weather forecast and local in-field soil conditions."}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              {/* Source 1: Regional Forecast */}
-              <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-900 text-sm">{isTa ? "வானிலை முன்னறிவிப்பு" : "REGIONAL FORECAST"}</span>
-                  <span className="text-[10px] font-medium bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded font-bold">
-                    {isTa ? "பிராந்திய வானிலை" : "Regional"}
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-blue-950 font-medium">
-                  <p>Temperature: <strong>{current.temperature}°C</strong></p>
-                  <p>Humidity: <strong>{current.humidity}%</strong></p>
-                  <p>Rain probability: <strong>{current.rain_probability}%</strong></p>
-                  <p>Pressure: <strong>{current.pressure} hPa</strong></p>
-                  <p>Wind Speed: <strong>{current.wind_speed} km/h</strong></p>
-                </div>
-                <span className="text-[10px] text-blue-600 block pt-1 border-t border-blue-200">
-                  {isTa ? "வளிமண்டல வானிலை தரவு" : "Regional atmospheric weather data"}
-                </span>
-              </div>
-
-              {/* Source 2: Field Sensor */}
-              <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-900 text-sm">{isTa ? "கள சென்சார் தரவு" : "FIELD SENSOR DATA"}</span>
-                  <span className="text-[10px] font-medium bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded font-bold">
-                    {isTa ? "நேரடி சென்சார்கள்" : "Field Telemetry"}
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-emerald-950 font-medium">
-                  <p>Temperature: <strong>{Math.round(current.temperature - 1.2)}°C</strong></p>
-                  <p>Humidity: <strong>{Math.min(96, Math.round(current.humidity + 3))}%</strong></p>
-                  <p>Soil Moisture: <strong>{current.precipitation > 2 ? 84 : 66}%</strong></p>
-                  <p>Rain Sensor: <strong>{current.precipitation > 0 ? (isTa ? "மழை கண்டறியப்பட்டது" : "Rain Detected") : (isTa ? "வறண்ட நிலை" : "Dry")}</strong></p>
-                  <p>Signal Strength: <strong>-68 dBm (Online)</strong></p>
-                </div>
-                <span className="text-[10px] text-emerald-600 block pt-1 border-t border-emerald-200">
-                  {isTa ? "உள்ளூர் நிலப்பரப்பு சென்சார் அளவீடு" : "In-situ field sensor measurements"}
-                </span>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-              💡 {isTa ? "பிராந்திய வானிலை பரந்த போக்குகளைக் காட்டுகிறது, அதே நேரத்தில் கள சென்சார்கள் வேர்-மண்டல ஈரப்பதம் மற்றும் நிலப்பரப்பு நிலைமைகளைக் கண்காணிக்கின்றன." : "Regional forecasts provide broad atmospheric trends, while field sensors capture physical root-zone micro-climate and soil moisture."}
-            </div>
-          </div>
-
-          {/* 9. Data Attribution Bar */}
+          {/* Attribution Bar */}
           {current.last_updated && (
             <div className="text-center pt-2 text-xs text-gray-400">
               <span>Last updated: <strong className="text-gray-600">{new Date(current.last_updated).toLocaleString()}</strong></span>

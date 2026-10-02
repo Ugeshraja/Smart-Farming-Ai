@@ -163,12 +163,6 @@ export const mockPredictions = [
     createdAt: "2026-08-11 09:30 AM",
     farmerName: "UGESHRAJA S",
     location: "Tiruchengode, Tamil Nadu",
-    iotSnapshot: {
-      soilMoisture: "62%",
-      temperature: "29.5°C",
-      humidity: "76%",
-      rainStatus: "No Rain"
-    },
     advisory: {
       en: "Late Blight caused by Phytophthora infestans. Remove and destroy infected leaves immediately. Apply Copper Oxychloride (3g/L) or Mancozeb fungicide spray early in the morning.",
       ta: "தக்காளியில் Late Blight நோய் அதிக ஈரப்பதம் மற்றும் குளிர்ச்சியான சூழ்நிலையில் வேகமாக பரவக்கூடும். பாதிக்கப்பட்ட இலைகளை கண்காணித்து, பரிந்துரைக்கப்பட்ட வேளாண் நோய் மேலாண்மை முறைகளைப் பின்பற்றவும்."
@@ -190,12 +184,6 @@ export const mockPredictions = [
     createdAt: "2026-08-10 04:15 PM",
     farmerName: "UGESHRAJA S",
     location: "Tiruchengode, Tamil Nadu",
-    iotSnapshot: {
-      soilMoisture: "58%",
-      temperature: "31.0°C",
-      humidity: "68%",
-      rainStatus: "No Rain"
-    },
     advisory: {
       en: "Early Blight (Alternaria solani) causes concentric rings on potato foliage. Spray Chlorothalonil (2g/L) or Azoxystrobin to protect crop yield.",
       ta: "உருளைக்கிழங்கு இலையில் வளையப் புள்ளிகளை ஏற்படுத்தும் ஏர்லி பிளைட் நோய். குளோரோதலோனில் (2g/L) தெளிக்கவும்."
@@ -208,32 +196,12 @@ export const mockPredictions = [
   }
 ];
 
-// ESP32 real-time IoT sensor telemetry history (24 hours)
-export const mockSensorHistory = [
-  { time: "00:00", temperature: 24.2, humidity: 85, soilMoisture: 68, rain: false },
-  { time: "03:00", temperature: 23.5, humidity: 88, soilMoisture: 67, rain: false },
-  { time: "06:00", temperature: 25.0, humidity: 82, soilMoisture: 65, rain: false },
-  { time: "09:00", temperature: 28.1, humidity: 74, soilMoisture: 64, rain: false },
-  { time: "12:00", temperature: 31.4, humidity: 62, soilMoisture: 60, rain: false },
-  { time: "15:00", temperature: 32.8, humidity: 58, soilMoisture: 57, rain: false },
-  { time: "18:00", temperature: 29.5, humidity: 76, soilMoisture: 62, rain: false },
-  { time: "21:00", temperature: 26.8, humidity: 80, soilMoisture: 64, rain: true },
-];
-
-export const mockLatestSensors = {
-  soilMoisture: 62,
-  temperature: 29.5,
-  humidity: 76,
-  rainDetected: false,
-  timestamp: "Just now",
-  status: "Optimal"
-};
-
-export const mockRecentSensorActivity = [
-  { id: 1, type: "Moisture", message: "Soil moisture updated to 62% via ESP32 Node #1", time: "5 mins ago" },
-  { id: 2, type: "Rain", message: "Rain sensor pin LOW (No Rain detected)", time: "12 mins ago" },
-  { id: 3, type: "Temperature", message: "Canopy temp recorded 29.5°C", time: "25 mins ago" },
-  { id: 4, type: "Sync", message: "ESP32 WiFi packet payload transmitted successfully", time: "40 mins ago" }
+// Platform & AI Farming Activity Logs
+export const mockRecentActivities = [
+  { id: 1, type: "Diagnosis", message: "Leaf scan completed: Early Blight (Potato) — 94.1% confidence", time: "15 mins ago" },
+  { id: 2, type: "Advisory", message: "AI Advisory generated: Preventive copper fungicide recommendation", time: "45 mins ago" },
+  { id: 3, type: "Weather", message: "OpenWeather forecast synced: Rain probability updated for Tiruchengode", time: "1 hour ago" },
+  { id: 4, type: "Planner", message: "Farming task reminder: Schedule vegetative fertigation", time: "2 hours ago" }
 ];
 
 export const mockAiInsights = [
@@ -250,12 +218,12 @@ export const mockAiInsights = [
   {
     id: 2,
     type: "info",
-    title: { en: "Optimal Irrigation Level", ta: "சரியான பாசன அளவு" },
+    title: { en: "Favorable Growing Conditions", ta: "ஏதுவான வளர்ச்சி நிலை" },
     description: {
-      en: "Soil moisture is currently at 62%, which is within the target 60-70% root zone requirement for Solanaceae crops.",
-      ta: "மண் ஈரப்பதம் தற்போது 62% ஆக உள்ளது. இது தக்காளி, உருளை, கத்தரி பயிர்களின் வேர் மண்டலத்திற்கு ஏற்றது."
+      en: "Weather forecast indicates moderate ambient temperatures and suitable sunlight for Solanaceae vegetative development.",
+      ta: "வானிலை முன்னறிவிப்பு தக்காளி, உருளை மற்றும் கத்தரி பயிர்களின் வளர்ச்சிக்கு உகந்த மிதமான வெப்பநிலையைக் காட்டுகிறது."
     },
-    action: "Keep automated drip off"
+    action: "Follow standard crop calendar"
   }
 ];
 
@@ -365,21 +333,6 @@ export const mockCropWeatherInsights = {
       en: "High humidity and prolonged leaf wetness may increase crop leaf spot risks. Keep lower leaves pruned for adequate air movement.",
       ta: "அதிக ஈரப்பதம் மற்றும் இலைகளில் நீர் தேங்குதல் இலைப்புள்ளி நோயை அதிகரிக்கலாம். காற்றோட்டத்திற்காக கீழ் இலைகளை கவாத்து செய்யவும்."
     }
-  }
-};
-
-export const mockFieldVsWeather = {
-  externalWeather: {
-    temperature: 30,
-    humidity: 74,
-    rainProb: 70,
-    source: "External Weather API"
-  },
-  esp32Sensor: {
-    temperature: 29.5,
-    humidity: 76,
-    soilMoisture: 62,
-    source: "ESP32 Field Node #1"
   }
 };
 

@@ -14,7 +14,7 @@ export default function Header({ pageTitle, onMenuToggle }) {
 
   const mockNotifications = [
     { id: 1, text: "High humidity alert (76%) - Risk of Late Blight.", time: "10 mins ago", type: "warning" },
-    { id: 2, text: "Field sensor telemetry re-synced successfully.", time: "1 hour ago", type: "info" },
+    { id: 2, text: "Weather intelligence data updated successfully.", time: "1 hour ago", type: "info" },
     { id: 3, text: "Community post received 5 new replies.", time: "2 hours ago", type: "success" }
   ];
 

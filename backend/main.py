@@ -17,7 +17,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from routes import auth, weather, chat, voice, predict, library, sensors, field, schemes
+from routes import auth, weather, chat, voice, predict, library, field, schemes, community
 from services.firebase_service import firebase_service
 from services.ai_pipeline_service import ai_pipeline_service
 from services.model_bootstrap import bootstrap_models
@@ -159,15 +159,15 @@ app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(voice.router, prefix=settings.API_V1_PREFIX)
 app.include_router(predict.router, prefix=settings.API_V1_PREFIX)
 app.include_router(library.router, prefix=settings.API_V1_PREFIX)
-app.include_router(sensors.router, prefix=settings.API_V1_PREFIX)
 app.include_router(field.router, prefix=settings.API_V1_PREFIX)
 app.include_router(schemes.router, prefix=settings.API_V1_PREFIX)
+app.include_router(community.router, prefix=settings.API_V1_PREFIX)
 # Compatibility aliases
 app.include_router(predict.router)
 app.include_router(library.router)
-app.include_router(sensors.router)
 app.include_router(field.router)
 app.include_router(schemes.router)
+app.include_router(community.router)
 
 # Serverless & local proxy compatibility prefix: /api/backend/api
 BACKEND_API_PREFIX = "/api/backend/api"
@@ -177,9 +177,9 @@ app.include_router(chat.router, prefix=BACKEND_API_PREFIX)
 app.include_router(voice.router, prefix=BACKEND_API_PREFIX)
 app.include_router(predict.router, prefix=BACKEND_API_PREFIX)
 app.include_router(library.router, prefix=BACKEND_API_PREFIX)
-app.include_router(sensors.router, prefix=BACKEND_API_PREFIX)
 app.include_router(field.router, prefix=BACKEND_API_PREFIX)
 app.include_router(schemes.router, prefix=BACKEND_API_PREFIX)
+app.include_router(community.router, prefix=BACKEND_API_PREFIX)
 
 # Direct Piper TTS endpoints
 @app.post("/api/tts", tags=["Voice Assistant"])

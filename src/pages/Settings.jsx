@@ -32,13 +32,12 @@ export default function Settings() {
 
   const [notifications, setNotifications] = useState({
     diseaseAlerts: true,
-    sensorAlerts: true,
     weatherAlerts: true,
     aiRecommendations: true
   });
 
   const [tempUnit, setTempUnit] = useState('celsius');
-  const [refreshInterval, setRefreshInterval] = useState('10s');
+  const [windUnit, setWindUnit] = useState('kmh');
   const [toastMessage, setToastMessage] = useState('');
 
   const handleSaveProfile = async (e) => {
@@ -75,7 +74,7 @@ export default function Settings() {
           {t('settings')}
         </h2>
         <p className="text-xs sm:text-sm text-gray-600">
-          Manage system preferences, farmer profile, IoT refresh rates, and notification parameters.
+          Manage system preferences, farmer profile, display units, and notification parameters.
         </p>
       </div>
 
@@ -177,16 +176,18 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 4. Dashboard & IoT Config */}
+        {/* 4. Display & Unit Preferences */}
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
           <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2 border-b border-gray-100 pb-3">
             <Sliders className="w-5 h-5 text-agri-600" />
-            <span>Dashboard & IoT Telemetry Config</span>
+            <span>{language === 'ta' ? 'காட்சி & அலகு அமைப்புகள்' : 'Display & Unit Preferences'}</span>
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="font-semibold text-gray-700 block mb-1">Temperature Unit</label>
+              <label className="font-semibold text-gray-700 block mb-1">
+                {language === 'ta' ? 'வெப்பநிலை அலகு' : 'Temperature Unit'}
+              </label>
               <select
                 value={tempUnit}
                 onChange={(e) => setTempUnit(e.target.value)}
@@ -199,16 +200,16 @@ export default function Settings() {
 
             <div>
               <label className="font-semibold text-gray-700 block mb-1">
-                {language === 'ta' ? 'சென்சார் தரவு புதுப்பிப்பு வீதம்' : 'Sensor Telemetry Refresh Rate'}
+                {language === 'ta' ? 'காற்றின் வேக அலகு' : 'Wind Speed Unit'}
               </label>
               <select
-                value={refreshInterval}
-                onChange={(e) => setRefreshInterval(e.target.value)}
+                value={windUnit}
+                onChange={(e) => setWindUnit(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-800"
               >
-                <option value="5s">Every 5 seconds</option>
-                <option value="10s">Every 10 seconds (Recommended)</option>
-                <option value="30s">Every 30 seconds</option>
+                <option value="kmh">Kilometers per hour (km/h)</option>
+                <option value="mph">Miles per hour (mph)</option>
+                <option value="ms">Meters per second (m/s)</option>
               </select>
             </div>
           </div>

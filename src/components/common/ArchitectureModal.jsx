@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Cpu, Sparkles, Activity, Layers, Database, MessageSquare, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Cpu, Sparkles, CloudSun, CalendarDays, Database, MessageSquare, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function ArchitectureModal({ isOpen, onClose }) {
@@ -19,7 +19,7 @@ export default function ArchitectureModal({ isOpen, onClose }) {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">System Architecture & AI Pipeline</h2>
-              <p className="text-xs text-gray-500">Final-Year ECE Project - Solanaceae Crop Disease & IoT Framework</p>
+              <p className="text-xs text-gray-500">Unified Software Platform - Solanaceae Crop Disease & AI Advisory Framework</p>
             </div>
           </div>
           <button 
@@ -35,14 +35,14 @@ export default function ArchitectureModal({ isOpen, onClose }) {
 
           {/* Project Title Banner */}
           <div className="bg-agri-50 border border-agri-200 rounded-xl p-4 text-xs sm:text-sm text-agri-900 leading-relaxed font-medium">
-            <span className="font-bold text-agri-700">PROJECT TITLE:</span> “AI-Driven Unified Smart Farming Platform for Early Crop Disease Detection, Intelligent Farmer Advisory, and Sustainable Crop Management Using Explainable Deep Learning, RAG-LLM, and IoT”
+            <span className="font-bold text-agri-700">PROJECT TITLE:</span> “AI-Driven Unified Smart Farming Platform for Early Crop Disease Detection, Intelligent Farmer Advisory, and Sustainable Crop Management Using Explainable Deep Learning, RAG-LLM, and Weather Intelligence”
           </div>
 
-          {/* Pipeline 1: AI / ML Pipeline */}
+          {/* Pipeline 1: AI / ML Disease Detection Pipeline */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <Sparkles className="w-5 h-5 text-agri-600" />
-              <h3 className="text-base font-bold text-gray-900">1. AI/ML Disease Detection & RAG-LLM Pipeline (90% Focus)</h3>
+              <h3 className="text-base font-bold text-gray-900">1. AI/ML Disease Detection & Explainable Vision Pipeline</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-center">
@@ -80,44 +80,58 @@ export default function ArchitectureModal({ isOpen, onClose }) {
               <div className="bg-emerald-100 text-emerald-800 text-xs px-4 py-1.5 rounded-full font-semibold flex items-center space-x-2 border border-emerald-300">
                 <span>Disease Output</span>
                 <ArrowRight className="w-4 h-4" />
-                <span>RAG Agricultural Vector Retrieval</span>
+                <span>RAG Agricultural Knowledge Base</span>
                 <ArrowRight className="w-4 h-4" />
-                <span>LLM Farmer Advisory (English / தமிழ்)</span>
+                <span>Gemini LLM Advisory (English & தமிழ்)</span>
               </div>
             </div>
           </div>
 
-          {/* Pipeline 2: IoT Pipeline */}
+          {/* Pipeline 2: Software-Only Multimodal Architecture */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Activity className="w-5 h-5 text-blue-600" />
-              <h3 className="text-base font-bold text-gray-900">2. Real-Time ESP32 IoT Monitoring Pipeline (10% Focus)</h3>
+              <Database className="w-5 h-5 text-blue-600" />
+              <h3 className="text-base font-bold text-gray-900">2. Software-Only Multimodal AI Architecture Flow</h3>
             </div>
 
-            <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-around text-center gap-3 text-xs sm:text-sm">
-                <div className="bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-2xs font-medium text-gray-700">
-                  ESP32 Microcontroller
+            <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-center text-xs">
+                {/* Farmer Input */}
+                <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-gray-900">Farmer Input</div>
+                  <p className="text-[11px] text-gray-500">Image, Text or Tamil/English Voice</p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-blue-400" />
-                <div className="bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-2xs font-medium text-gray-700">
-                  Soil Moisture, Temp, Humidity, Rain Sensors
+
+                {/* AI Services */}
+                <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-gray-900">AI Disease Engine</div>
+                  <p className="text-[11px] text-gray-500">YOLO11 → SAM → ResNet-50 → LIME</p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-blue-400" />
-                <div className="bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-2xs font-medium text-gray-700">
-                  FastAPI Backend / Recharts
+
+                {/* Weather & Knowledge */}
+                <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-gray-900">Context Intelligence</div>
+                  <p className="text-[11px] text-gray-500">Weather API + RAG Knowledge Base</p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-blue-400" />
-                <div className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold">
-                  Dashboard Sensors Feed
+
+                {/* Gemini LLM */}
+                <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-gray-900">Gemini LLM</div>
+                  <p className="text-[11px] text-gray-500">Contextual Reasoning & Guidance</p>
+                </div>
+
+                {/* Advisory Delivery */}
+                <div className="bg-emerald-600 text-white p-3 rounded-xl font-bold shadow-2xs flex flex-col justify-center">
+                  <span>Farmer Advisory</span>
+                  <span className="text-[10px] font-normal text-emerald-100 mt-0.5">Tamil / English Speech & Web UI</span>
                 </div>
               </div>
 
-              {/* Crucial Note */}
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-lg text-xs text-amber-900 flex items-start space-x-2">
-                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              {/* Architecture Scope Callout */}
+              <div className="bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-r-lg text-xs text-emerald-900 flex items-start space-x-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="font-semibold">Architectural Isolation:</strong> IoT ESP32 sensor telemetry is rendered directly on the Dashboard for environmental awareness. Sensor data does NOT flow into the YOLO11 / SAM / ResNet-50 visual leaf classifier.
+                  <strong className="font-semibold">Software-Only Architecture:</strong> The entire platform operates purely as a software-based AI system utilizing deep learning computer vision, external meteorological APIs, RAG agricultural databases, and neural large language models.
                 </div>
               </div>
             </div>
@@ -147,7 +161,7 @@ export default function ArchitectureModal({ isOpen, onClose }) {
                 <tr>
                   <td className="p-3 font-medium text-gray-800">Classification</td>
                   <td className="p-3 font-mono text-agri-700">ResNet-50</td>
-                  <td className="p-3">Classifies specific leaf pathology (Late Blight, Early Blight, etc.)</td>
+                  <td className="p-3">Classifies specific leaf pathology across 13 distinct classes</td>
                 </tr>
                 <tr>
                   <td className="p-3 font-medium text-gray-800">Explainability</td>
@@ -156,8 +170,18 @@ export default function ArchitectureModal({ isOpen, onClose }) {
                 </tr>
                 <tr>
                   <td className="p-3 font-medium text-gray-800">Advisory System</td>
-                  <td className="p-3 font-mono text-agri-700">RAG + LLM</td>
+                  <td className="p-3 font-mono text-agri-700">RAG + Gemini LLM</td>
                   <td className="p-3">Retrieves tailored agronomic treatment in English & Tamil</td>
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium text-gray-800">Weather Intelligence</td>
+                  <td className="p-3 font-mono text-agri-700">OpenWeather API</td>
+                  <td className="p-3">Delivers microclimate forecasting & agricultural risk alerts</td>
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium text-gray-800">Farming Planner</td>
+                  <td className="p-3 font-mono text-agri-700">Agronomic Rules Engine</td>
+                  <td className="p-3">Manages crop stages, sowing-to-harvest timelines & tasks</td>
                 </tr>
               </tbody>
             </table>

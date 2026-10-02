@@ -149,7 +149,7 @@ function MainLayout() {
         {/* Footer */}
         <footer className="no-print bg-white border-t border-gray-200 py-3 px-6 text-center text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            🌱 <strong>SmartFarm AI Platform</strong> - Solanaceae Crop Health, IoT & Weather Ecosystem
+            🌱 <strong>SmartFarm AI Platform</strong> - Solanaceae Crop Health, AI Advisory & Weather Ecosystem
           </div>
           <div>
             © {new Date().getFullYear()} SmartFarm AI. All rights reserved.

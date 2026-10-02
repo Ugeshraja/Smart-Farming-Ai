@@ -2,14 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
-  Thermometer,
-  Droplets,
-  CloudRain,
   CheckCircle2,
   AlertTriangle,
   Sparkles,
-  Wifi,
-  Radio,
   CloudSun,
   ArrowRight,
   CalendarDays,
@@ -17,17 +12,11 @@ import {
   ShieldAlert,
   ShieldCheck,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  Scan,
+  Clock,
+  Leaf
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid
-} from 'recharts';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
@@ -39,9 +28,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const [metrics, setMetrics] = useState(null);
-  const [sensors, setSensors] = useState(null);
-  const [history, setHistory] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [recentPredictions, setRecentPredictions] = useState([]);
   const [insights, setInsights] = useState([]);
   const [plannerWidget, setPlannerWidget] = useState(null);
   const [libraryWidget, setLibraryWidget] = useState(null);
@@ -61,22 +49,20 @@ export default function Dashboard() {
     async function loadDashboardData() {
       setLoading(true);
       try {
-        const [summaryData, latestSensors, sensorHist, activities, farmActs, libArticles] = await Promise.all([
+        const [summaryData, activities, farmActs, libArticles, preds] = await Promise.all([
           apiService.getSummaryMetrics(),
-          apiService.getLatestSensors(),
-          apiService.getSensorHistory(),
-          apiService.getRecentSensorActivity(),
+          apiService.getRecentActivities(),
           apiService.getFarmActivities(),
-          apiService.getLibraryArticles()
+          apiService.getLibraryArticles(),
+          apiService.getPredictions({ userId: user?.user_id || user?.id })
         ]);
 
         setMetrics(summaryData.metrics);
         setInsights(summaryData.insights);
-        setSensors(latestSensors);
-        setHistory(sensorHist);
-        setRecentActivities(activities);
-        setPlannerWidget(farmActs[0]);
-        setLibraryWidget(libArticles[0]);
+        setRecentActivities(activities || []);
+        setPlannerWidget(farmActs ? farmActs[0] : null);
+        setLibraryWidget(libArticles ? libArticles[0] : null);
+        setRecentPredictions((preds || []).slice(0, 3));
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -92,7 +78,7 @@ export default function Dashboard() {
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-4 border-agri-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-sm font-medium text-gray-600">
-            {language === 'ta' ? 'சென்சார் அளவீடுகள் ஏற்றப்படுகின்றன...' : 'Loading SmartFarm Dashboard telemetry...'}
+            {language === 'ta' ? 'ஸ்மார்ட் விவசாய தளம் ஏற்றப்படுகிறது...' : 'Loading SmartFarm Dashboard...'}
           </p>
         </div>
       </div>
@@ -150,10 +136,10 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
-          <Wifi className="w-4 h-4 text-agri-300 animate-pulse" />
+          <Sparkles className="w-4 h-4 text-agri-300 animate-pulse" />
           <div className="text-xs">
-            <span className="font-semibold text-white block">{isTa ? "நிலப்பரப்பு சென்சார்கள்" : "Field Sensors"}</span>
-            <span className="text-agri-200">{isTa ? "நேரடி கண்காணிப்பு" : "Active Telemetry"}</span>
+            <span className="font-semibold text-white block">{isTa ? "AI தளம்" : "AI Diagnostics"}</span>
+            <span className="text-agri-200">{isTa ? "செயலில் உள்ளது" : "System Active"}</span>
           </div>
         </div>
       </div>
@@ -380,8 +366,8 @@ export default function Dashboard() {
 
       </div>
 
-      {/* 3. ESP32 Sensor Telemetry Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* 3. Core Software AI Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Card 1: Crop Health */}
         <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow">
@@ -397,125 +383,141 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card 2: Soil Moisture */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow">
+        {/* Card 2: AI Disease Diagnoses */}
+        <div 
+          onClick={() => navigate('/crop-disease')}
+          className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">{t('soilMoisture')}</span>
-            <Droplets className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-semibold text-gray-500">{isTa ? "AI நோய் கணிப்புகள்" : "AI Diagnoses"}</span>
+            <Scan className="w-4 h-4 text-agri-600" />
           </div>
-          <div className="text-2xl font-bold text-gray-900">{sensors?.soilMoisture || 62}%</div>
-          <p className="text-[11px] text-emerald-600 font-medium">
-            {isTa ? 'வேர் மண்டலம் 60 - 70%' : 'Target range 60 - 70%'}
-          </p>
+          <div className="text-2xl font-bold text-gray-900">
+            {metrics?.diseaseDetections?.total || 142}
+          </div>
+          <div className="flex items-center space-x-2 text-[11px] text-gray-500 font-medium">
+            <span className="text-agri-600 font-bold">{metrics?.diseaseDetections?.accuracy || 96.8}% {isTa ? "துல்லியம்" : "Accuracy"}</span>
+            <span>•</span>
+            <span className="text-gray-500">{metrics?.diseaseDetections?.thisWeek || 18} {isTa ? "இந்த வாரம்" : "this week"}</span>
+          </div>
         </div>
 
-        {/* Card 3: Temperature */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow">
+        {/* Card 3: AI Recommendations */}
+        <div 
+          onClick={() => navigate('/ai-assistant')}
+          className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">{t('temperature')}</span>
-            <Thermometer className="w-4 h-4 text-amber-600" />
+            <span className="text-xs font-semibold text-gray-500">{isTa ? "AI வழிகாட்டுதல்கள்" : "AI Recommendations"}</span>
+            <Sparkles className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-gray-900">{sensors?.temperature || 29.5}°C</div>
-          <p className="text-[11px] text-gray-500 font-medium">
-            {isTa ? 'சுற்றுச்சூழல் வெப்பநிலை' : 'Ambient canopy temp'}
-          </p>
+          <div className="text-2xl font-bold text-gray-900">
+            {insights?.length || 2}
+          </div>
+          <div className="flex items-center space-x-2 text-[11px] text-emerald-600 font-medium">
+            <span>{isTa ? "செயலில் உள்ள ஆலோசனைகள்" : "Active RAG Advisories"}</span>
+          </div>
         </div>
 
-        {/* Card 4: Humidity */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow">
+        {/* Card 4: Seasonal Farming Planner */}
+        <div 
+          onClick={() => navigate('/farming-planner')}
+          className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">{t('humidity')}</span>
-            <Droplets className="w-4 h-4 text-cyan-600" />
+            <span className="text-xs font-semibold text-gray-500">{isTa ? "பயிர் திட்டமிடல்" : "Farming Planner"}</span>
+            <CalendarDays className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold text-gray-900">{sensors?.humidity || 76}%</div>
-          <p className="text-[11px] text-amber-600 font-medium">
-            {isTa ? 'அதிக ஈரப்பதம்' : 'Elevated moisture'}
-          </p>
-        </div>
-
-        {/* Card 5: Rain Status */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">{t('rainStatus')}</span>
-            <CloudRain className="w-4 h-4 text-indigo-600" />
+          <div className="text-lg font-bold text-gray-900 truncate">
+            {plannerWidget ? (isTa ? plannerWidget?.nameTa : plannerWidget?.nameEn) : (isTa ? "திட்டம் செயலில் உள்ளது" : "Plan on Track")}
           </div>
-          <div className="text-lg font-bold text-gray-900">
-            {sensors?.rainDetected ? t('rainDetected') : t('noRain')}
+          <div className="flex items-center space-x-2 text-[11px] text-blue-600 font-medium">
+            <span>{isTa ? "பருவம்: காரிஃப் 2026" : "Season: Kharif 2026"}</span>
           </div>
-          <p className="text-[11px] text-gray-500 font-medium">{isTa ? "மழை சென்சார்" : "Field Rain Sensor"}</p>
         </div>
 
       </div>
 
-      {/* 4. Sensor Telemetry Charts */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-              <Activity className="w-5 h-5 text-agri-600" />
-              <span>{t('esp32SensorMonitoring')}</span>
-            </h3>
-            <p className="text-xs text-gray-500">{t('liveSensorFeed')}</p>
-          </div>
-          <div className="flex items-center space-x-3 text-xs">
-            <span className="flex items-center space-x-1 text-blue-600 font-medium">
-              <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-              <span>{t('soilMoisture')} (%)</span>
-            </span>
-            <span className="flex items-center space-x-1 text-amber-600 font-medium">
-              <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-              <span>{t('temperature')} (°C)</span>
-            </span>
-            <span className="flex items-center space-x-1 text-cyan-600 font-medium">
-              <span className="w-3 h-3 rounded-full bg-cyan-500"></span>
-              <span>{t('humidity')} (%)</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Recharts Chart */}
-        <div className="h-72 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorMoisture" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorHum" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="time" tick={{ fontSize: 12, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
-              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-              <Area type="monotone" dataKey="soilMoisture" name={t('soilMoisture')} stroke="#3b82f6" fillOpacity={1} fill="url(#colorMoisture)" strokeWidth={2} />
-              <Area type="monotone" dataKey="temperature" name={t('temperature')} stroke="#f59e0b" fillOpacity={1} fill="url(#colorTemp)" strokeWidth={2} />
-              <Area type="monotone" dataKey="humidity" name={t('humidity')} stroke="#06b6d4" fillOpacity={1} fill="url(#colorHum)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* 5. Two Column Layout: Recent Activity | AI Insights & System Status */}
+      {/* 4. Two Column Layout: Recent Activities & Diagnoses | AI Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left 2 Cols: Recent Sensor Activity */}
+        {/* Left 2 Cols: Recent Disease Predictions & Platform Activities */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Recent Disease Diagnoses Card */}
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                  <Radio className="w-4 h-4 text-agri-600" />
+                  <Scan className="w-4 h-4 text-agri-600" />
+                  <span>{isTa ? "சமீபத்திய பயிர் நோய் கணிப்புகள்" : "Recent Disease Diagnoses"}</span>
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {isTa ? "YOLO11, SAM மற்றும் ResNet-50 AI மாதிரிகளின் மூலம் கண்டறியப்பட்டவை" : "Verified via YOLO11, SAM & ResNet-50 Deep Learning Pipeline"}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/crop-disease')}
+                className="text-xs font-bold text-agri-700 hover:text-agri-800 flex items-center gap-1"
+              >
+                <span>{isTa ? "புதிய ஸ்கேன்" : "New Scan"}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {recentPredictions && recentPredictions.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {recentPredictions.map((pred) => (
+                  <div
+                    key={pred.id}
+                    onClick={() => navigate(`/reports?id=${pred.id}`)}
+                    className="p-3 bg-gray-50 hover:bg-agri-50/50 rounded-xl border border-gray-100 hover:border-agri-200 transition-all cursor-pointer space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-agri-800 bg-agri-100/70 px-2 py-0.5 rounded">
+                        {pred.crop}
+                      </span>
+                      <span className="font-mono text-gray-400 text-[10px]">
+                        {pred.confidence ? `${Math.round(pred.confidence)}%` : '95%'}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-gray-900 truncate">
+                      {pred.disease || pred.predicted_disease || "Healthy"}
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-200/50">
+                      <span>{pred.createdAt || "Recent"}</span>
+                      <span className="text-agri-600 font-semibold">{isTa ? "அறிக்கை" : "Report"} →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center space-x-2">
+                  <Leaf className="w-4 h-4 text-agri-600" />
+                  <span>{isTa ? "சமீபத்திய நோய் பதிவுகள் எதுவும் இல்லை. புதிய இலை படத்தை ஸ்கேன் செய்யவும்." : "No recent disease scans. Upload a crop leaf image to diagnose."}</span>
+                </div>
+                <button
+                  onClick={() => navigate('/crop-disease')}
+                  className="font-bold text-agri-700 hover:underline shrink-0"
+                >
+                  {isTa ? "ஸ்கேன் செய்" : "Diagnose Now"} →
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Platform & Farming Activities Card */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                  <Activity className="w-4 h-4 text-agri-600" />
                   <span>{t('recentActivity')}</span>
                 </h3>
-                <p className="text-xs text-gray-500">{isTa ? "நேரடி பண்ணை சென்சார் பதிவுகள்" : "Live field sensor activity logs"}</p>
+                <p className="text-xs text-gray-500">
+                  {isTa ? "தள AI மற்றும் விவசாயப் பதிவுகள்" : "Platform AI & farming activity logs"}
+                </p>
               </div>
             </div>
 
@@ -523,10 +525,10 @@ export default function Dashboard() {
               {recentActivities.map((act) => (
                 <div key={act.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
                     <span className="font-semibold text-gray-800">{act.message}</span>
                   </div>
-                  <span className="text-gray-400 font-mono text-[11px]">{act.time}</span>
+                  <span className="text-gray-400 font-mono text-[11px] shrink-0 ml-2">{act.time}</span>
                 </div>
               ))}
             </div>
@@ -553,6 +555,11 @@ export default function Dashboard() {
                   <p className="text-amber-800 leading-relaxed">
                     {isTa ? item.description.ta : item.description.en}
                   </p>
+                  {item.action && (
+                    <div className="pt-1 text-[11px] font-semibold text-agri-700">
+                      💡 {item.action}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -69,6 +69,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    community_posts: Mapped[List["CommunityPostRecord"]] = relationship(
+        "CommunityPostRecord",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -227,3 +232,118 @@ class AiReportRecord(Base):
             "rag_sources": self.rag_sources,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class CommunityPostRecord(Base):
+    __tablename__ = "community_posts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
+    crop: Mapped[str] = mapped_column(String(50), default="General", nullable=False)
+    topic: Mapped[str] = mapped_column(String(100), default="Discussion", nullable=False)
+    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    likes_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="community_posts")
+    comments: Mapped[List["CommunityCommentRecord"]] = relationship(
+        "CommunityCommentRecord",
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="CommunityCommentRecord.created_at.asc()"
+    )
+    likes: Mapped[List["CommunityLikeRecord"]] = relationship(
+        "CommunityLikeRecord",
+        back_populates="post",
+        cascade="all, delete-orphan"
+    )
+
+    def to_dict(self, current_user_id: Optional[str] = None) -> Dict[str, Any]:
+        author_name = self.user.name if self.user else "Farmer"
+        has_liked = any(l.user_id == current_user_id for l in self.likes) if current_user_id else False
+        return {
+            "id": str(self.id),
+            "user_id": self.user_id,
+            "author_id": self.user_id,
+            "farmerName": author_name,
+            "author_name": author_name,
+            "author_avatar": None,
+            "crop": self.crop,
+            "topic": self.topic,
+            "language": self.language,
+            "content": self.content,
+            "likes": self.likes_count,
+            "has_liked": has_liked,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "comments": [c.to_dict() for c in self.comments]
+        }
+
+
+class CommunityCommentRecord(Base):
+    __tablename__ = "community_comments"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=generate_uuid)
+    post_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("community_posts.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
+
+    # Relationships
+    post: Mapped["CommunityPostRecord"] = relationship("CommunityPostRecord", back_populates="comments")
+    user: Mapped["User"] = relationship("User")
+
+    def to_dict(self) -> Dict[str, Any]:
+        author_name = self.user.name if self.user else "Farmer"
+        return {
+            "id": str(self.id),
+            "post_id": str(self.post_id),
+            "user_id": self.user_id,
+            "author": author_name,
+            "author_name": author_name,
+            "text": self.content,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CommunityLikeRecord(Base):
+    __tablename__ = "community_likes"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=generate_uuid)
+    post_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("community_posts.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    # Relationships
+    post: Mapped["CommunityPostRecord"] = relationship("CommunityPostRecord", back_populates="likes")
+    user: Mapped["User"] = relationship("User")
+

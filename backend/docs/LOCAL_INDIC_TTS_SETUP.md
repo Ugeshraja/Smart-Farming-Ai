@@ -7,7 +7,7 @@ This guide provides instructions for optionally setting up and running **Local A
 
 ---
 
-## 1. Hardware Requirements
+## 1. System Resource Specifications
 
 | Parameter | CPU-Only Mode | GPU-Accelerated Mode (Recommended) |
 |---|---|---|

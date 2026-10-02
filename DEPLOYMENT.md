@@ -82,7 +82,7 @@ The React 18 / Vite frontend is optimized for deployment to **Vercel** (or Netli
 
 The backend is packaged into a production-grade Docker container using `backend/Dockerfile` based on `python:3.12-slim-bookworm`.
 
-### Hardware & Timeout Requirements
+### Server Compute & Resource Specifications
 - **Recommended Architecture (GPU)**:
   - NVIDIA T4 / L4 / A10G GPU with CUDA 12.x support (e.g. AWS ECS/EC2 `g4dn.xlarge`, RunPod, Modal, GCP Cloud Run with GPU).
   - In GPU environments, SAM ViT-B segmentation executes in $<1.5$ seconds.

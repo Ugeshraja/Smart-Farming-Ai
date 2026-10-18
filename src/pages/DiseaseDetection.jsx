@@ -358,7 +358,7 @@ export default function DiseaseDetection() {
 
         if (prediction && !isProcessing && prediction.status === 'connection_error') {
           return (
-            <div className="bg-white p-8 rounded-2xl border-2 border-red-300 shadow-sm space-y-5 animate-fadeIn text-center">
+            <div className="bg-white p-8 rounded-2xl border-2 border-red-300 shadow-sm space-y-5 animate-fadeIn text-center max-w-xl mx-auto">
               <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-200">
                 <WifiOff className="w-8 h-8" />
               </div>
@@ -366,9 +366,27 @@ export default function DiseaseDetection() {
                 <h3 className="text-xl font-extrabold text-red-800 tracking-wide uppercase">
                   {language === 'ta' ? 'சர்வர் இணைப்புப் பிழை' : 'BACKEND CONNECTION ERROR'}
                 </h3>
-                <p className="text-sm font-medium text-gray-700 max-w-md mx-auto">
-                  {prediction.message || 'Could not connect to the SmartFarm AI backend server. Please verify the backend is running.'}
+                <p className="text-sm font-medium text-gray-700 max-w-md mx-auto leading-relaxed">
+                  {prediction.message || (language === 'ta'
+                    ? 'SmartFarm AI சேவையகத்தை இணைக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+                    : 'Could not connect to the SmartFarm AI backend server. Please verify the backend is running.')}
                 </p>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={runAiPipeline}
+                  disabled={isProcessing}
+                  className="px-6 py-2.5 bg-agri-600 hover:bg-agri-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>{language === 'ta' ? 'மீண்டும் பகுப்பாய்வு செய்' : 'Retry Analysis'}</span>
+                </button>
+                <label className="cursor-pointer px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors">
+                  <span>{language === 'ta' ? 'படத்தை மாற்றவும்' : 'Change Image'}</span>
+                  <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                </label>
               </div>
             </div>
           );

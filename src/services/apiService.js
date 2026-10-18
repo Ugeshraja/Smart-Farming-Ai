@@ -17,6 +17,7 @@ import { fetchOpenWeatherData, geocodeLocation } from './weatherService';
 import { VERIFIED_GOVERNMENT_SCHEMES, evaluateSchemeEligibility as evalRules } from './schemesData';
 import { evaluateFieldSuitability } from './fieldEvaluator';
 import { supabase } from '../lib/supabaseClient';
+import { predictViaDirectHfSpace } from './hfDirectService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/backend/api';
 
@@ -362,11 +363,46 @@ export const apiService = {
   // 4. Predict Crop Disease (YOLO11 -> SAM -> ResNet-50 -> LIME)
   async predictDisease(formData) {
     try {
-      const response = await apiClient.post('/predict', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 900000 // 15 minutes for deep learning pipeline (LIME)
-      });
-      const data = response.data;
+      let data;
+      const isBrowser = typeof window !== 'undefined';
+      const isVercelHost = isBrowser && window.location.hostname.includes('vercel.app');
+      const isDefaultProxy = API_BASE_URL === '/api/backend/api' || API_BASE_URL.startsWith('/api');
+      const isLocalhost = API_BASE_URL.startsWith('http://localhost') || API_BASE_URL.startsWith('http://127.0.0.1');
+
+      // On Vercel / serverless deployments, serverless functions are subject to a 10s-15s execution timeout.
+      // The full explainable deep learning pipeline (YOLO11 + SAM ViT-B + ResNet-50 + LIME) requires ~20-25s,
+      // which causes Vercel serverless proxies to terminate with HTTP 504 Gateway Timeout.
+      // Calling Hugging Face ZeroGPU Space directly from the browser completely avoids this timeout.
+      if (isVercelHost || (isDefaultProxy && !isLocalhost)) {
+        try {
+          console.info('[SmartFarm AI] Using direct Hugging Face ZeroGPU connection to prevent serverless 504 timeout...');
+          data = await predictViaDirectHfSpace(formData);
+        } catch (directErr) {
+          console.warn('[SmartFarm AI] Direct Hugging Face call failed, attempting backend fallback...', directErr);
+          const response = await apiClient.post('/predict', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 900000
+          });
+          data = response.data;
+        }
+      } else {
+        // Localhost or dedicated backend URL: try primary backend first, fallback to direct HF Space
+        try {
+          const response = await apiClient.post('/predict', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 900000
+          });
+          data = response.data;
+        } catch (primaryErr) {
+          const status = primaryErr?.response?.status;
+          if (status === 504 || status === 502 || status === 503 || status === 500 || !primaryErr?.response) {
+            console.warn(`[SmartFarm AI] Primary backend unavailable (status ${status || 'network error'}). Falling back to direct Hugging Face Space...`);
+            data = await predictViaDirectHfSpace(formData);
+          } else {
+            throw primaryErr;
+          }
+        }
+      }
       if (data && data.success) {
         const rawDisease = data.disease || data.prediction?.disease;
         const rawConf = data.confidence ?? data.prediction?.confidence;
@@ -567,6 +603,8 @@ export const apiService = {
       // Handle HTTP 429 Too Many Requests / GPU inference quota limit
       if (
         status === 429 ||
+        error?.isQuota ||
+        error?.status === 429 ||
         resData?.status === 'prediction_quota_exceeded' ||
         (typeof error?.message === 'string' && (error.message.includes('429') || error.message.toLowerCase().includes('too many requests'))) ||
         (typeof resData?.message === 'string' && (resData.message.toLowerCase().includes('quota') || resData.message.toLowerCase().includes('rate limit')))
@@ -588,13 +626,34 @@ export const apiService = {
         };
       }
 
+      // Check if it's a 504 Gateway Timeout or inference timeout
+      const isTimeout =
+        status === 504 ||
+        error?.name === 'TimeoutError' ||
+        error?.name === 'AbortError' ||
+        (typeof error?.message === 'string' && (error.message.toLowerCase().includes('timeout') || error.message.includes('504')));
+
+      if (isTimeout) {
+        return {
+          id: `ERR-${Date.now()}`,
+          success: false,
+          status: 'connection_error',
+          valid_image: true,
+          message: "The AI inference server took longer than expected to analyze your leaf image. Please click 'Retry Analysis' to connect directly.",
+          imageUrl: formData?.get ? (formData.get('imagePreviewUrl') || '') : '',
+          disease: null,
+          confidence: null,
+          advisory: null
+        };
+      }
+
       // True network/transport or server crash error: report connection error honestly without inventing fake diseases
       return {
         id: `ERR-${Date.now()}`,
         success: false,
         status: 'connection_error',
         valid_image: false,
-        message: resData?.detail || error?.message || "BACKEND CONNECTION ERROR: Could not reach the SmartFarm AI server. Please verify the backend is running.",
+        message: resData?.detail || error?.message || "Could not reach the SmartFarm AI server. Please verify the backend is running.",
         imageUrl: formData.get('imagePreviewUrl') || '',
         disease: null,
         confidence: null,
